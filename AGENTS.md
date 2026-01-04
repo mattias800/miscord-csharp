@@ -21,12 +21,13 @@ Miscord is a self-hosted Discord alternative built with C# and .NET. The project
 6. Screen Sharing - Share screen with support for capture devices (e.g., Elgato 4K)
 
 ### Technology Stack
-- **Language**: C# (.NET 8+)
-- **Server**: ASP.NET Core
+- **Language**: C# (.NET 9.0 - Latest stable LTS release)
+- **Server**: ASP.NET Core 9
+- **Desktop Client**: Avalonia UI 11.1.3 (cross-platform XAML framework for Windows, macOS, Linux)
 - **Real-time Communication**: WebRTC with SipSorcery
 - **Signaling**: SignalR for WebSocket-based signaling
-- **Database**: Entity Framework Core (SQL Server or PostgreSQL)
-- **Testing**: MSTest
+- **Database**: Entity Framework Core with SQL Server or PostgreSQL
+- **Testing**: MSTest with latest SDK
 
 ## Code Conventions
 
@@ -59,6 +60,23 @@ public class UserService : IUserService
 - Test coverage should be verified automatically
 - Integration tests for critical workflows
 - No manual testing steps - everything must be automated
+
+## UI Framework: Avalonia
+
+Avalonia UI is a mature, cross-platform XAML framework that allows building desktop applications for Windows, macOS, and Linux from a single codebase.
+
+### Why Avalonia for Miscord?
+- **Cross-platform native performance** for all major desktop platforms
+- **XAML-based** - familiar for developers with WPF background
+- **Production-ready** with strong community and commercial backing (used by JetBrains in Rider)
+- **Excellent for real-time communication UIs** with reactive programming support
+- **All latest versions** - Built on .NET 9 with latest Avalonia 11.1.3
+
+### Client Project Structure
+- `Miscord.Client/` - Main executable with Avalonia UI
+- `Views/` - XAML view files and code-behind
+- `App.axaml` - Application definition
+- `Program.cs` - Entry point with desktop platform detection
 
 ## Common Pitfalls to Avoid
 

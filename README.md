@@ -15,12 +15,13 @@ A self-hosted Discord alternative built with C# and .NET. Miscord allows users t
 
 ## Technology Stack
 
-- **Language**: C# (.NET 8+)
-- **Server**: ASP.NET Core
+- **Language**: C# (.NET 9.0)
+- **Server**: ASP.NET Core 9
+- **Desktop Client**: Avalonia UI 11.1.3 (cross-platform XAML framework)
 - **Real-time Communication**: WebRTC with SipSorcery
 - **Signaling**: SignalR for WebSocket-based signaling
-- **Database**: SQL Server or PostgreSQL
-- **Client UI**: WPF or Electron-based
+- **Database**: Entity Framework Core with SQL Server or PostgreSQL
+- **Testing**: MSTest
 
 ## Project Structure
 
@@ -28,14 +29,13 @@ A self-hosted Discord alternative built with C# and .NET. Miscord allows users t
 miscord-csharp/
 ├── src/
 │   ├── Miscord.Server/          # ASP.NET Core server application
-│   ├── Miscord.Client/          # Desktop client application
+│   ├── Miscord.Client/          # Avalonia UI desktop client (Windows, macOS, Linux)
 │   ├── Miscord.Shared/          # Shared models and interfaces
 │   └── Miscord.WebRTC/          # WebRTC/media handling
 ├── tests/
 │   ├── Miscord.Server.Tests/
-│   ├── Miscord.Client.Tests/
 │   └── Miscord.WebRTC.Tests/
-├── docs/
+├── AGENTS.md
 ├── .gitignore
 ├── .editorconfig
 ├── Miscord.sln
@@ -45,8 +45,8 @@ miscord-csharp/
 ## Development
 
 ### Prerequisites
-- .NET 8 SDK or later
-- Visual Studio 2022 (recommended) or Rider
+- .NET 9 SDK or later
+- Visual Studio 2022 (recommended), Rider, or VS Code
 - Git
 
 ### Building

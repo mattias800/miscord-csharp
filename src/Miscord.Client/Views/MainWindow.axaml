@@ -1,0 +1,16 @@
+<Window
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Class="Miscord.Client.Views.MainWindow"
+    Title="Miscord"
+    Width="1200"
+    Height="800"
+    Icon="/Assets/avalonia-logo.ico">
+    <TextBlock
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center"
+        FontSize="32"
+        Foreground="Blue">
+        Welcome to Miscord!
+    </TextBlock>
+</Window>
