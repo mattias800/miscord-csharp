@@ -1,16 +1,36 @@
-<Window
-    xmlns="https://github.com/avaloniaui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    x:Class="Miscord.Client.Views.MainWindow"
-    Title="Miscord"
-    Width="1200"
-    Height="800"
-    Icon="/Assets/avalonia-logo.ico">
-    <TextBlock
-        HorizontalAlignment="Center"
-        VerticalAlignment="Center"
-        FontSize="32"
-        Foreground="Blue">
-        Welcome to Miscord!
-    </TextBlock>
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Miscord.Client.ViewModels"
+        xmlns:views="using:Miscord.Client.Views"
+        x:Class="Miscord.Client.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Miscord"
+        Width="1200"
+        Height="800"
+        MinWidth="800"
+        MinHeight="600"
+        Background="#202225">
+
+    <Window.DataTemplates>
+        <DataTemplate DataType="{x:Type vm:LoadingViewModel}">
+            <views:LoadingView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ServerConnectionViewModel}">
+            <views:ServerConnectionView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:LoginViewModel}">
+            <views:LoginView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:RegisterViewModel}">
+            <views:RegisterView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:MainAppViewModel}">
+            <views:MainAppView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:DirectMessagesViewModel}">
+            <views:DirectMessagesView/>
+        </DataTemplate>
+    </Window.DataTemplates>
+
+    <ContentControl Content="{Binding CurrentView}"/>
 </Window>

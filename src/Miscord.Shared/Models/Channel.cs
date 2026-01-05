@@ -5,8 +5,8 @@ public class Channel
     public Guid Id { get; set; } = Guid.NewGuid();
     public required string Name { get; set; }
     public string? Topic { get; set; }
-    public required Guid ServerId { get; set; }
-    public MiscordServer? Server { get; set; }
+    public required Guid CommunityId { get; set; }
+    public Community? Community { get; set; }
     public required ChannelType Type { get; set; }
     public int Position { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

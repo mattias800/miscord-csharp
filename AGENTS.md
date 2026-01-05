@@ -125,6 +125,44 @@ dotnet run --project src/Miscord.Server
 dotnet ef migrations add MigrationName --project src/Miscord.Server
 ```
 
+## Development Startup
+
+Use the `dev-start.sh` script to start the server and two test clients with auto-login:
+
+```bash
+./dev-start.sh
+```
+
+This script:
+1. Kills any existing Miscord processes
+2. Builds the server and client projects
+3. Starts the server on `http://localhost:5117`
+4. Starts two client instances with auto-login:
+   - **Alice** (`alice@test.com`) - typically the community owner
+   - **Bob** (`bob@test.com`) - typically a regular member
+5. Sets up proper cleanup on Ctrl+C
+
+### Client CLI Arguments
+
+The client supports the following CLI arguments for development/testing:
+
+```bash
+dotnet run --project src/Miscord.Client -- \
+    --server "http://localhost:5117" \
+    --email "user@test.com" \
+    --password "password123" \
+    --title "Miscord - Username" \
+    --profile profilename
+```
+
+| Argument | Description |
+|----------|-------------|
+| `--server` | Server URL to auto-connect to |
+| `--email` | Email for auto-login |
+| `--password` | Password for auto-login |
+| `--title` | Window title (useful for distinguishing multiple clients) |
+| `--profile` | Profile name for storing separate settings |
+
 ## Project Status
 
 ### Completed

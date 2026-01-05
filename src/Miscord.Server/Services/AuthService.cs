@@ -1,0 +1,216 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using Miscord.Server.Data;
+using Miscord.Server.DTOs;
+using Miscord.Shared.Models;
+
+namespace Miscord.Server.Services;
+
+public sealed class AuthService : IAuthService
+{
+    private readonly MiscordDbContext _db;
+    private readonly JwtSettings _jwtSettings;
+
+    public AuthService(MiscordDbContext db, IOptions<JwtSettings> jwtSettings)
+    {
+        _db = db;
+        _jwtSettings = jwtSettings.Value;
+    }
+
+    public async Task<AuthResponse> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
+    {
+        var normalizedEmail = request.Email.ToLowerInvariant();
+
+        if (await _db.Users.AnyAsync(u => u.Email == normalizedEmail, cancellationToken))
+            throw new InvalidOperationException("Email is already registered.");
+
+        if (await _db.Users.AnyAsync(u => u.Username == request.Username, cancellationToken))
+            throw new InvalidOperationException("Username is already taken.");
+
+        var user = new User
+        {
+            Username = request.Username,
+            Email = normalizedEmail,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+            IsOnline = true
+        };
+
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return GenerateTokens(user);
+    }
+
+    public async Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
+    {
+        var normalizedEmail = request.Email.ToLowerInvariant();
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken);
+
+        if (user is null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            throw new InvalidOperationException("Invalid email or password.");
+
+        user.IsOnline = true;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return GenerateTokens(user);
+    }
+
+    public async Task<AuthResponse> RefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default)
+    {
+        var principal = GetPrincipalFromExpiredToken(refreshToken);
+        var userIdClaim = principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (userIdClaim is null || !Guid.TryParse(userIdClaim, out var userId))
+            throw new SecurityTokenException("Invalid refresh token.");
+
+        var user = await _db.Users.FindAsync([userId], cancellationToken);
+        if (user is null)
+            throw new SecurityTokenException("User not found.");
+
+        return GenerateTokens(user);
+    }
+
+    public async Task<UserProfileResponse> GetProfileAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var user = await _db.Users.FindAsync([userId], cancellationToken);
+        if (user is null)
+            throw new InvalidOperationException("User not found.");
+
+        return new UserProfileResponse(
+            user.Id,
+            user.Username,
+            user.Email,
+            user.Avatar,
+            user.Status,
+            user.IsOnline,
+            user.CreatedAt
+        );
+    }
+
+    public async Task<UserProfileResponse> UpdateProfileAsync(Guid userId, UpdateProfileRequest request, CancellationToken cancellationToken = default)
+    {
+        var user = await _db.Users.FindAsync([userId], cancellationToken);
+        if (user is null)
+            throw new InvalidOperationException("User not found.");
+
+        if (request.Username is not null)
+        {
+            if (await _db.Users.AnyAsync(u => u.Username == request.Username && u.Id != userId, cancellationToken))
+                throw new InvalidOperationException("Username is already taken.");
+            user.Username = request.Username;
+        }
+
+        if (request.Avatar is not null)
+            user.Avatar = request.Avatar;
+
+        if (request.Status is not null)
+            user.Status = request.Status;
+
+        user.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return new UserProfileResponse(
+            user.Id,
+            user.Username,
+            user.Email,
+            user.Avatar,
+            user.Status,
+            user.IsOnline,
+            user.CreatedAt
+        );
+    }
+
+    private AuthResponse GenerateTokens(User user)
+    {
+        var expiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
+        var accessToken = GenerateAccessToken(user, expiresAt);
+        var refreshToken = GenerateRefreshToken(user);
+
+        return new AuthResponse(
+            user.Id,
+            user.Username,
+            user.Email,
+            accessToken,
+            refreshToken,
+            expiresAt
+        );
+    }
+
+    private string GenerateAccessToken(User user, DateTime expiresAt)
+    {
+        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
+        var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Name, user.Username),
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+        };
+
+        var token = new JwtSecurityToken(
+            issuer: _jwtSettings.Issuer,
+            audience: _jwtSettings.Audience,
+            claims: claims,
+            expires: expiresAt,
+            signingCredentials: credentials
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    private string GenerateRefreshToken(User user)
+    {
+        var expiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays);
+        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
+        var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim("token_type", "refresh")
+        };
+
+        var token = new JwtSecurityToken(
+            issuer: _jwtSettings.Issuer,
+            audience: _jwtSettings.Audience,
+            claims: claims,
+            expires: expiresAt,
+            signingCredentials: credentials
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    private ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)
+    {
+        var tokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateAudience = true,
+            ValidateIssuer = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey)),
+            ValidateLifetime = false,
+            ValidIssuer = _jwtSettings.Issuer,
+            ValidAudience = _jwtSettings.Audience
+        };
+
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out var securityToken);
+
+        if (securityToken is not JwtSecurityToken jwtSecurityToken ||
+            !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
+        {
+            throw new SecurityTokenException("Invalid token.");
+        }
+
+        return principal;
+    }
+}

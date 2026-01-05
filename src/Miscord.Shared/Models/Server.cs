@@ -1,6 +1,6 @@
 namespace Miscord.Shared.Models;
 
-public class MiscordServer
+public class Community
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public required string Name { get; set; }
@@ -12,5 +12,5 @@ public class MiscordServer
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     public ICollection<Channel> Channels { get; set; } = new List<Channel>();
-    public ICollection<UserServer> UserServers { get; set; } = new List<UserServer>();
+    public ICollection<UserCommunity> UserCommunities { get; set; } = new List<UserCommunity>();
 }

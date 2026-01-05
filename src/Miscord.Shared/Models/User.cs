@@ -12,8 +12,8 @@ public class User
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-    public ICollection<MiscordServer> OwnedServers { get; set; } = new List<MiscordServer>();
-    public ICollection<UserServer> UserServers { get; set; } = new List<UserServer>();
+    public ICollection<Community> OwnedCommunities { get; set; } = new List<Community>();
+    public ICollection<UserCommunity> UserCommunities { get; set; } = new List<UserCommunity>();
     public ICollection<DirectMessage> SentMessages { get; set; } = new List<DirectMessage>();
     public ICollection<DirectMessage> ReceivedMessages { get; set; } = new List<DirectMessage>();
     public ICollection<Message> Messages { get; set; } = new List<Message>();

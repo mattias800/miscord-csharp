@@ -1,0 +1,74 @@
+using System.Reactive.Linq;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.ReactiveUI;
+using Miscord.Client.ViewModels;
+
+namespace Miscord.Client.Views;
+
+public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
+{
+    public MainAppView()
+    {
+        InitializeComponent();
+
+        // Use tunneling (Preview) events to intercept Enter before AcceptsReturn processes it
+        MessageInputBox.AddHandler(KeyDownEvent, OnMessageKeyDown, RoutingStrategies.Tunnel);
+        EditMessageInputBox.AddHandler(KeyDownEvent, OnEditMessageKeyDown, RoutingStrategies.Tunnel);
+    }
+
+    // Called for message input TextBox (tunneling event)
+    // Enter sends message, Shift+Enter inserts newline
+    private void OnMessageKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && !e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+        {
+            // Enter only = send message (mark handled to prevent newline)
+            e.Handled = true;
+
+            if (ViewModel?.SendMessageCommand.CanExecute.FirstAsync().GetAwaiter().GetResult() == true)
+            {
+                ViewModel.SendMessageCommand.Execute().Subscribe();
+            }
+        }
+        // Shift+Enter = let AcceptsReturn handle it (inserts newline)
+    }
+
+    // Called from XAML for channel rename TextBox
+    public void OnChannelRenameKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && ViewModel?.SaveChannelNameCommand.CanExecute.FirstAsync().GetAwaiter().GetResult() == true)
+        {
+            ViewModel.SaveChannelNameCommand.Execute().Subscribe();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            ViewModel?.CancelEditChannelCommand.Execute().Subscribe();
+            e.Handled = true;
+        }
+    }
+
+    // Called for message edit TextBox (tunneling event)
+    // Enter saves edit, Shift+Enter inserts newline
+    private void OnEditMessageKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && !e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+        {
+            // Enter only = save edit (mark handled to prevent newline)
+            e.Handled = true;
+
+            if (ViewModel?.SaveMessageEditCommand.CanExecute.FirstAsync().GetAwaiter().GetResult() == true)
+            {
+                ViewModel.SaveMessageEditCommand.Execute().Subscribe();
+            }
+        }
+        else if (e.Key == Key.Escape)
+        {
+            ViewModel?.CancelEditMessageCommand.Execute().Subscribe();
+            e.Handled = true;
+        }
+        // Shift+Enter = let AcceptsReturn handle it (inserts newline)
+    }
+}

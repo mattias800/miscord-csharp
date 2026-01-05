@@ -8,11 +8,11 @@ public sealed class MiscordDbContext : DbContext
     public MiscordDbContext(DbContextOptions<MiscordDbContext> options) : base(options) { }
 
     public DbSet<User> Users => Set<User>();
-    public DbSet<MiscordServer> Servers => Set<MiscordServer>();
+    public DbSet<Community> Communities => Set<Community>();
     public DbSet<Channel> Channels => Set<Channel>();
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<DirectMessage> DirectMessages => Set<DirectMessage>();
-    public DbSet<UserServer> UserServers => Set<UserServer>();
+    public DbSet<UserCommunity> UserCommunities => Set<UserCommunity>();
     public DbSet<VoiceParticipant> VoiceParticipants => Set<VoiceParticipant>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -29,22 +29,22 @@ public sealed class MiscordDbContext : DbContext
             .HasIndex(u => u.Username)
             .IsUnique();
 
-        // Server configuration
-        modelBuilder.Entity<MiscordServer>()
-            .HasKey(s => s.Id);
-        modelBuilder.Entity<MiscordServer>()
-            .HasOne(s => s.Owner)
-            .WithMany(u => u.OwnedServers)
-            .HasForeignKey(s => s.OwnerId)
+        // Community configuration
+        modelBuilder.Entity<Community>()
+            .HasKey(c => c.Id);
+        modelBuilder.Entity<Community>()
+            .HasOne(c => c.Owner)
+            .WithMany(u => u.OwnedCommunities)
+            .HasForeignKey(c => c.OwnerId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Channel configuration
         modelBuilder.Entity<Channel>()
             .HasKey(c => c.Id);
         modelBuilder.Entity<Channel>()
-            .HasOne(c => c.Server)
-            .WithMany(s => s.Channels)
-            .HasForeignKey(c => c.ServerId)
+            .HasOne(c => c.Community)
+            .WithMany(com => com.Channels)
+            .HasForeignKey(c => c.CommunityId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Message configuration
@@ -75,21 +75,21 @@ public sealed class MiscordDbContext : DbContext
             .HasForeignKey(dm => dm.RecipientId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // UserServer configuration
-        modelBuilder.Entity<UserServer>()
-            .HasKey(us => us.Id);
-        modelBuilder.Entity<UserServer>()
-            .HasOne(us => us.User)
-            .WithMany(u => u.UserServers)
-            .HasForeignKey(us => us.UserId)
+        // UserCommunity configuration
+        modelBuilder.Entity<UserCommunity>()
+            .HasKey(uc => uc.Id);
+        modelBuilder.Entity<UserCommunity>()
+            .HasOne(uc => uc.User)
+            .WithMany(u => u.UserCommunities)
+            .HasForeignKey(uc => uc.UserId)
             .OnDelete(DeleteBehavior.Cascade);
-        modelBuilder.Entity<UserServer>()
-            .HasOne(us => us.Server)
-            .WithMany(s => s.UserServers)
-            .HasForeignKey(us => us.ServerId)
+        modelBuilder.Entity<UserCommunity>()
+            .HasOne(uc => uc.Community)
+            .WithMany(c => c.UserCommunities)
+            .HasForeignKey(uc => uc.CommunityId)
             .OnDelete(DeleteBehavior.Cascade);
-        modelBuilder.Entity<UserServer>()
-            .HasIndex(us => new { us.UserId, us.ServerId })
+        modelBuilder.Entity<UserCommunity>()
+            .HasIndex(uc => new { uc.UserId, uc.CommunityId })
             .IsUnique();
 
         // VoiceParticipant configuration

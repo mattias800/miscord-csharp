@@ -5,20 +5,30 @@ Implement a self-hosted Discord alternative with user accounts, messaging, voice
 
 ## Current Status
 
-### Completed (Foundation)
+### Completed ✅
 - ✅ Project structure with Shared/Server/Client/WebRTC libraries
 - ✅ Avalonia UI 11.1.3 integrated for cross-platform desktop
 - ✅ Database schema designed with 7 entities
 - ✅ EF Core DbContext fully configured
 - ✅ Build pipeline working (zero errors)
 - ✅ Git repository on GitHub (private)
+- ✅ User authentication (register, login, JWT tokens, refresh tokens)
+- ✅ SignalR hub with real-time messaging and presence
+- ✅ Direct messages (send, receive, edit, delete, typing indicators)
+- ✅ Text channels (create, edit, delete, messages)
+- ✅ Voice channels (create, join, leave - UI and signaling only)
+- ✅ Complete Discord-like UI (server list, channels, chat, members)
+- ✅ Role-based permissions (Owner, Admin, Member)
+- ✅ Ownership transfer feature
+- ✅ 75+ automated tests
 
 ### Implementation Progress
-- **Database Models**: 100% (7 entities: User, MiscordServer, Channel, Message, DirectMessage, UserServer, VoiceParticipant)
-- **Authentication**: 0% (to implement)
-- **Messaging**: 0% (to implement)
-- **Voice & Media**: 0% (to implement)
-- **UI**: 0% (to implement)
+- **Database Models**: 100% ✅
+- **Authentication**: 100% ✅
+- **Messaging (DM + Channels)**: 100% ✅
+- **Voice Signaling**: 80% (UI + SignalR events done, WebRTC audio pending)
+- **Voice & Media**: 20% (signaling done, actual audio/video pending)
+- **UI**: 90% ✅ (main app complete, voice UI needs audio integration)
 
 ## Phase 1: Core Infrastructure & User Management
 
@@ -33,144 +43,102 @@ Implement a self-hosted Discord alternative with user accounts, messaging, voice
 - Migration-ready DbContext
 - No build errors
 
-### 1.2 User Accounts [NOT STARTED]
-**Estimated: 300-400 lines of code**
+### 1.2 User Accounts [COMPLETED] ✅
+**Implemented in:** `src/Miscord.Server/Controllers/AuthController.cs`, `src/Miscord.Server/Services/AuthService.cs`
 
-#### Endpoints to Implement:
-- `POST /api/auth/register` - User registration with email/password validation
-- `POST /api/auth/login` - User login with JWT token generation
-- `POST /api/auth/refresh` - Refresh expired tokens
-- `GET /api/users/me` - Get current user profile
-- `PUT /api/users/me` - Update user profile
-- `POST /api/users/me/avatar` - Upload user avatar
+#### Endpoints Implemented:
+- ✅ `POST /api/auth/register` - User registration with email/password validation
+- ✅ `POST /api/auth/login` - User login with JWT token generation
+- ✅ `POST /api/auth/refresh` - Refresh expired tokens
+- ✅ `GET /api/auth/profile` - Get current user profile
 
 #### Implementation Details:
-- Use BCrypt.Net-Next (4.0.3) for password hashing
-- Implement JWT token generation with configurable expiration
-- Add token refresh mechanism for security
-- Validate email format and password strength
-- Create authentication middleware for protected routes
-- Handle user online status with a UserConnection tracking table
+- ✅ BCrypt for password hashing
+- ✅ JWT token generation with configurable expiration
+- ✅ Token refresh mechanism
+- ✅ Email/password validation
+- ✅ Authentication middleware for protected routes
+- ✅ User online status tracking via SignalR
 
-**Dependencies:**
-- BCrypt.Net-Next 4.0.3 ✅ (already added)
-- System.IdentityModel.Tokens.Jwt
-- Microsoft.IdentityModel.Tokens
+### 1.3 SignalR Hub Setup [COMPLETED] ✅
+**Implemented in:** `src/Miscord.Server/Hubs/MiscordHub.cs`
 
-### 1.3 SignalR Hub Setup [NOT STARTED]
-**Estimated: 200-300 lines of code**
-
-#### Hub Methods to Implement:
-- Connection handling (OnConnectedAsync, OnDisconnectedAsync)
-- User online status broadcasting
-- Connection authentication via JWT
-- User presence tracking
-
-#### Key Features:
-- SignalR hub for real-time updates
-- Connection state management
-- User online status tracking
-- Group-based messaging for scalability
-
-**Dependencies:**
-- Microsoft.AspNetCore.SignalR (included with ASP.NET Core 9)
+#### Hub Methods Implemented:
+- ✅ Connection handling (OnConnectedAsync, OnDisconnectedAsync)
+- ✅ User online status broadcasting
+- ✅ Connection authentication via JWT
+- ✅ User presence tracking
+- ✅ Community/channel group management
+- ✅ Real-time message delivery
+- ✅ Voice channel signaling (join/leave/WebRTC)
 
 ---
 
 ## Phase 2: Messaging Features
 
-### 2.1 Direct Messages [NOT STARTED]
-**Estimated: 500-600 lines of code**
+### 2.1 Direct Messages [COMPLETED] ✅
+**Implemented in:** `src/Miscord.Server/Controllers/DirectMessagesController.cs`, `src/Miscord.Server/Services/DirectMessageService.cs`
 
-#### Endpoints to Implement:
-- `GET /api/direct-messages/{userId}` - Get DM history with specific user
-- `POST /api/direct-messages/{userId}` - Send direct message
-- `PUT /api/direct-messages/{id}` - Edit message
-- `DELETE /api/direct-messages/{id}` - Delete message
-- `GET /api/direct-messages` - Get list of DM conversations
+#### Endpoints Implemented:
+- ✅ `GET /api/directmessages` - Get list of DM conversations
+- ✅ `GET /api/directmessages/{userId}` - Get DM history with specific user
+- ✅ `POST /api/directmessages/{userId}` - Send direct message
+- ✅ `PUT /api/directmessages/{messageId}` - Edit message
+- ✅ `DELETE /api/directmessages/{messageId}` - Delete message
+- ✅ `POST /api/directmessages/{userId}/read` - Mark conversation as read
 
-#### SignalR Events:
-- `SendDirectMessage(recipientId, content)` - Send DM in real-time
-- `ReceiveDirectMessage(senderId, content)` - Receive DM notification
-- `UserTyping(recipientId)` - Typing indicator
-- `UserStoppedTyping(recipientId)` - Stop typing indicator
-- `MessageEdited(messageId, newContent)` - Message edit notification
-- `MessageDeleted(messageId)` - Message delete notification
+#### SignalR Events Implemented:
+- ✅ Real-time DM delivery
+- ✅ Typing indicators
+- ✅ Message edit/delete notifications
+- ✅ Unread count tracking
 
-#### Implementation Details:
-- Persist messages to database for history
-- Real-time delivery via SignalR
-- Typing indicators with timeout
-- Edit/delete with timestamp tracking
+### 2.2 Text Channels [COMPLETED] ✅
+**Implemented in:** `src/Miscord.Server/Controllers/ChannelsController.cs`, `src/Miscord.Server/Services/CommunityService.cs`
 
-### 2.2 Text Channels [NOT STARTED]
-**Estimated: 700-800 lines of code**
+#### Endpoints Implemented:
+- ✅ `GET /api/communities/{id}/channels` - List channels
+- ✅ `POST /api/communities/{id}/channels` - Create channel
+- ✅ `PUT /api/channels/{id}` - Update channel
+- ✅ `DELETE /api/channels/{id}` - Delete channel
+- ✅ `GET /api/channels/{id}/messages` - Get message history (paginated)
+- ✅ `POST /api/channels/{id}/messages` - Post message
+- ✅ `PUT /api/channels/{channelId}/messages/{messageId}` - Edit message
+- ✅ `DELETE /api/channels/{channelId}/messages/{messageId}` - Delete message
 
-#### Endpoints to Implement:
-- `POST /api/servers/{serverId}/channels` - Create text channel
-- `GET /api/servers/{serverId}/channels` - List channels
-- `GET /api/channels/{channelId}` - Get channel details
-- `PUT /api/channels/{channelId}` - Update channel
-- `DELETE /api/channels/{channelId}` - Delete channel
-- `GET /api/channels/{channelId}/messages` - Get message history (paginated)
-- `POST /api/channels/{channelId}/messages` - Post message
-- `PUT /api/messages/{id}` - Edit channel message
-- `DELETE /api/messages/{id}` - Delete channel message
-- `POST /api/channels/{channelId}/members` - Add member to channel
-- `DELETE /api/channels/{channelId}/members/{userId}` - Remove member
+#### SignalR Events Implemented:
+- ✅ Real-time message delivery
+- ✅ Channel created/updated/deleted notifications
+- ✅ Typing indicators
+- ✅ Message edit/delete notifications
 
-#### SignalR Events:
-- `SendChannelMessage(channelId, content)` - Send message
-- `ReceiveChannelMessage(channelId, message)` - Receive message
-- `ChannelCreated(channel)` - Channel creation notification
-- `ChannelDeleted(channelId)` - Channel deletion notification
-- `ChannelUpdated(channel)` - Channel update notification
-- `MemberJoined(channelId, user)` - Member join notification
-- `MemberLeft(channelId, userId)` - Member leave notification
-
-#### Implementation Details:
-- Channel permissions (basic: public/private)
-- Message history with pagination
-- Member management per channel
-- Message threading support (optional)
+#### Additional Features:
+- ✅ Role-based permissions (Owner, Admin, Member)
+- ✅ Ownership transfer
+- ✅ Channel types (Text, Voice)
 
 ---
 
 ## Phase 3: Voice & Media Communication
 
-### 3.1 Voice Channels & WebRTC Signaling [NOT STARTED]
-**Estimated: 1000-1200 lines of code**
+### 3.1 Voice Channels & WebRTC Signaling [PARTIALLY COMPLETE] 🔶
+**Implemented in:** `src/Miscord.Server/Hubs/MiscordHub.cs`, `src/Miscord.Client/Services/SignalRService.cs`, `src/Miscord.Client/Services/WebRtcService.cs`
 
-#### Endpoints to Implement:
-- `POST /api/servers/{serverId}/voice-channels` - Create voice channel
-- `GET /api/servers/{serverId}/voice-channels` - List voice channels
-- `DELETE /api/voice-channels/{channelId}` - Delete voice channel
+#### Completed ✅:
+- ✅ Voice channel creation (same as text channels with Type=Voice)
+- ✅ Join/Leave voice channel UI and SignalR events
+- ✅ Participant tracking in database (VoiceParticipants table)
+- ✅ Mute/Deafen state management
+- ✅ SignalR WebRTC signaling events (offer, answer, ICE candidates)
+- ✅ Participant joined/left notifications
+- ✅ Voice state updates (mute, deafen, camera, screen share)
 
-#### SignalR Events (Critical for WebRTC):
-- `JoinVoiceChannel(channelId)` - Join voice channel
-- `LeaveVoiceChannel(channelId)` - Leave voice channel
-- `SendOffer(targetUserId, offer)` - WebRTC SDP offer
-- `SendAnswer(targetUserId, answer)` - WebRTC SDP answer
-- `SendIceCandidate(targetUserId, candidate)` - ICE candidate
-- `ParticipantJoined(channelId, user)` - Notify others of new participant
-- `ParticipantLeft(channelId, userId)` - Notify others of leaving participant
-- `ToggleMute(channelId, isMuted)` - Mute/unmute notification
-- `ToggleDeafen(channelId, isDeafened)` - Deafen/undeafen notification
-- `ToggleCamera(channelId, isCameraOn)` - Camera toggle notification
-- `ToggleScreenShare(channelId, isSharing)` - Screen share toggle notification
+#### Remaining ❌:
+- ❌ **Actual WebRTC audio capture and playback** - SipSorcery peer connection needs to capture microphone and play remote audio
+- ❌ STUN/TURN server configuration
+- ❌ Audio codec negotiation
 
-#### Implementation Details:
-- Use SipSorcery for WebRTC peer connection management
-- Handle SDP offer/answer exchange via SignalR
-- ICE candidate gathering and exchange
-- STUN/TURN server configuration for NAT traversal
-- Track active voice participants in database
-- Support multiple concurrent voice channels
-- Audio codec negotiation (opus preferred)
-
-**Dependencies:**
-- SipSorcery (WebRTC library for C#)
-- System.Net.WebSockets for signaling
+**Current State:** The signaling infrastructure is complete, but the WebRtcService needs to be connected to actually capture/play audio.
 
 ### 3.2 Webcam Streaming [NOT STARTED]
 **Estimated: 600-800 lines of code**
@@ -236,158 +204,64 @@ Implement a self-hosted Discord alternative with user accounts, messaging, voice
 
 ## Phase 4: UI Implementation
 
-### 4.1 Authentication UI [NOT STARTED]
-**Estimated: 300-400 lines of XAML/C#**
+### 4.1 Authentication UI [COMPLETED] ✅
+**Implemented in:** `src/Miscord.Client/Views/LoginView.axaml`, `src/Miscord.Client/Views/RegisterView.axaml`, `src/Miscord.Client/Views/ServerConnectionView.axaml`
 
-#### Windows/Views to Create:
-1. **LoginWindow.axaml**
-   - Email field
-   - Password field
-   - Login button
-   - "Register" link
-   - Error message display
-   - Loading indicator
+#### Views Implemented:
+1. ✅ **ServerConnectionView** - Connect to server URL
+2. ✅ **LoginView** - Email/password login with error handling
+3. ✅ **RegisterView** - Username/email/password registration
+4. ✅ **LoadingView** - Loading indicator during async operations
 
-2. **RegisterWindow.axaml**
-   - Username field (validation)
-   - Email field (validation)
-   - Password field (strength indicator)
-   - Confirm password field
-   - Register button
-   - "Already have account" link
-   - Terms of service checkbox
+#### Features:
+- ✅ CLI argument support for auto-login (--server, --email, --password)
+- ✅ Error message display
+- ✅ Loading indicators
+- ✅ View navigation between login/register
+- ✅ Token management via AuthService
 
-3. **Session Management**
-   - Token storage in secure location
-   - Auto-login on app restart
-   - Session refresh handling
-   - Logout functionality
+### 4.2 Main Application Layout [COMPLETED] ✅
+**Implemented in:** `src/Miscord.Client/Views/MainAppView.axaml`, `src/Miscord.Client/ViewModels/MainAppViewModel.cs`
 
-#### MVVM Pattern:
-- AuthViewModel for credential management
-- Command bindings for Login/Register
-- Reactive properties for form state
-- Error handling and validation
-
-**Dependencies:**
-- Avalonia UI ✅
-- ReactiveUI for MVVM ✅
-
-### 4.2 Main Application Layout [NOT STARTED]
-**Estimated: 800-1000 lines of XAML/C#**
-
-#### Main Window Structure:
+#### Main Window Structure (Implemented):
 ```
 ┌─────────────────────────────────────────┐
-│     Miscord                         [_][□][X]  │
+│     Miscord - Username              [_][□][X]  │
 ├─────────────────────────────────────────┤
 │ Servers │ Channels │    Chat Area    │ Users │
-│         │          │                 │       │
-│ [Server1]│ # general│ Messages Here │ User1 │
-│ [Server2]│ # random │ [input field] │ User2 │
-│          │ 🔊 voice │                │ User3 │
-│          │ 🔊 calls │                │       │
-│          │          │                │       │
+│   [S1]  │ # general│ Messages Here   │ User1 │
+│   [S2]  │ # random │                 │ User2 │
+│   [+]   │ 🔊 Voice │ [input field]   │ User3 │
+│   [DM]  │   [+]    │                 │       │
 └─────────────────────────────────────────┘
 ```
 
-#### Components to Create:
-1. **ServerListPanel**
-   - Display list of joined servers
-   - Create/join server dialogs
-   - Server icons/avatars
-   - Notification badges
+#### Components Implemented ✅:
+1. ✅ **Community List** - Server icons, create/join, DM access
+2. ✅ **Channel List** - Text (#) and Voice (🔊) channels, create buttons (permission-based)
+3. ✅ **Chat Panel** - Messages with author/timestamp, edit/delete, input field
+4. ✅ **Member List** - Online status, roles displayed, context menu (DM, promote, demote, transfer ownership)
+5. ✅ **Direct Messages View** - Conversation list, chat interface
 
-2. **ChannelListPanel**
-   - List text and voice channels per server
-   - Channel icons (# for text, 🔊 for voice)
-   - Unread message indicators
-   - Context menus for channel management
+#### MVVM Implementation ✅:
+- ✅ MainAppViewModel with ReactiveUI
+- ✅ Converters for roles, timestamps, unread counts
+- ✅ Command bindings throughout
 
-3. **ChatPanel**
-   - Message list (virtualized for performance)
-   - Message display with author, timestamp, avatar
-   - Message actions (edit, delete, react)
-   - Input field with rich text support
-   - @mentions autocomplete
-   - Emoji picker
+### 4.3 Voice UI [PARTIALLY COMPLETE] 🔶
+**Implemented in:** `src/Miscord.Client/Views/MainAppView.axaml` (voice channel section)
 
-4. **UserListPanel**
-   - Display online users in current server
-   - User status indicators (online, idle, offline)
-   - User avatars
-   - Right-click context menu (DM, profile view)
+#### Completed ✅:
+- ✅ Voice channel list with participant count
+- ✅ Join/Leave voice channel buttons
+- ✅ Voice control bar (mute, deafen, disconnect)
+- ✅ Current voice channel indicator
+- ✅ Participant list in voice channel
 
-5. **Settings Panel**
-   - User profile settings
-   - Server settings (if owner)
-   - Audio/video settings
-   - Appearance/theme settings
-
-#### MVVM Structure:
-- MainViewModel (orchestrates all panels)
-- ChannelViewModel (channel management and messages)
-- ServerViewModel (server management)
-- UserViewModel (user list and presence)
-- Converters for message formatting, timestamps, etc.
-
-### 4.3 Voice UI [NOT STARTED]
-**Estimated: 600-800 lines of XAML/C#**
-
-#### Voice Channel Window Components:
-```
-┌──────────────────────────────────┐
-│ 🔊 Voice Channel Name            │
-├──────────────────────────────────┤
-│  ┌──────────────┐  ┌──────────┐ │
-│  │   Local Video│  │User1 Video│ │
-│  │ (Camera/Share)│  │(Camera)   │ │
-│  └──────────────┘  └──────────┘ │
-│  ┌──────────────┐  ┌──────────┐ │
-│  │User2 Video   │  │User3 Video│ │
-│  │(Camera)      │  │(Camera)   │ │
-│  └──────────────┘  └──────────┘ │
-├──────────────────────────────────┤
-│ [🎤] [🔊] [📹] [🖥️] [⚙️] [X]     │
-│ Mute Camera Share Screen Settings Exit  │
-└──────────────────────────────────┘
-```
-
-#### Controls to Implement:
-1. **Video Grid**
-   - Dynamic grid layout (1x1, 2x2, 3x3, etc.)
-   - Local video preview (self-view)
-   - Remote participant videos
-   - Participant names/labels
-   - Status indicators (muted, deafened, sharing)
-   - Click to focus/enlarge participant
-
-2. **Control Bar**
-   - Microphone toggle (mute/unmute)
-   - Speaker toggle (deafen/undeafen)
-   - Camera toggle (on/off)
-   - Screen share button (camera vs screen)
-   - Settings button
-   - End call button
-   - Volume controls per participant (hover)
-
-3. **Participant List**
-   - Connected users in voice channel
-   - Status per user
-   - Right-click context menu (mute, remove, profile)
-
-4. **Settings Dialog**
-   - Audio device selection (microphone, speaker)
-   - Video device selection
-   - Display selection for screen share
-   - Audio/video quality settings
-   - Echo cancellation, noise suppression settings
-
-#### MVVM Structure:
-- VoiceChannelViewModel (manage participants, media state)
-- ParticipantViewModel (per-user data)
-- WebRTC connection management service
-- Media device enumeration service
+#### Remaining ❌:
+- ❌ Video grid for webcam/screen share
+- ❌ Audio device selection UI
+- ❌ Volume controls per participant
 
 ---
 
@@ -724,16 +598,21 @@ miscord-csharp/
 
 ## Next Steps
 
-1. **Implement Phase 1.2** (User Authentication) - This unblocks everything else
-2. **Create folder structure** for Controllers, Services, DTOs, etc.
-3. **Define API DTOs** for Register/Login/User profile
-4. **Write integration tests** as features are implemented
-5. **Deploy to test environment** frequently
-6. **Gather feedback** from early users
-7. **Optimize based on usage patterns**
+### Immediate Priority
+1. **Complete WebRTC Audio** - Connect SipSorcery to actually capture/play audio in voice channels
+2. **Add STUN/TURN Configuration** - For NAT traversal in voice calls
+
+### Secondary Priority
+3. **Webcam Streaming** - Add video tracks to WebRTC peer connections
+4. **Screen Sharing** - Platform-specific screen capture
+
+### Polish
+5. **Audio Device Selection UI** - Let users choose microphone/speaker
+6. **Improve Test Coverage** - Currently 75 tests, aim for >80% coverage
+7. **Performance Optimization** - Message virtualization, lazy loading
 
 ---
 
-**Last Updated:** 2026-01-04  
-**Status:** Foundation Complete, Ready for Core Development  
+**Last Updated:** 2026-01-05
+**Status:** Core Features Complete, Voice Audio Implementation In Progress
 **Maintainer:** Development Team

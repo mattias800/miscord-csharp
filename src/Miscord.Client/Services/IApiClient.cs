@@ -1,0 +1,62 @@
+using Miscord.Shared.Models;
+
+namespace Miscord.Client.Services;
+
+public interface IApiClient
+{
+    // Connection
+    string? BaseUrl { get; }
+    void SetBaseUrl(string url);
+    Task<ApiResult<ServerInfoResponse>> GetServerInfoAsync();
+
+    // Auth
+    Task<ApiResult<AuthResponse>> RegisterAsync(string username, string email, string password);
+    Task<ApiResult<AuthResponse>> LoginAsync(string email, string password);
+    Task<ApiResult<AuthResponse>> RefreshTokenAsync(string refreshToken);
+    Task<ApiResult<UserProfileResponse>> GetProfileAsync();
+    void SetAuthToken(string token);
+    void ClearAuthToken();
+    bool IsAuthenticated { get; }
+
+    // Communities
+    Task<ApiResult<List<CommunityResponse>>> GetCommunitiesAsync();
+    Task<ApiResult<List<CommunityResponse>>> DiscoverCommunitiesAsync();
+    Task<ApiResult<CommunityResponse>> GetCommunityAsync(Guid communityId);
+    Task<ApiResult<CommunityResponse>> CreateCommunityAsync(string name, string? description);
+    Task<ApiResult<bool>> JoinCommunityAsync(Guid communityId);
+
+    // Channels
+    Task<ApiResult<List<ChannelResponse>>> GetChannelsAsync(Guid communityId);
+    Task<ApiResult<ChannelResponse>> CreateChannelAsync(Guid communityId, string name, string? topic, ChannelType type = ChannelType.Text);
+    Task<ApiResult<ChannelResponse>> UpdateChannelAsync(Guid communityId, Guid channelId, string? name, string? topic);
+
+    // Messages
+    Task<ApiResult<List<MessageResponse>>> GetMessagesAsync(Guid channelId, int skip = 0, int take = 50);
+    Task<ApiResult<MessageResponse>> SendMessageAsync(Guid channelId, string content);
+    Task<ApiResult<MessageResponse>> UpdateMessageAsync(Guid channelId, Guid messageId, string content);
+    Task<ApiResult<bool>> DeleteMessageAsync(Guid channelId, Guid messageId);
+
+    // Members
+    Task<ApiResult<List<CommunityMemberResponse>>> GetMembersAsync(Guid communityId);
+    Task<ApiResult<CommunityMemberResponse>> GetMemberAsync(Guid communityId, Guid userId);
+    Task<ApiResult<CommunityMemberResponse>> UpdateMemberRoleAsync(Guid communityId, Guid userId, UserRole newRole);
+    Task<ApiResult<bool>> TransferOwnershipAsync(Guid communityId, Guid newOwnerId);
+
+    // Direct Messages
+    Task<ApiResult<List<ConversationSummary>>> GetConversationsAsync();
+    Task<ApiResult<List<DirectMessageResponse>>> GetDirectMessagesAsync(Guid userId, int skip = 0, int take = 50);
+    Task<ApiResult<DirectMessageResponse>> SendDirectMessageAsync(Guid userId, string content);
+    Task<ApiResult<DirectMessageResponse>> UpdateDirectMessageAsync(Guid messageId, string content);
+    Task<ApiResult<bool>> DeleteDirectMessageAsync(Guid messageId);
+    Task<ApiResult<bool>> MarkConversationAsReadAsync(Guid userId);
+}
+
+public record ApiResult<T>
+{
+    public bool Success { get; init; }
+    public T? Data { get; init; }
+    public string? Error { get; init; }
+
+    public static ApiResult<T> Ok(T data) => new() { Success = true, Data = data };
+    public static ApiResult<T> Fail(string error) => new() { Success = false, Error = error };
+}

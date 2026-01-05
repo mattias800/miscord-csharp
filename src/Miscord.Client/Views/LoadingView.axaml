@@ -1,0 +1,17 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Miscord.Client.ViewModels"
+             x:Class="Miscord.Client.Views.LoadingView"
+             x:DataType="vm:LoadingViewModel"
+             x:CompileBindings="False">
+    <Border Background="#36393f">
+        <StackPanel HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="20">
+            <TextBlock Text="{Binding Message}"
+                       FontSize="18"
+                       Foreground="White"
+                       HorizontalAlignment="Center"/>
+        </StackPanel>
+    </Border>
+</UserControl>
