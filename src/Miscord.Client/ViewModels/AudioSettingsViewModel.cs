@@ -16,6 +16,9 @@ public class AudioSettingsViewModel : ViewModelBase
     private bool _isTestingMicrophone;
     private bool _isLoopbackEnabled;
     private float _inputLevel;
+    private float _inputGain;
+    private float _gateThreshold;
+    private bool _gateEnabled;
 
     public AudioSettingsViewModel(ISettingsStore settingsStore, IAudioDeviceService audioDeviceService)
     {
@@ -32,6 +35,9 @@ public class AudioSettingsViewModel : ViewModelBase
         // Load saved selections first (before populating devices)
         _selectedInputDevice = _settingsStore.Settings.AudioInputDevice;
         _selectedOutputDevice = _settingsStore.Settings.AudioOutputDevice;
+        _inputGain = _settingsStore.Settings.InputGain;
+        _gateThreshold = _settingsStore.Settings.GateThreshold;
+        _gateEnabled = _settingsStore.Settings.GateEnabled;
 
         // Load devices
         RefreshDevices();
@@ -97,8 +103,60 @@ public class AudioSettingsViewModel : ViewModelBase
     public float InputLevel
     {
         get => _inputLevel;
-        set => this.RaiseAndSetIfChanged(ref _inputLevel, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _inputLevel, value);
+            this.RaisePropertyChanged(nameof(IsAboveGate));
+        }
     }
+
+    public float InputGain
+    {
+        get => _inputGain;
+        set
+        {
+            if (Math.Abs(_inputGain - value) < 0.001f) return;
+
+            this.RaiseAndSetIfChanged(ref _inputGain, value);
+            _settingsStore.Settings.InputGain = value;
+            _settingsStore.Save();
+            this.RaisePropertyChanged(nameof(InputGainPercent));
+        }
+    }
+
+    public int InputGainPercent => (int)(_inputGain * 100);
+
+    public float GateThreshold
+    {
+        get => _gateThreshold;
+        set
+        {
+            if (Math.Abs(_gateThreshold - value) < 0.001f) return;
+
+            this.RaiseAndSetIfChanged(ref _gateThreshold, value);
+            _settingsStore.Settings.GateThreshold = value;
+            _settingsStore.Save();
+            this.RaisePropertyChanged(nameof(GateThresholdPercent));
+        }
+    }
+
+    public int GateThresholdPercent => (int)(_gateThreshold * 100);
+
+    public bool GateEnabled
+    {
+        get => _gateEnabled;
+        set
+        {
+            if (_gateEnabled == value) return;
+
+            this.RaiseAndSetIfChanged(ref _gateEnabled, value);
+            _settingsStore.Settings.GateEnabled = value;
+            _settingsStore.Save();
+        }
+    }
+
+    // Is the current input level above the gate threshold?
+    public bool IsAboveGate => !_gateEnabled || _inputLevel >= _gateThreshold;
 
     public ICommand TestMicrophoneCommand { get; }
     public ICommand ToggleLoopbackCommand { get; }
@@ -140,7 +198,12 @@ public class AudioSettingsViewModel : ViewModelBase
             {
                 await _audioDeviceService.StartInputTestAsync(
                     _selectedInputDevice,
-                    level => Dispatcher.UIThread.Post(() => InputLevel = level)
+                    level => Dispatcher.UIThread.Post(() =>
+                    {
+                        // Apply gain to the displayed level
+                        var adjustedLevel = Math.Min(1.0f, level * _inputGain);
+                        InputLevel = adjustedLevel;
+                    })
                 );
                 IsTestingMicrophone = true;
             }
@@ -162,7 +225,12 @@ public class AudioSettingsViewModel : ViewModelBase
         {
             await _audioDeviceService.StartInputTestAsync(
                 _selectedInputDevice,
-                level => Dispatcher.UIThread.Post(() => InputLevel = level)
+                level => Dispatcher.UIThread.Post(() =>
+                {
+                    // Apply gain to the displayed level
+                    var adjustedLevel = Math.Min(1.0f, level * _inputGain);
+                    InputLevel = adjustedLevel;
+                })
             );
 
             if (_isLoopbackEnabled)

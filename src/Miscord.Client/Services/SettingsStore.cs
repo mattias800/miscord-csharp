@@ -15,6 +15,9 @@ public class UserSettings
     public string? AudioOutputDevice { get; set; } // null = default device
     public float InputVolume { get; set; } = 1.0f;
     public float OutputVolume { get; set; } = 1.0f;
+    public float InputGain { get; set; } = 1.0f;   // 0.0 to 3.0 (0% to 300%)
+    public float GateThreshold { get; set; } = 0.02f; // 0.0 to 0.5 (normalized RMS threshold)
+    public bool GateEnabled { get; set; } = true;
 }
 
 public class SettingsStore : ISettingsStore

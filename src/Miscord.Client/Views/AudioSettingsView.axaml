@@ -45,6 +45,62 @@
                           Padding="12,8"/>
             </StackPanel>
 
+            <!-- Input Gain Section -->
+            <StackPanel Spacing="8">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="INPUT GAIN"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="#b9bbbe"/>
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding InputGainPercent, StringFormat={}{0}%}"
+                               FontSize="11"
+                               Foreground="#b9bbbe"/>
+                </Grid>
+                <Slider Minimum="0"
+                        Maximum="3"
+                        Value="{Binding InputGain}"
+                        Foreground="#5865f2"
+                        Background="#202225"/>
+                <TextBlock Text="Adjust microphone sensitivity. Values above 100% amplify quiet audio."
+                           FontSize="12"
+                           Foreground="#72767d"
+                           TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <!-- Noise Gate Section -->
+            <StackPanel Spacing="8">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="NOISE GATE"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Foreground="#b9bbbe"
+                                   VerticalAlignment="Center"/>
+                        <ToggleSwitch IsChecked="{Binding GateEnabled}"
+                                      OnContent=""
+                                      OffContent=""
+                                      Padding="0"
+                                      MinWidth="40"/>
+                    </StackPanel>
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding GateThresholdPercent, StringFormat={}{0}%}"
+                               FontSize="11"
+                               Foreground="#b9bbbe"
+                               IsVisible="{Binding GateEnabled}"/>
+                </Grid>
+                <Slider Minimum="0"
+                        Maximum="0.5"
+                        Value="{Binding GateThreshold}"
+                        Foreground="#5865f2"
+                        Background="#202225"
+                        IsVisible="{Binding GateEnabled}"/>
+                <TextBlock Text="Mutes input when audio level is below the threshold, reducing background noise."
+                           FontSize="12"
+                           Foreground="#72767d"
+                           TextWrapping="Wrap"/>
+            </StackPanel>
+
             <!-- Mic Test Section -->
             <Border Background="#2f3136" CornerRadius="8" Padding="16">
                 <StackPanel Spacing="16">
@@ -111,24 +167,47 @@
 
                     <!-- Audio Level Indicator -->
                     <StackPanel Spacing="8" IsVisible="{Binding IsTestingMicrophone}">
-                        <TextBlock Text="INPUT LEVEL"
-                                   FontSize="11"
-                                   Foreground="#72767d"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="INPUT LEVEL"
+                                       FontSize="11"
+                                       Foreground="#72767d"/>
+                            <TextBlock Grid.Column="1"
+                                       FontSize="11"
+                                       Foreground="#72767d">
+                                <TextBlock.Text>
+                                    <MultiBinding StringFormat="{}Gate: {0}">
+                                        <Binding Path="IsAboveGate" Converter="{x:Static conv:BoolToGateStatusConverter.Instance}"/>
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </Grid>
 
-                        <Grid Height="8">
+                        <Grid Height="12">
                             <!-- Background bar -->
                             <Border Background="#202225"
                                     CornerRadius="4"
                                     HorizontalAlignment="Stretch"/>
 
-                            <!-- Level indicator -->
-                            <Border Background="#3ba55c"
-                                    CornerRadius="4"
+                            <!-- Level indicator - changes color based on gate -->
+                            <Border CornerRadius="4"
                                     HorizontalAlignment="Left"
-                                    Width="{Binding InputLevel, Converter={x:Static conv:AudioLevelToWidthConverter.Instance}, ConverterParameter=300}"/>
+                                    Width="{Binding InputLevel, Converter={x:Static conv:AudioLevelToWidthConverter.Instance}, ConverterParameter=300}">
+                                <Border.Background>
+                                    <SolidColorBrush Color="{Binding IsAboveGate, Converter={x:Static conv:BoolToGateColorConverter.Instance}}"/>
+                                </Border.Background>
+                            </Border>
+
+                            <!-- Gate threshold marker (vertical line) -->
+                            <Border HorizontalAlignment="Left"
+                                    Width="2"
+                                    Background="#ed4245"
+                                    CornerRadius="1"
+                                    Margin="{Binding GateThreshold, Converter={x:Static conv:GateThresholdToMarginConverter.Instance}, ConverterParameter=300}"
+                                    IsVisible="{Binding GateEnabled}"
+                                    ToolTip.Tip="Gate Threshold"/>
                         </Grid>
 
-                        <TextBlock Text="Speak into your microphone to see the level meter move."
+                        <TextBlock Text="Speak into your microphone. The bar turns green when above the gate threshold (red line)."
                                    FontSize="12"
                                    Foreground="#72767d"
                                    TextWrapping="Wrap"/>
