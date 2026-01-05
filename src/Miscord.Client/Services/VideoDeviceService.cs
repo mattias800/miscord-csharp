@@ -285,41 +285,131 @@ public class VideoDeviceService : IVideoDeviceService
         _onFrameReceived = onFrameReceived;
         _testCts = new CancellationTokenSource();
 
+        // If no device path specified, use device 0
+        if (string.IsNullOrEmpty(devicePath))
+        {
+            devicePath = "0";
+        }
+
+        Console.WriteLine($"VideoDeviceService: Starting camera test with device: {devicePath}");
+
+        // Use command-line ffmpeg for camera capture on macOS (more reliable)
+        if (OperatingSystem.IsMacOS())
+        {
+            await StartCameraTestViaCommandLineAsync(devicePath);
+            return;
+        }
+
+        // Fall back to FFmpegCameraSource on other platforms
         try
         {
             EnsureFFmpegInitialized();
 
-            // If no device path specified, use the first available camera
-            if (string.IsNullOrEmpty(devicePath))
-            {
-                var devices = FFmpegCameraManager.GetCameraDevices();
-                if (devices == null || devices.Count == 0)
-                {
-                    throw new InvalidOperationException("No camera devices found");
-                }
-                devicePath = devices[0].Path;
-            }
-
+            Console.WriteLine($"VideoDeviceService: Creating FFmpegCameraSource for device: {devicePath}");
             _testCameraSource = new FFmpegCameraSource(devicePath);
 
-            // Subscribe to video frames
             _testCameraSource.OnVideoSourceRawSample += OnVideoFrame;
-
-            // Subscribe to error events
             _testCameraSource.OnVideoSourceError += (error) =>
             {
                 Console.WriteLine($"VideoDeviceService: Camera error: {error}");
             };
 
+            Console.WriteLine("VideoDeviceService: Starting video capture...");
             await _testCameraSource.StartVideo();
             Console.WriteLine($"VideoDeviceService: Started camera test on device: {devicePath}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"VideoDeviceService: Failed to start camera test - {ex.Message}");
+            Console.WriteLine($"VideoDeviceService: Failed to start camera test - {ex.GetType().Name}: {ex.Message}");
             await StopTestAsync();
             throw;
         }
+    }
+
+    private System.Diagnostics.Process? _ffmpegProcess;
+    private const int PreviewWidth = 640;
+    private const int PreviewHeight = 360; // 16:9 aspect ratio
+
+    private async Task StartCameraTestViaCommandLineAsync(string deviceIndex)
+    {
+        Console.WriteLine($"VideoDeviceService: Starting ffmpeg capture for device {deviceIndex}");
+
+        // Use ffmpeg to capture from avfoundation - let it use native resolution and scale down for preview
+        // No -video_size means use device default, then scale to preview size
+        var psi = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "ffmpeg",
+            // Capture at native resolution, scale to preview size, output raw RGB24
+            Arguments = $"-f avfoundation -framerate 15 -i \"{deviceIndex}:none\" -vf \"scale={PreviewWidth}:{PreviewHeight}\" -f rawvideo -pix_fmt rgb24 -",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        _ffmpegProcess = System.Diagnostics.Process.Start(psi);
+        if (_ffmpegProcess == null)
+        {
+            throw new InvalidOperationException("Failed to start ffmpeg process");
+        }
+
+        Console.WriteLine("VideoDeviceService: ffmpeg process started, reading frames...");
+
+        // Read frames in background
+        var token = _testCts!.Token;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var stream = _ffmpegProcess.StandardOutput.BaseStream;
+                var frameSize = PreviewWidth * PreviewHeight * 3; // RGB24
+                var buffer = new byte[frameSize];
+
+                while (!token.IsCancellationRequested && !_ffmpegProcess.HasExited)
+                {
+                    var bytesRead = 0;
+                    while (bytesRead < frameSize && !token.IsCancellationRequested)
+                    {
+                        var read = await stream.ReadAsync(buffer, bytesRead, frameSize - bytesRead, token);
+                        if (read == 0) break;
+                        bytesRead += read;
+                    }
+
+                    if (bytesRead == frameSize)
+                    {
+                        _onFrameReceived?.Invoke(buffer, PreviewWidth, PreviewHeight);
+                    }
+                    else if (bytesRead > 0)
+                    {
+                        Console.WriteLine($"VideoDeviceService: Incomplete frame ({bytesRead}/{frameSize} bytes)");
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when stopping
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"VideoDeviceService: Error reading frames - {ex.Message}");
+            }
+        }, token);
+
+        // Log stderr in background
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var stderr = await _ffmpegProcess.StandardError.ReadToEndAsync();
+                if (!string.IsNullOrWhiteSpace(stderr) && stderr.Contains("error"))
+                {
+                    Console.WriteLine($"VideoDeviceService: ffmpeg stderr: {stderr}");
+                }
+            }
+            catch { }
+        });
+
+        Console.WriteLine("VideoDeviceService: Camera test started via ffmpeg command line");
     }
 
     private void OnVideoFrame(uint durationMilliseconds, int width, int height, byte[] sample, VideoPixelFormatsEnum pixelFormat)
@@ -334,6 +424,25 @@ public class VideoDeviceService : IVideoDeviceService
         _testCts?.Cancel();
         _testCts?.Dispose();
         _testCts = null;
+
+        // Stop ffmpeg process if running
+        if (_ffmpegProcess != null)
+        {
+            try
+            {
+                if (!_ffmpegProcess.HasExited)
+                {
+                    _ffmpegProcess.Kill();
+                    _ffmpegProcess.WaitForExit(1000);
+                }
+                _ffmpegProcess.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"VideoDeviceService: Error stopping ffmpeg - {ex.Message}");
+            }
+            _ffmpegProcess = null;
+        }
 
         if (_testCameraSource != null)
         {

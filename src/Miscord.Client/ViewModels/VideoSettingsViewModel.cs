@@ -1,5 +1,8 @@
 using System.Collections.ObjectModel;
 using System.Windows.Input;
+using Avalonia;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using Avalonia.Threading;
 using ReactiveUI;
 using Miscord.Client.Services;
@@ -17,6 +20,7 @@ public class VideoSettingsViewModel : ViewModelBase
     private int _frameWidth;
     private int _frameHeight;
     private string _cameraStatus = "Not testing";
+    private WriteableBitmap? _previewBitmap;
 
     public VideoSettingsViewModel(ISettingsStore settingsStore, IVideoDeviceService videoDeviceService)
     {
@@ -79,6 +83,12 @@ public class VideoSettingsViewModel : ViewModelBase
 
     public string Resolution => _frameWidth > 0 ? $"{_frameWidth}x{_frameHeight}" : "—";
 
+    public WriteableBitmap? PreviewBitmap
+    {
+        get => _previewBitmap;
+        set => this.RaiseAndSetIfChanged(ref _previewBitmap, value);
+    }
+
     public ICommand TestCameraCommand { get; }
     public ICommand RefreshDevicesCommand { get; }
 
@@ -119,7 +129,7 @@ public class VideoSettingsViewModel : ViewModelBase
                     _selectedVideoDevice,
                     (frameData, width, height) => Dispatcher.UIThread.Post(() =>
                     {
-                        OnFrameReceived(width, height);
+                        OnFrameReceived(frameData, width, height);
                     })
                 );
                 IsTestingCamera = true;
@@ -149,7 +159,7 @@ public class VideoSettingsViewModel : ViewModelBase
                 _selectedVideoDevice,
                 (frameData, width, height) => Dispatcher.UIThread.Post(() =>
                 {
-                    OnFrameReceived(width, height);
+                    OnFrameReceived(frameData, width, height);
                 })
             );
             CameraStatus = "Receiving frames";
@@ -162,7 +172,7 @@ public class VideoSettingsViewModel : ViewModelBase
         }
     }
 
-    private void OnFrameReceived(int width, int height)
+    private void OnFrameReceived(byte[] frameData, int width, int height)
     {
         FrameCount++;
 
@@ -171,7 +181,49 @@ public class VideoSettingsViewModel : ViewModelBase
             _frameWidth = width;
             _frameHeight = height;
             this.RaisePropertyChanged(nameof(Resolution));
+
+            // Create new bitmap with correct size (Avalonia uses Bgra8888)
+            PreviewBitmap = new WriteableBitmap(
+                new PixelSize(width, height),
+                new Vector(96, 96),
+                Avalonia.Platform.PixelFormat.Bgra8888,
+                AlphaFormat.Opaque);
         }
+
+        // Update bitmap with frame data - convert RGB24 to BGRA8888
+        if (PreviewBitmap != null && frameData.Length == width * height * 3)
+        {
+            using var lockedBitmap = PreviewBitmap.Lock();
+            var destPtr = lockedBitmap.Address;
+            var rgbIndex = 0;
+            var bgraData = new byte[width * height * 4];
+
+            for (int i = 0; i < width * height; i++)
+            {
+                bgraData[i * 4 + 0] = frameData[rgbIndex + 2]; // B
+                bgraData[i * 4 + 1] = frameData[rgbIndex + 1]; // G
+                bgraData[i * 4 + 2] = frameData[rgbIndex + 0]; // R
+                bgraData[i * 4 + 3] = 255;                     // A
+                rgbIndex += 3;
+            }
+
+            System.Runtime.InteropServices.Marshal.Copy(bgraData, 0, destPtr, bgraData.Length);
+        }
+
+        // Force UI update for the bitmap
+        this.RaisePropertyChanged(nameof(PreviewBitmap));
+    }
+
+    private async Task StopCameraTestAsync()
+    {
+        await _videoDeviceService.StopTestAsync();
+        IsTestingCamera = false;
+        FrameCount = 0;
+        _frameWidth = 0;
+        _frameHeight = 0;
+        PreviewBitmap = null;
+        CameraStatus = "Not testing";
+        this.RaisePropertyChanged(nameof(Resolution));
     }
 }
 

@@ -73,6 +73,18 @@
                         </Button>
                     </StackPanel>
 
+                    <!-- Camera Preview -->
+                    <Border Background="#202225"
+                            CornerRadius="4"
+                            Padding="4"
+                            IsVisible="{Binding IsTestingCamera}"
+                            HorizontalAlignment="Left">
+                        <Image Source="{Binding PreviewBitmap}"
+                               Width="320"
+                               Height="240"
+                               Stretch="Uniform"/>
+                    </Border>
+
                     <!-- Camera Status -->
                     <StackPanel Spacing="8" IsVisible="{Binding IsTestingCamera}">
                         <Grid ColumnDefinitions="Auto,*,Auto">
