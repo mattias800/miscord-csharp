@@ -26,9 +26,9 @@ Implement a self-hosted Discord alternative with user accounts, messaging, voice
 - **Database Models**: 100% ✅
 - **Authentication**: 100% ✅
 - **Messaging (DM + Channels)**: 100% ✅
-- **Voice Signaling**: 80% (UI + SignalR events done, WebRTC audio pending)
-- **Voice & Media**: 20% (signaling done, actual audio/video pending)
-- **UI**: 90% ✅ (main app complete, voice UI needs audio integration)
+- **Voice Signaling**: 100% ✅ (UI + SignalR + WebRTC audio complete)
+- **Voice & Media**: 60% (voice audio complete, webcam/screen share pending)
+- **UI**: 95% ✅ (main app complete, voice UI complete with settings, video grid pending)
 
 ## Phase 1: Core Infrastructure & User Management
 
@@ -121,7 +121,7 @@ Implement a self-hosted Discord alternative with user accounts, messaging, voice
 
 ## Phase 3: Voice & Media Communication
 
-### 3.1 Voice Channels & WebRTC Signaling [PARTIALLY COMPLETE] 🔶
+### 3.1 Voice Channels & WebRTC Signaling [MOSTLY COMPLETE] ✅
 **Implemented in:** `src/Miscord.Server/Hubs/MiscordHub.cs`, `src/Miscord.Client/Services/SignalRService.cs`, `src/Miscord.Client/Services/WebRtcService.cs`
 
 #### Completed ✅:
@@ -132,13 +132,14 @@ Implement a self-hosted Discord alternative with user accounts, messaging, voice
 - ✅ SignalR WebRTC signaling events (offer, answer, ICE candidates)
 - ✅ Participant joined/left notifications
 - ✅ Voice state updates (mute, deafen, camera, screen share)
+- ✅ **WebRTC audio capture and playback** - SDL2 audio source/sink with SipSorcery
+- ✅ Audio codec negotiation (PCMU)
+- ✅ Voice activity detection with speaking indicator
 
 #### Remaining ❌:
-- ❌ **Actual WebRTC audio capture and playback** - SipSorcery peer connection needs to capture microphone and play remote audio
-- ❌ STUN/TURN server configuration
-- ❌ Audio codec negotiation
+- ❌ STUN/TURN server configuration (for NAT traversal)
 
-**Current State:** The signaling infrastructure is complete, but the WebRtcService needs to be connected to actually capture/play audio.
+**Current State:** Voice channels fully functional with audio. Users can join channels, speak, and hear each other. Voice activity is indicated in the UI.
 
 ### 3.2 Webcam Streaming [NOT STARTED]
 **Estimated: 600-800 lines of code**
@@ -248,8 +249,8 @@ Implement a self-hosted Discord alternative with user accounts, messaging, voice
 - ✅ Converters for roles, timestamps, unread counts
 - ✅ Command bindings throughout
 
-### 4.3 Voice UI [PARTIALLY COMPLETE] 🔶
-**Implemented in:** `src/Miscord.Client/Views/MainAppView.axaml` (voice channel section)
+### 4.3 Voice UI [MOSTLY COMPLETE] ✅
+**Implemented in:** `src/Miscord.Client/Views/MainAppView.axaml` (voice channel section), `src/Miscord.Client/Views/AudioSettingsView.axaml`
 
 #### Completed ✅:
 - ✅ Voice channel list with participant count
@@ -257,10 +258,15 @@ Implement a self-hosted Discord alternative with user accounts, messaging, voice
 - ✅ Voice control bar (mute, deafen, disconnect)
 - ✅ Current voice channel indicator
 - ✅ Participant list in voice channel
+- ✅ Voice activity indicator (username highlights when speaking)
+- ✅ **Audio device selection UI** - Input/output device dropdowns in Settings
+- ✅ **Input gain control** (0-300%) - Amplify or reduce microphone input
+- ✅ **Noise gate** - Mute audio below threshold to reduce background noise
+- ✅ **Mic test with level indicator** - Visual feedback with gate threshold marker
+- ✅ **Loopback test** - Hear yourself to verify audio quality
 
 #### Remaining ❌:
 - ❌ Video grid for webcam/screen share
-- ❌ Audio device selection UI
 - ❌ Volume controls per participant
 
 ---
@@ -599,20 +605,23 @@ miscord-csharp/
 ## Next Steps
 
 ### Immediate Priority
-1. **Complete WebRTC Audio** - Connect SipSorcery to actually capture/play audio in voice channels
-2. **Add STUN/TURN Configuration** - For NAT traversal in voice calls
+1. ✅ ~~**Complete WebRTC Audio**~~ - DONE: Voice channels fully functional with SDL2 audio
+2. **Add STUN/TURN Configuration** - For NAT traversal in voice calls across networks
 
 ### Secondary Priority
 3. **Webcam Streaming** - Add video tracks to WebRTC peer connections
 4. **Screen Sharing** - Platform-specific screen capture
+5. **Volume controls per participant** - Individual volume sliders for each user in voice channel
 
 ### Polish
-5. **Audio Device Selection UI** - Let users choose microphone/speaker
-6. **Improve Test Coverage** - Currently 75 tests, aim for >80% coverage
-7. **Performance Optimization** - Message virtualization, lazy loading
+6. ✅ ~~**Audio Device Selection UI**~~ - DONE: Input/output device selection in Settings
+7. ✅ ~~**Input Gain Control**~~ - DONE: 0-300% gain slider
+8. ✅ ~~**Noise Gate**~~ - DONE: Threshold-based muting for background noise
+9. **Improve Test Coverage** - Currently 75 tests, aim for >80% coverage
+10. **Performance Optimization** - Message virtualization, lazy loading
 
 ---
 
 **Last Updated:** 2026-01-05
-**Status:** Core Features Complete, Voice Audio Implementation In Progress
+**Status:** Core Features Complete, Voice Audio Fully Functional
 **Maintainer:** Development Team
