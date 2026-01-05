@@ -29,12 +29,16 @@ public class AudioSettingsViewModel : ViewModelBase
         ToggleLoopbackCommand = ReactiveCommand.Create(ToggleLoopback);
         RefreshDevicesCommand = ReactiveCommand.Create(RefreshDevices);
 
+        // Load saved selections first (before populating devices)
+        _selectedInputDevice = _settingsStore.Settings.AudioInputDevice;
+        _selectedOutputDevice = _settingsStore.Settings.AudioOutputDevice;
+
         // Load devices
         RefreshDevices();
 
-        // Set initial selections from settings
-        _selectedInputDevice = _settingsStore.Settings.AudioInputDevice;
-        _selectedOutputDevice = _settingsStore.Settings.AudioOutputDevice;
+        // Notify UI of initial selections (must be after devices are loaded)
+        this.RaisePropertyChanged(nameof(SelectedInputDevice));
+        this.RaisePropertyChanged(nameof(SelectedOutputDevice));
     }
 
     public ObservableCollection<AudioDeviceItem> InputDevices { get; }
@@ -45,16 +49,16 @@ public class AudioSettingsViewModel : ViewModelBase
         get => _selectedInputDevice;
         set
         {
-            if (this.RaiseAndSetIfChanged(ref _selectedInputDevice, value) != value)
-            {
-                _settingsStore.Settings.AudioInputDevice = value;
-                _settingsStore.Save();
+            if (_selectedInputDevice == value) return;
 
-                // Restart test with new device if testing
-                if (_isTestingMicrophone)
-                {
-                    _ = RestartMicrophoneTest();
-                }
+            this.RaiseAndSetIfChanged(ref _selectedInputDevice, value);
+            _settingsStore.Settings.AudioInputDevice = value;
+            _settingsStore.Save();
+
+            // Restart test with new device if testing
+            if (_isTestingMicrophone)
+            {
+                _ = RestartMicrophoneTest();
             }
         }
     }
@@ -64,16 +68,16 @@ public class AudioSettingsViewModel : ViewModelBase
         get => _selectedOutputDevice;
         set
         {
-            if (this.RaiseAndSetIfChanged(ref _selectedOutputDevice, value) != value)
-            {
-                _settingsStore.Settings.AudioOutputDevice = value;
-                _settingsStore.Save();
+            if (_selectedOutputDevice == value) return;
 
-                // Update loopback device if enabled
-                if (_isLoopbackEnabled)
-                {
-                    _audioDeviceService.SetLoopbackEnabled(true, value);
-                }
+            this.RaiseAndSetIfChanged(ref _selectedOutputDevice, value);
+            _settingsStore.Settings.AudioOutputDevice = value;
+            _settingsStore.Save();
+
+            // Update loopback device if enabled
+            if (_isLoopbackEnabled)
+            {
+                _audioDeviceService.SetLoopbackEnabled(true, value);
             }
         }
     }
