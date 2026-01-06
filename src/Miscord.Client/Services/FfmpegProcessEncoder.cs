@@ -49,10 +49,11 @@ public class FfmpegProcessEncoder : IDisposable
         if (OperatingSystem.IsMacOS())
         {
             // macOS: VideoToolbox is always available
-            // -g 60 = keyframe every 60 frames (~2s at 30fps) so new viewers get a keyframe quickly
+            // -g 30 = keyframe every 30 frames (~1s at 30fps) so new viewers get a keyframe quickly
             // -bf 0 = no B-frames (critical for low-latency streaming - B-frames require reordering)
             // -profile:v baseline = baseline profile doesn't support B-frames
-            _detectedEncoder = "-c:v h264_videotoolbox -realtime 1 -profile:v baseline -g 60 -bf 0 -b:v 3000k -maxrate 3000k -bufsize 1500k";
+            // -bufsize 500k = smaller buffer for lower latency
+            _detectedEncoder = "-c:v h264_videotoolbox -realtime 1 -profile:v baseline -g 30 -bf 0 -b:v 3000k -maxrate 3000k -bufsize 500k";
             Console.WriteLine("FfmpegProcessEncoder: Using h264_videotoolbox (Apple Silicon/Intel)");
             return _detectedEncoder;
         }

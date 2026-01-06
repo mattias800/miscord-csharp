@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
@@ -112,9 +113,9 @@ public class VideoStreamViewModel : ReactiveObject
         if (_frameCount % skipFrames != 0)
             return;
 
-        // Convert RGB to BGRA synchronously (we need the data before the UI thread runs)
+        // Convert RGB to BGRA using parallel processing for speed
         var bgraData = new byte[pixelCount * 4];
-        for (int i = 0; i < pixelCount; i++)
+        Parallel.For(0, pixelCount, i =>
         {
             var srcIndex = i * 3;
             var destIndex = i * 4;
@@ -122,7 +123,7 @@ public class VideoStreamViewModel : ReactiveObject
             bgraData[destIndex + 1] = rgbData[srcIndex + 1]; // G
             bgraData[destIndex + 2] = rgbData[srcIndex];     // R
             bgraData[destIndex + 3] = 255;                   // A
-        }
+        });
 
         var w = width;
         var h = height;
