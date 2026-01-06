@@ -34,7 +34,7 @@ public interface IWebRtcService : IAsyncDisposable
     void SetMuted(bool muted);
     void SetDeafened(bool deafened);
     Task SetCameraAsync(bool enabled);
-    Task SetScreenSharingAsync(bool enabled);
+    Task SetScreenSharingAsync(bool enabled, ScreenShareSettings? settings = null);
 
     event Action<Guid>? PeerConnected;
     event Action<Guid>? PeerDisconnected;
@@ -248,11 +248,11 @@ public class WebRtcService : IWebRtcService
     private CancellationTokenSource? _screenCts;
     private Task? _screenCaptureTask;
     private bool _isScreenSharing;
-    // Screen share at 1080p 30fps - good balance for game streaming
-    // TODO: Make this configurable for 4K support
-    private const int ScreenWidth = 1920;
-    private const int ScreenHeight = 1080;
-    private const int ScreenFps = 30;
+    private ScreenShareSettings? _currentScreenShareSettings;
+    // Default screen share settings (used as fallback)
+    private const int DefaultScreenWidth = 1920;
+    private const int DefaultScreenHeight = 1080;
+    private const int DefaultScreenFps = 30;
 
     // Dual video tracks for simultaneous camera + screen share
     private MediaStreamTrack? _cameraVideoTrack;
@@ -782,7 +782,7 @@ public class WebRtcService : IWebRtcService
         // Screen share video track (second track)
         var screenVideoFormats = new List<VideoFormat>
         {
-            new VideoFormat(VideoCodecsEnum.H264, ScreenFps)
+            new VideoFormat(VideoCodecsEnum.H264, DefaultScreenFps)
         };
         _screenVideoTrack = new MediaStreamTrack(screenVideoFormats, MediaStreamStatusEnum.SendRecv);
         _serverConnection.addTrack(_screenVideoTrack);
@@ -1315,18 +1315,19 @@ public class WebRtcService : IWebRtcService
         CameraStateChanged?.Invoke(enabled);
     }
 
-    public async Task SetScreenSharingAsync(bool enabled)
+    public async Task SetScreenSharingAsync(bool enabled, ScreenShareSettings? settings = null)
     {
         if (_isScreenSharing == enabled) return;
 
         _isScreenSharing = enabled;
+        _currentScreenShareSettings = settings;
         Console.WriteLine($"WebRTC: Screen Sharing = {enabled}");
 
         if (enabled)
         {
             // Phase 2: Allow both camera and screen sharing simultaneously
             // Each goes to a separate video track
-            await StartScreenCaptureAsync();
+            await StartScreenCaptureAsync(settings);
         }
         else
         {
@@ -1336,28 +1337,45 @@ public class WebRtcService : IWebRtcService
         ScreenSharingStateChanged?.Invoke(enabled);
     }
 
-    private async Task StartScreenCaptureAsync()
+    private async Task StartScreenCaptureAsync(ScreenShareSettings? settings = null)
     {
         if (_screenCaptureProcess != null) return;
 
+        // Use settings or defaults
+        var screenWidth = settings?.Resolution.Width ?? DefaultScreenWidth;
+        var screenHeight = settings?.Resolution.Height ?? DefaultScreenHeight;
+        var screenFps = settings?.Framerate.Fps ?? DefaultScreenFps;
+        var source = settings?.Source;
+
         try
         {
-            Console.WriteLine("WebRTC: Starting screen capture...");
+            Console.WriteLine($"WebRTC: Starting screen capture... (source: {source?.Name ?? "default"}, {screenWidth}x{screenHeight} @ {screenFps}fps)");
 
-            // Create encoder for screen content (same as camera but larger resolution)
-            _screenEncoder = new FfmpegProcessEncoder(ScreenWidth, ScreenHeight, ScreenFps, VideoCodecsEnum.H264);
+            // Create encoder for screen content with selected resolution and framerate
+            _screenEncoder = new FfmpegProcessEncoder(screenWidth, screenHeight, screenFps, VideoCodecsEnum.H264);
             _screenEncoder.OnEncodedFrame += OnScreenVideoEncoded;
             _screenEncoder.Start();
 
-            // Start FFmpeg screen capture process
-            // On macOS, use avfoundation with "Capture screen 0"
+            // Build FFmpeg capture command based on platform and source
             var ffmpegPath = "ffmpeg";
-            var captureDevice = OperatingSystem.IsMacOS() ? "avfoundation" : "x11grab";
-            var inputDevice = OperatingSystem.IsMacOS() ? "Capture screen 0" : ":0.0";
+            var (captureDevice, inputDevice, extraArgs) = GetScreenCaptureArgs(source);
 
-            var args = $"-f {captureDevice} -framerate {ScreenFps} -i \"{inputDevice}\" " +
-                       $"-vf \"scale={ScreenWidth}:{ScreenHeight}:force_original_aspect_ratio=decrease,pad={ScreenWidth}:{ScreenHeight}:(ow-iw)/2:(oh-ih)/2,format=bgr24\" " +
+            // Build platform-specific capture args
+            string args;
+            if (OperatingSystem.IsMacOS())
+            {
+                // macOS avfoundation: capture at native rate then use fps filter to get desired framerate
+                // This avoids frame duplication issues when capture rate doesn't match requested rate
+                args = $"-f avfoundation -capture_cursor 1 -pixel_format uyvy422 -i \"{inputDevice}\" " +
+                       $"-vf \"fps={screenFps},scale={screenWidth}:{screenHeight}:force_original_aspect_ratio=decrease,pad={screenWidth}:{screenHeight}:(ow-iw)/2:(oh-ih)/2,format=bgr24\" " +
                        $"-f rawvideo -pix_fmt bgr24 pipe:1";
+            }
+            else
+            {
+                args = $"-f {captureDevice} {extraArgs}-framerate {screenFps} -i \"{inputDevice}\" " +
+                       $"-vf \"scale={screenWidth}:{screenHeight}:force_original_aspect_ratio=decrease,pad={screenWidth}:{screenHeight}:(ow-iw)/2:(oh-ih)/2,format=bgr24\" " +
+                       $"-f rawvideo -pix_fmt bgr24 pipe:1";
+            }
 
             Console.WriteLine($"WebRTC: Screen capture command: {ffmpegPath} {args}");
 
@@ -1378,7 +1396,7 @@ public class WebRtcService : IWebRtcService
 
             // Start reading screen frames
             _screenCts = new CancellationTokenSource();
-            _screenCaptureTask = Task.Run(() => ScreenCaptureLoop(_screenCts.Token));
+            _screenCaptureTask = Task.Run(() => ScreenCaptureLoop(_screenCts.Token, screenWidth, screenHeight, screenFps));
 
             Console.WriteLine("WebRTC: Screen capture started");
         }
@@ -1391,13 +1409,68 @@ public class WebRtcService : IWebRtcService
         }
     }
 
-    private void ScreenCaptureLoop(CancellationToken token)
+    /// <summary>
+    /// Gets FFmpeg capture arguments based on platform and source.
+    /// Returns (captureDevice, inputDevice, extraArgs).
+    /// </summary>
+    private (string captureDevice, string inputDevice, string extraArgs) GetScreenCaptureArgs(ScreenCaptureSource? source)
     {
-        var frameSize = ScreenWidth * ScreenHeight * 3; // BGR24
+        if (OperatingSystem.IsMacOS())
+        {
+            // macOS: avfoundation with "Capture screen N"
+            var displayIndex = source?.Id ?? "0";
+            return ("avfoundation", $"Capture screen {displayIndex}", "");
+        }
+
+        if (OperatingSystem.IsWindows())
+        {
+            if (source == null || source.Type == ScreenCaptureSourceType.Display)
+            {
+                // Windows display capture via gdigrab
+                // For multi-monitor, we'd need to specify offset, but "desktop" captures primary
+                return ("gdigrab", "desktop", "");
+            }
+            else
+            {
+                // Window capture via gdigrab with window title
+                // The source.Id contains the window title for gdigrab
+                return ("gdigrab", $"title={source.Id}", "");
+            }
+        }
+
+        if (OperatingSystem.IsLinux())
+        {
+            if (source == null || source.Type == ScreenCaptureSourceType.Display)
+            {
+                // Linux display capture via x11grab
+                // source.Id contains the :0.0+x,y format for multi-monitor
+                var displayId = source?.Id ?? ":0.0";
+                return ("x11grab", displayId, "");
+            }
+            else
+            {
+                // Window capture via x11grab with window ID
+                // Need to get window geometry first - for now, use root window
+                // TODO: Implement proper window capture with xwininfo
+                Console.WriteLine("WebRTC: Linux window capture not fully implemented, capturing root");
+                return ("x11grab", ":0.0", "");
+            }
+        }
+
+        // Fallback
+        return ("x11grab", ":0.0", "");
+    }
+
+    private void ScreenCaptureLoop(CancellationToken token, int width, int height, int fps)
+    {
+        var frameSize = width * height * 3; // BGR24
         var buffer = new byte[frameSize];
         var frameCount = 0;
 
-        Console.WriteLine($"WebRTC: Screen capture loop starting - {ScreenWidth}x{ScreenHeight} @ {ScreenFps}fps");
+        // Calculate preview skip rate based on fps (show ~15fps preview max)
+        var previewSkip = Math.Max(1, fps / 15);
+
+        Console.WriteLine($"WebRTC: Screen capture loop starting - {width}x{height} @ {fps}fps");
 
         try
         {
@@ -1417,16 +1490,12 @@ public class WebRtcService : IWebRtcService
                 if (bytesRead < frameSize) break;
 
                 frameCount++;
-                if (frameCount <= 5 || frameCount % 100 == 0)
-                {
-                    Console.WriteLine($"WebRTC: Screen capture frame {frameCount}");
-                }
 
                 // Send frame to encoder
                 _screenEncoder?.EncodeFrame(buffer);
 
-                // Generate preview (every 2nd frame to reduce overhead)
-                if (frameCount % 2 == 0)
+                // Generate preview (skip frames to reduce overhead, targeting ~15fps preview)
+                if (frameCount % previewSkip == 0)
                 {
                     // Convert BGR to RGB for preview
                     var rgbData = new byte[frameSize];
@@ -1436,7 +1505,7 @@ public class WebRtcService : IWebRtcService
                         rgbData[i + 1] = buffer[i + 1]; // G
                         rgbData[i + 2] = buffer[i];     // B
                     }
-                    LocalVideoFrameCaptured?.Invoke(VideoStreamType.ScreenShare, ScreenWidth, ScreenHeight, rgbData);
+                    LocalVideoFrameCaptured?.Invoke(VideoStreamType.ScreenShare, width, height, rgbData);
                 }
             }
         }
@@ -2078,6 +2147,7 @@ public class WebRtcService : IWebRtcService
 /// <summary>
 /// Assembles H264 frames from RTP packets.
 /// Handles single NAL units and FU-A fragmented NAL units.
+/// Waits for a keyframe before returning any frames to the decoder.
 /// </summary>
 public class H264FrameAssembler
 {
@@ -2085,9 +2155,12 @@ public class H264FrameAssembler
     private readonly List<byte> _fuaBuffer = new(); // For FU-A reassembly
     private uint _currentTimestamp;
     private bool _hasFrame;
+    private bool _hasReceivedKeyframe;
+    private int _droppedFrameCount;
 
     /// <summary>
     /// Processes an RTP packet payload. Returns a complete frame when marker bit indicates end of frame.
+    /// Only returns frames after a keyframe (SPS/PPS or IDR) has been received.
     /// </summary>
     public byte[]? ProcessPacket(byte[] payload, uint timestamp, bool markerBit)
     {
@@ -2105,6 +2178,32 @@ public class H264FrameAssembler
         // Get NAL unit type from first byte
         byte firstByte = payload[0];
         int nalType = firstByte & 0x1F;
+
+        // Check for keyframe NAL types:
+        // 5 = IDR (Instantaneous Decoder Refresh - keyframe)
+        // 7 = SPS (Sequence Parameter Set)
+        // 8 = PPS (Picture Parameter Set)
+        if (nalType == 5 || nalType == 7 || nalType == 8)
+        {
+            if (!_hasReceivedKeyframe)
+            {
+                Console.WriteLine($"H264FrameAssembler: Received keyframe (NAL type {nalType}), dropped {_droppedFrameCount} frames while waiting");
+            }
+            _hasReceivedKeyframe = true;
+        }
+        // Also check FU-A fragments for IDR frames
+        else if (nalType == 28 && payload.Length >= 2)
+        {
+            int fuaNalType = payload[1] & 0x1F;
+            if (fuaNalType == 5 || fuaNalType == 7 || fuaNalType == 8)
+            {
+                if (!_hasReceivedKeyframe)
+                {
+                    Console.WriteLine($"H264FrameAssembler: Received keyframe in FU-A (NAL type {fuaNalType}), dropped {_droppedFrameCount} frames while waiting");
+                }
+                _hasReceivedKeyframe = true;
+            }
+        }
 
         if (nalType >= 1 && nalType <= 23)
         {
@@ -2129,7 +2228,17 @@ public class H264FrameAssembler
             var frame = _frameBuffer.ToArray();
             _frameBuffer.Clear();
             _hasFrame = false;
-            return frame;
+
+            // Only return frames after we've received a keyframe
+            if (_hasReceivedKeyframe)
+            {
+                return frame;
+            }
+            else
+            {
+                _droppedFrameCount++;
+                return null;
+            }
         }
 
         return null;
@@ -2205,5 +2314,7 @@ public class H264FrameAssembler
         _frameBuffer.Clear();
         _fuaBuffer.Clear();
         _hasFrame = false;
+        _hasReceivedKeyframe = false;
+        _droppedFrameCount = 0;
     }
 }

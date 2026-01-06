@@ -95,48 +95,62 @@ public class VideoStreamViewModel : ReactiveObject
         set => this.RaiseAndSetIfChanged(ref _videoBitmap, value);
     }
 
+    private int _frameCount;
+
     public void UpdateVideoFrame(byte[] rgbData, int width, int height)
     {
         if (width <= 0 || height <= 0 || rgbData.Length < width * height * 3)
             return;
 
+        _frameCount++;
+
+        // For large frames (screen share at 1080p+), skip every other frame to reduce UI load
+        // This gives us ~15fps UI updates which is smooth enough for screen content
+        var pixelCount = width * height;
+        var skipFrames = pixelCount > 1000000 ? 2 : 1;
+
+        if (_frameCount % skipFrames != 0)
+            return;
+
+        // Convert RGB to BGRA synchronously (we need the data before the UI thread runs)
+        var bgraData = new byte[pixelCount * 4];
+        for (int i = 0; i < pixelCount; i++)
+        {
+            var srcIndex = i * 3;
+            var destIndex = i * 4;
+            bgraData[destIndex] = rgbData[srcIndex + 2];     // B
+            bgraData[destIndex + 1] = rgbData[srcIndex + 1]; // G
+            bgraData[destIndex + 2] = rgbData[srcIndex];     // R
+            bgraData[destIndex + 3] = 255;                   // A
+        }
+
+        var w = width;
+        var h = height;
+
+        // Post to UI thread - use Send priority for immediate update
         Dispatcher.UIThread.Post(() =>
         {
             try
             {
-                // Create new bitmap for each frame (Avalonia needs new object to detect changes)
                 var bitmap = new WriteableBitmap(
-                    new PixelSize(width, height),
+                    new PixelSize(w, h),
                     new Vector(96, 96),
                     Avalonia.Platform.PixelFormat.Bgra8888,
                     AlphaFormat.Opaque);
 
                 using (var buffer = bitmap.Lock())
                 {
-                    // Convert RGB to BGRA
-                    var pixelCount = width * height;
-                    var bgraData = new byte[pixelCount * 4];
-
-                    for (int i = 0; i < pixelCount; i++)
-                    {
-                        var srcIndex = i * 3;
-                        var destIndex = i * 4;
-                        bgraData[destIndex] = rgbData[srcIndex + 2];     // B
-                        bgraData[destIndex + 1] = rgbData[srcIndex + 1]; // G
-                        bgraData[destIndex + 2] = rgbData[srcIndex];     // R
-                        bgraData[destIndex + 3] = 255;                   // A
-                    }
-
                     System.Runtime.InteropServices.Marshal.Copy(bgraData, 0, buffer.Address, bgraData.Length);
                 }
 
+                // Use property setter for proper change notification
                 VideoBitmap = bitmap;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"VideoStreamVM: Error updating video frame: {ex.Message}");
             }
-        });
+        }, DispatcherPriority.Render);
     }
 }
 
@@ -314,6 +328,7 @@ public class VoiceChannelContentViewModel : ReactiveObject, IDisposable
                     // Screen share turned on - add stream
                     if (!VideoStreams.Any(s => s.UserId == userId && s.StreamType == VideoStreamType.ScreenShare))
                     {
+                        Console.WriteLine($"VoiceChannelContent: Adding ScreenShare stream for user {userId} ({username})");
                         VideoStreams.Add(new VideoStreamViewModel(userId, username, VideoStreamType.ScreenShare, _localUserId));
                     }
                 }
@@ -361,6 +376,10 @@ public class VoiceChannelContentViewModel : ReactiveObject, IDisposable
     {
         // Update local user's video preview for the appropriate stream
         var stream = VideoStreams.FirstOrDefault(s => s.UserId == _localUserId && s.StreamType == streamType);
+        if (stream == null)
+        {
+            Console.WriteLine($"VoiceChannelContent: No VideoStream found for local user {_localUserId} streamType={streamType}. Available streams: {string.Join(", ", VideoStreams.Select(s => $"{s.Username}/{s.StreamType}"))}");
+        }
         stream?.UpdateVideoFrame(rgbData, width, height);
     }
 

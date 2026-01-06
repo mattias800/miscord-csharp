@@ -23,6 +23,7 @@ public partial class App : Application
             var settingsStore = new SettingsStore(Program.Profile);
             var audioDeviceService = new AudioDeviceService(settingsStore);
             var videoDeviceService = new VideoDeviceService(settingsStore);
+            var screenCaptureService = new ScreenCaptureService();
             var webRtc = new WebRtcService(signalR, settingsStore);
 
             // Check for dev mode auto-login
@@ -38,7 +39,7 @@ public partial class App : Application
                 );
             }
 
-            var viewModel = new MainWindowViewModel(apiClient, connectionStore, signalR, webRtc, settingsStore, audioDeviceService, videoDeviceService, devConfig);
+            var viewModel = new MainWindowViewModel(apiClient, connectionStore, signalR, webRtc, settingsStore, audioDeviceService, videoDeviceService, screenCaptureService, devConfig);
 
             var window = new MainWindow
             {

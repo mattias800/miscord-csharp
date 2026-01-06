@@ -4,6 +4,7 @@
              xmlns:controls="using:Miscord.Client.Controls"
              xmlns:conv="using:Miscord.Client.Converters"
              xmlns:services="using:Miscord.Client.Services"
+             xmlns:views="using:Miscord.Client.Views"
              x:Class="Miscord.Client.Views.MainAppView"
              x:DataType="vm:MainAppViewModel"
              x:CompileBindings="False">
@@ -1230,6 +1231,17 @@
                     </ItemsControl>
                 </ScrollViewer>
             </DockPanel>
+        </Border>
+
+        <!-- Screen Share Picker Overlay -->
+        <Border Grid.ColumnSpan="4"
+                Background="#80000000"
+                IsVisible="{Binding IsScreenSharePickerOpen}"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch">
+            <views:ScreenSharePickerView DataContext="{Binding ScreenSharePicker}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
         </Border>
     </Grid>
 </UserControl>

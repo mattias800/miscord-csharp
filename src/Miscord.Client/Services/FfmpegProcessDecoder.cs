@@ -47,15 +47,13 @@ public class FfmpegProcessDecoder : IDisposable
         };
 
         // Decode H264/VP8 Annex B input to raw RGB24 output
-        // Ultra low-latency: minimal probing, no buffering
-        // Scale to target size while preserving aspect ratio
+        // Low-latency settings that work reliably
         var startInfo = new ProcessStartInfo
         {
             FileName = "ffmpeg",
-            Arguments = $"-fflags nobuffer -flags low_delay -probesize 32 -analyzeduration 0 " +
+            Arguments = $"-fflags nobuffer -flags low_delay " +
                        $"-f {(_codec == VideoCodecsEnum.H264 ? "h264" : "ivf")} -i pipe:0 " +
-                       $"-vf \"scale={_width}:{_height}:force_original_aspect_ratio=decrease,pad={_width}:{_height}:(ow-iw)/2:(oh-ih)/2\" " +
-                       $"-f rawvideo -pix_fmt rgb24 pipe:1",
+                       $"-f rawvideo -pix_fmt rgb24 -s {_width}x{_height} pipe:1",
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -71,17 +69,24 @@ public class FfmpegProcessDecoder : IDisposable
         // Start reading decoded output
         _outputReaderTask = Task.Run(ReadDecodedOutputAsync);
 
-        // Log stderr line by line for debugging
+        // Log stderr line by line for debugging (log all output, not just errors)
         Task.Run(async () =>
         {
             try
             {
                 string? line;
+                var lineCount = 0;
                 while ((line = await _ffmpegProcess.StandardError.ReadLineAsync()) != null)
                 {
-                    if (line.Contains("error") || line.Contains("Error") || line.Contains("Invalid") || line.Contains("failed"))
+                    lineCount++;
+                    // Log first 20 lines and any errors/warnings
+                    if (lineCount <= 20 ||
+                        line.Contains("error") || line.Contains("Error") ||
+                        line.Contains("Invalid") || line.Contains("failed") ||
+                        line.Contains("missing") || line.Contains("corrupt") ||
+                        line.Contains("non-existing") || line.Contains("Warning"))
                     {
-                        Console.WriteLine($"FfmpegProcessDecoder ERROR: {line}");
+                        Console.WriteLine($"FfmpegProcessDecoder stderr: {line}");
                     }
                 }
             }

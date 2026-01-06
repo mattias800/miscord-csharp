@@ -38,6 +38,97 @@ public class FfmpegProcessEncoder : IDisposable
         _codec = codec;
     }
 
+    private static string? _detectedEncoder;
+
+    private static string GetH264EncoderArgs()
+    {
+        // Cache the detected encoder to avoid repeated probing
+        if (_detectedEncoder != null)
+            return _detectedEncoder;
+
+        if (OperatingSystem.IsMacOS())
+        {
+            // macOS: VideoToolbox is always available
+            // -g 60 = keyframe every 60 frames (~2s at 30fps) so new viewers get a keyframe quickly
+            // -bf 0 = no B-frames (critical for low-latency streaming - B-frames require reordering)
+            // -profile:v baseline = baseline profile doesn't support B-frames
+            _detectedEncoder = "-c:v h264_videotoolbox -realtime 1 -profile:v baseline -g 60 -bf 0 -b:v 3000k -maxrate 3000k -bufsize 1500k";
+            Console.WriteLine("FfmpegProcessEncoder: Using h264_videotoolbox (Apple Silicon/Intel)");
+            return _detectedEncoder;
+        }
+
+        if (OperatingSystem.IsWindows())
+        {
+            // Windows: Try hardware encoders in order of preference
+            // 1. NVIDIA NVENC (h264_nvenc)
+            // 2. AMD AMF (h264_amf)
+            // 3. Intel QuickSync (h264_qsv)
+            // 4. Software fallback (libx264)
+            // -g 60 = keyframe every 60 frames (~2s at 30fps) so new viewers get a keyframe quickly
+
+            var hwEncoders = new[]
+            {
+                ("h264_nvenc", "-c:v h264_nvenc -preset p4 -tune ll -g 60 -bf 0 -b:v 3000k -maxrate 3000k -bufsize 1500k", "NVIDIA NVENC"),
+                ("h264_amf", "-c:v h264_amf -quality speed -g 60 -bf 0 -b:v 3000k -maxrate 3000k -bufsize 1500k", "AMD AMF"),
+                ("h264_qsv", "-c:v h264_qsv -preset veryfast -g 60 -bf 0 -b:v 3000k -maxrate 3000k -bufsize 1500k", "Intel QuickSync"),
+            };
+
+            foreach (var (encoder, args, name) in hwEncoders)
+            {
+                if (IsEncoderAvailable(encoder))
+                {
+                    _detectedEncoder = args;
+                    Console.WriteLine($"FfmpegProcessEncoder: Using {encoder} ({name})");
+                    return _detectedEncoder;
+                }
+            }
+        }
+
+        if (OperatingSystem.IsLinux())
+        {
+            // Linux: Try VAAPI first, then software
+            if (IsEncoderAvailable("h264_vaapi"))
+            {
+                _detectedEncoder = "-vaapi_device /dev/dri/renderD128 -c:v h264_vaapi -g 60 -bf 0 -b:v 3000k -maxrate 3000k -bufsize 1500k";
+                Console.WriteLine("FfmpegProcessEncoder: Using h264_vaapi (Linux VA-API)");
+                return _detectedEncoder;
+            }
+        }
+
+        // Fallback to software encoding
+        _detectedEncoder = "-c:v libx264 -preset ultrafast -tune zerolatency -g 15 -bf 0 -b:v 1500k -maxrate 1500k -bufsize 750k";
+        Console.WriteLine("FfmpegProcessEncoder: Using libx264 (software)");
+        return _detectedEncoder;
+    }
+
+    private static bool IsEncoderAvailable(string encoder)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "ffmpeg",
+                Arguments = $"-hide_banner -encoders",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var process = Process.Start(psi);
+            if (process == null) return false;
+
+            var output = process.StandardOutput.ReadToEnd();
+            process.WaitForExit(3000);
+
+            return output.Contains(encoder);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public void Start()
     {
         if (_isRunning) return;
@@ -45,8 +136,8 @@ public class FfmpegProcessEncoder : IDisposable
         var codecArg = _codec switch
         {
             VideoCodecsEnum.VP8 => "-c:v libvpx -deadline realtime -cpu-used 8 -b:v 500k",
-            // Ultra low-latency H264: zerolatency disables B-frames, intra-refresh for faster recovery
-            VideoCodecsEnum.H264 => "-c:v libx264 -preset ultrafast -tune zerolatency -g 15 -bf 0 -b:v 1000k -maxrate 1000k -bufsize 500k",
+            // H264 encoding - use hardware acceleration when available
+            VideoCodecsEnum.H264 => GetH264EncoderArgs(),
             _ => "-c:v libvpx -deadline realtime -cpu-used 8 -b:v 500k"
         };
 

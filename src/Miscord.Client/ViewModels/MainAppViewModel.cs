@@ -13,6 +13,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private readonly IApiClient _apiClient;
     private readonly ISignalRService _signalR;
     private readonly IWebRtcService _webRtc;
+    private readonly IScreenCaptureService _screenCaptureService;
     private readonly AuthResponse _auth;
     private readonly Action _onLogout;
     private readonly Action? _onSwitchServer;
@@ -58,9 +59,14 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private DirectMessageResponse? _editingDMMessage;
     private string _editingDMMessageContent = string.Empty;
 
-    public MainAppViewModel(IApiClient apiClient, ISignalRService signalR, IWebRtcService webRtc, string baseUrl, AuthResponse auth, Action onLogout, Action? onSwitchServer = null, Action? onOpenDMs = null, Action<Guid?, string?>? onOpenDMsWithUser = null, Action? onOpenSettings = null)
+    // Screen share picker state
+    private bool _isScreenSharePickerOpen;
+    private ScreenSharePickerViewModel? _screenSharePicker;
+
+    public MainAppViewModel(IApiClient apiClient, ISignalRService signalR, IWebRtcService webRtc, IScreenCaptureService screenCaptureService, string baseUrl, AuthResponse auth, Action onLogout, Action? onSwitchServer = null, Action? onOpenDMs = null, Action<Guid?, string?>? onOpenDMsWithUser = null, Action? onOpenSettings = null)
     {
         _apiClient = apiClient;
+        _screenCaptureService = screenCaptureService;
         _signalR = signalR;
         _webRtc = webRtc;
         _baseUrl = baseUrl;
@@ -676,6 +682,19 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     }
 
     public bool IsViewingDM => DMRecipientId.HasValue;
+
+    // Screen share picker properties
+    public bool IsScreenSharePickerOpen
+    {
+        get => _isScreenSharePickerOpen;
+        set => this.RaiseAndSetIfChanged(ref _isScreenSharePickerOpen, value);
+    }
+
+    public ScreenSharePickerViewModel? ScreenSharePicker
+    {
+        get => _screenSharePicker;
+        set => this.RaiseAndSetIfChanged(ref _screenSharePicker, value);
+    }
 
     /// <summary>
     /// Gets voice participants for a channel. Used by legacy converters.
@@ -1497,29 +1516,75 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     {
         if (CurrentVoiceChannel is null) return;
 
+        // If already sharing, stop sharing
+        if (IsScreenSharing)
+        {
+            await StopScreenShareAsync();
+            return;
+        }
+
+        // Show screen share picker
+        ScreenSharePicker = new ScreenSharePickerViewModel(_screenCaptureService, async settings =>
+        {
+            IsScreenSharePickerOpen = false;
+            ScreenSharePicker = null;
+
+            if (settings != null)
+            {
+                await StartScreenShareWithSettingsAsync(settings);
+            }
+        });
+        IsScreenSharePickerOpen = true;
+    }
+
+    private async Task StartScreenShareWithSettingsAsync(ScreenShareSettings settings)
+    {
+        if (CurrentVoiceChannel is null) return;
+
         try
         {
-            var newState = !IsScreenSharing;
-            await _webRtc.SetScreenSharingAsync(newState);
-            IsScreenSharing = newState;
+            await _webRtc.SetScreenSharingAsync(true, settings);
+            IsScreenSharing = true;
+            IsCameraOn = false;
 
-            // If screen sharing is on, camera is off (WebRTC service handles this)
-            if (newState)
-            {
-                IsCameraOn = false;
-            }
-
-            await _signalR.UpdateVoiceStateAsync(CurrentVoiceChannel.Id, new VoiceStateUpdate(IsScreenSharing: IsScreenSharing, IsCameraOn: IsCameraOn));
+            await _signalR.UpdateVoiceStateAsync(CurrentVoiceChannel.Id, new VoiceStateUpdate(IsScreenSharing: true, IsCameraOn: false));
 
             // Update our own state in the local view models
-            var state = new VoiceStateUpdate(IsScreenSharing: newState, IsCameraOn: IsCameraOn);
+            var state = new VoiceStateUpdate(IsScreenSharing: true, IsCameraOn: false);
             var voiceChannel = VoiceChannelViewModels.FirstOrDefault(v => v.Id == CurrentVoiceChannel.Id);
             voiceChannel?.UpdateParticipantState(_auth.UserId, state);
             _voiceChannelContent?.UpdateParticipantState(_auth.UserId, state);
+
+            Console.WriteLine($"Started screen share: {settings.Source.Name} @ {settings.Resolution.Label} {settings.Framerate.Label}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to toggle screen share: {ex.Message}");
+            Console.WriteLine($"Failed to start screen share: {ex.Message}");
+        }
+    }
+
+    private async Task StopScreenShareAsync()
+    {
+        if (CurrentVoiceChannel is null) return;
+
+        try
+        {
+            await _webRtc.SetScreenSharingAsync(false);
+            IsScreenSharing = false;
+
+            await _signalR.UpdateVoiceStateAsync(CurrentVoiceChannel.Id, new VoiceStateUpdate(IsScreenSharing: false));
+
+            // Update our own state in the local view models
+            var state = new VoiceStateUpdate(IsScreenSharing: false);
+            var voiceChannel = VoiceChannelViewModels.FirstOrDefault(v => v.Id == CurrentVoiceChannel.Id);
+            voiceChannel?.UpdateParticipantState(_auth.UserId, state);
+            _voiceChannelContent?.UpdateParticipantState(_auth.UserId, state);
+
+            Console.WriteLine("Stopped screen share");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to stop screen share: {ex.Message}");
         }
     }
 

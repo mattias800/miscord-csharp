@@ -12,12 +12,13 @@ public class MainWindowViewModel : ViewModelBase
     private readonly Services.ISettingsStore _settingsStore;
     private readonly Services.IAudioDeviceService _audioDeviceService;
     private readonly Services.IVideoDeviceService _videoDeviceService;
+    private readonly Services.IScreenCaptureService _screenCaptureService;
     private ViewModelBase _currentView;
     private AuthResponse? _currentUser;
     private ServerConnection? _currentServer;
     private ServerInfoResponse? _currentServerInfo;
 
-    public MainWindowViewModel(IApiClient apiClient, IServerConnectionStore connectionStore, ISignalRService signalR, IWebRtcService webRtc, Services.ISettingsStore settingsStore, Services.IAudioDeviceService audioDeviceService, Services.IVideoDeviceService videoDeviceService, DevLoginConfig? devConfig = null)
+    public MainWindowViewModel(IApiClient apiClient, IServerConnectionStore connectionStore, ISignalRService signalR, IWebRtcService webRtc, Services.ISettingsStore settingsStore, Services.IAudioDeviceService audioDeviceService, Services.IVideoDeviceService videoDeviceService, Services.IScreenCaptureService screenCaptureService, DevLoginConfig? devConfig = null)
     {
         _apiClient = apiClient;
         _connectionStore = connectionStore;
@@ -26,6 +27,7 @@ public class MainWindowViewModel : ViewModelBase
         _settingsStore = settingsStore;
         _audioDeviceService = audioDeviceService;
         _videoDeviceService = videoDeviceService;
+        _screenCaptureService = screenCaptureService;
 
         // Dev mode: auto-login with provided credentials
         if (devConfig is not null)
@@ -369,7 +371,7 @@ public class MainWindowViewModel : ViewModelBase
             _connectionStore.Save(updatedServer);
         }
 
-        CurrentView = new MainAppViewModel(_apiClient, _signalR, _webRtc, CurrentServer!.Url, auth, OnLogout, OnSwitchServer, OnOpenDirectMessages, OnOpenDirectMessagesWithUser, OnOpenSettings);
+        CurrentView = new MainAppViewModel(_apiClient, _signalR, _webRtc, _screenCaptureService, CurrentServer!.Url, auth, OnLogout, OnSwitchServer, OnOpenDirectMessages, OnOpenDirectMessagesWithUser, OnOpenSettings);
     }
 
     private void OnOpenDirectMessages()
