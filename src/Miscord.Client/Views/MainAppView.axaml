@@ -3,6 +3,7 @@
              xmlns:vm="using:Miscord.Client.ViewModels"
              xmlns:controls="using:Miscord.Client.Controls"
              xmlns:conv="using:Miscord.Client.Converters"
+             xmlns:services="using:Miscord.Client.Services"
              x:Class="Miscord.Client.Views.MainAppView"
              x:DataType="vm:MainAppViewModel"
              x:CompileBindings="False">
@@ -28,6 +29,18 @@
             <Setter Property="Background" Value="#35373c"/>
         </Style>
         <Style Selector="Button.channel-btn:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#3f4248"/>
+        </Style>
+
+        <!-- Member list item style with hover/press highlights -->
+        <Style Selector="Border.member-item">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+        <Style Selector="Border.member-item:pointerover">
+            <Setter Property="Background" Value="#35373c"/>
+        </Style>
+        <Style Selector="Border.member-item:pressed">
             <Setter Property="Background" Value="#3f4248"/>
         </Style>
     </UserControl.Styles>
@@ -485,10 +498,216 @@
             </DockPanel>
         </Border>
 
-        <!-- Main Content Area (Chat or Voice Channel) -->
+        <!-- Main Content Area (Chat, Voice Channel, or DM) -->
         <Grid Grid.Column="2">
-            <!-- Voice Channel Content (shown when viewing voice channel) -->
+            <!-- DM Content (shown when viewing DM conversation) -->
+            <Border Background="#36393f" IsVisible="{Binding IsViewingDM}">
+                <DockPanel>
+                    <!-- DM Header with close button -->
+                    <Border DockPanel.Dock="Top" Background="#36393f" Padding="16,12" BorderThickness="0,0,0,1" BorderBrush="#202225">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="@"
+                                           Foreground="#72767d"
+                                           FontSize="22"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding DMRecipientName, FallbackValue='User'}"
+                                           Foreground="White"
+                                           FontWeight="SemiBold"
+                                           FontSize="16"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <Button Grid.Column="1"
+                                    Command="{Binding CloseDMCommand}"
+                                    Background="Transparent"
+                                    Padding="8,4"
+                                    Cursor="Hand"
+                                    ToolTip.Tip="Close DM">
+                                <TextBlock Text="✕"
+                                           Foreground="#72767d"
+                                           FontSize="16"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <!-- DM Message Input -->
+                    <Border DockPanel.Dock="Bottom" Padding="16" Background="#36393f">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox x:Name="DMMessageInputBox"
+                                     Grid.Column="0"
+                                     Text="{Binding DMMessageInput}"
+                                     Watermark="{Binding DMRecipientName, StringFormat='Message @{0}'}"
+                                     Background="#40444b"
+                                     Foreground="White"
+                                     BorderThickness="0"
+                                     CornerRadius="8"
+                                     Padding="16,12"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     MaxHeight="200"/>
+
+                            <Button Grid.Column="1"
+                                    Command="{Binding SendDMMessageCommand}"
+                                    Background="#5865f2"
+                                    Foreground="White"
+                                    Padding="16,10"
+                                    Margin="8,0,0,0"
+                                    CornerRadius="4">
+                                <Panel>
+                                    <TextBlock Text="Send" IsVisible="{Binding IsLoading, Converter={x:Static BoolConverters.Not}}"/>
+                                    <TextBlock Text="..." IsVisible="{Binding IsLoading}"/>
+                                </Panel>
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <!-- DM Messages List -->
+                    <ScrollViewer Margin="0,8">
+                        <ItemsControl x:Name="DMMessagesList" ItemsSource="{Binding DMMessages}" Margin="16,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,8" Padding="0">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Avatar -->
+                                            <Border Grid.Column="0"
+                                                    Width="40" Height="40"
+                                                    CornerRadius="20"
+                                                    Background="#5865f2"
+                                                    VerticalAlignment="Top"
+                                                    Margin="0,0,12,0">
+                                                <TextBlock Text="{Binding SenderUsername[0]}"
+                                                           Foreground="White"
+                                                           FontSize="16"
+                                                           FontWeight="Bold"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"/>
+                                            </Border>
+
+                                            <!-- Message Content -->
+                                            <StackPanel Grid.Column="1">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <TextBlock Text="{Binding SenderUsername}"
+                                                               Foreground="White"
+                                                               FontWeight="SemiBold"
+                                                               FontSize="15"/>
+                                                    <TextBlock Text="{Binding CreatedAt, StringFormat='{}{0:MMM d, yyyy h:mm tt}'}"
+                                                               Foreground="#72767d"
+                                                               FontSize="12"
+                                                               VerticalAlignment="Center"/>
+                                                    <TextBlock Text="(edited)"
+                                                               Foreground="#72767d"
+                                                               FontSize="11"
+                                                               VerticalAlignment="Center"
+                                                               IsVisible="{Binding IsEdited}"/>
+                                                </StackPanel>
+                                                <controls:MarkdownTextBlock Markdown="{Binding Content}"
+                                                                        FontSize="15"
+                                                                        Margin="0,4,0,0"/>
+                                            </StackPanel>
+
+                                            <!-- Edit/Delete Buttons -->
+                                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Top">
+                                                <Button Command="{Binding #DMMessagesList.DataContext.StartEditDMMessageCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Background="Transparent"
+                                                        Padding="4"
+                                                        Cursor="Hand"
+                                                        ToolTip.Tip="Edit">
+                                                    <TextBlock Text="✎" Foreground="#72767d" FontSize="12"/>
+                                                </Button>
+                                                <Button Command="{Binding #DMMessagesList.DataContext.DeleteDMMessageCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Background="Transparent"
+                                                        Padding="4"
+                                                        Cursor="Hand"
+                                                        ToolTip.Tip="Delete">
+                                                    <TextBlock Text="🗑" Foreground="#72767d" FontSize="12"/>
+                                                </Button>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <!-- DM Message Edit Overlay -->
+                    <Border Background="#2f3136"
+                            DockPanel.Dock="Bottom"
+                            Padding="16"
+                            IsVisible="{Binding EditingDMMessage, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="EDITING MESSAGE"
+                                       Foreground="#72767d"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0"
+                                         x:Name="EditDMMessageInputBox"
+                                         Text="{Binding EditingDMMessageContent}"
+                                         Background="#40444b"
+                                         Foreground="White"
+                                         BorderThickness="0"
+                                         CornerRadius="4"
+                                         Padding="12,8"
+                                         AcceptsReturn="True"
+                                         TextWrapping="Wrap"
+                                         MaxHeight="200"/>
+                                <Button Grid.Column="1"
+                                        Command="{Binding CancelEditDMMessageCommand}"
+                                        Background="Transparent"
+                                        Foreground="#b9bbbe"
+                                        Content="Cancel"
+                                        Padding="12,8"
+                                        Margin="8,0,0,0"
+                                        Cursor="Hand"/>
+                                <Button Grid.Column="2"
+                                        Command="{Binding SaveDMMessageEditCommand}"
+                                        Background="#5865f2"
+                                        Foreground="White"
+                                        Padding="12,8"
+                                        Margin="8,0,0,0"
+                                        CornerRadius="4"
+                                        Cursor="Hand">
+                                    <Panel>
+                                        <TextBlock Text="Save" IsVisible="{Binding IsLoading, Converter={x:Static BoolConverters.Not}}"/>
+                                        <TextBlock Text="..." IsVisible="{Binding IsLoading}"/>
+                                    </Panel>
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </DockPanel>
+            </Border>
+
+            <!-- Voice Channel Content (shown when viewing voice channel, but not DM) -->
             <Border Background="#36393f" IsVisible="{Binding IsViewingVoiceChannel}">
+                <Border.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="IsViewingVoiceChannel"/>
+                        <Binding Path="IsViewingDM" Converter="{x:Static BoolConverters.Not}"/>
+                    </MultiBinding>
+                </Border.IsVisible>
                 <DockPanel>
                     <!-- Voice Channel Header -->
                     <Border DockPanel.Dock="Top" Background="#36393f" Padding="16,12" BorderThickness="0,0,0,1" BorderBrush="#202225">
@@ -591,8 +810,14 @@
                 </DockPanel>
             </Border>
 
-            <!-- Chat Area (shown when not viewing voice channel) -->
-            <Border Background="#36393f" IsVisible="{Binding !IsViewingVoiceChannel}">
+            <!-- Chat Area (shown when not viewing voice channel or DM) -->
+            <Border Background="#36393f">
+                <Border.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="IsViewingVoiceChannel" Converter="{x:Static BoolConverters.Not}"/>
+                        <Binding Path="IsViewingDM" Converter="{x:Static BoolConverters.Not}"/>
+                    </MultiBinding>
+                </Border.IsVisible>
                 <DockPanel>
                     <!-- Channel Header -->
                     <Border DockPanel.Dock="Top" Background="#36393f" Padding="16,12" BorderThickness="0,0,0,1" BorderBrush="#202225">
@@ -793,13 +1018,79 @@
                            Margin="16,16,16,8"/>
 
                 <ScrollViewer>
-                    <ItemsControl x:Name="MembersList" ItemsSource="{Binding Members}" Margin="8,0">
+                    <ItemsControl x:Name="MembersList" ItemsSource="{Binding SortedMembers}" Margin="8,0">
                         <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Background="Transparent"
+                            <DataTemplate x:DataType="services:CommunityMemberResponse">
+                                <Panel>
+                                <!-- Current user (non-clickable) -->
+                                <Border Padding="8,4"
+                                        Margin="0,2"
+                                        CornerRadius="4"
+                                        Background="Transparent">
+                                    <Border.IsVisible>
+                                        <MultiBinding Converter="{x:Static conv:GuidEqualsConverter.Instance}">
+                                            <Binding Path="UserId"/>
+                                            <Binding Path="#MembersList.DataContext.UserId"/>
+                                        </MultiBinding>
+                                    </Border.IsVisible>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Avatar with online indicator -->
+                                        <Grid Grid.Column="0" Margin="0,0,8,0">
+                                            <Border Width="32" Height="32"
+                                                    CornerRadius="16"
+                                                    Background="#5865f2">
+                                                <TextBlock Text="{Binding Username[0]}"
+                                                           Foreground="White"
+                                                           FontSize="14"
+                                                           FontWeight="Bold"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"/>
+                                            </Border>
+                                            <Ellipse Width="12" Height="12"
+                                                     Fill="#3ba55c"
+                                                     Stroke="#2f3136"
+                                                     StrokeThickness="2"
+                                                     HorizontalAlignment="Right"
+                                                     VerticalAlignment="Bottom"
+                                                     IsVisible="{Binding IsOnline}"/>
+                                        </Grid>
+
+                                        <!-- Username (You) and Role -->
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <TextBlock Text="{Binding Username}"
+                                                           Foreground="White"
+                                                           FontSize="14"/>
+                                                <TextBlock Text="(You)"
+                                                           Foreground="#72767d"
+                                                           FontSize="14"/>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding Role}"
+                                                       Foreground="#72767d"
+                                                       FontSize="10"
+                                                       Margin="0,-2,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Other members (clickable) -->
+                                <Border Classes="member-item"
                                         Padding="8,4"
                                         Margin="0,2"
-                                        Cursor="Hand">
+                                        Cursor="Hand"
+                                        PointerPressed="Member_PointerPressed"
+                                        Tag="{Binding}">
+                                    <Border.IsVisible>
+                                        <MultiBinding Converter="{x:Static conv:GuidNotEqualsConverter.Instance}">
+                                            <Binding Path="UserId"/>
+                                            <Binding Path="#MembersList.DataContext.UserId"/>
+                                        </MultiBinding>
+                                    </Border.IsVisible>
                                     <Border.ContextMenu>
                                         <ContextMenu>
                                             <MenuItem Header="Send Direct Message"
@@ -877,6 +1168,7 @@
                                         </Button>
                                     </Grid>
                                 </Border>
+                                </Panel>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>

@@ -16,6 +16,8 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         // Use tunneling (Preview) events to intercept Enter before AcceptsReturn processes it
         MessageInputBox.AddHandler(KeyDownEvent, OnMessageKeyDown, RoutingStrategies.Tunnel);
         EditMessageInputBox.AddHandler(KeyDownEvent, OnEditMessageKeyDown, RoutingStrategies.Tunnel);
+        DMMessageInputBox.AddHandler(KeyDownEvent, OnDMMessageKeyDown, RoutingStrategies.Tunnel);
+        EditDMMessageInputBox.AddHandler(KeyDownEvent, OnEditDMMessageKeyDown, RoutingStrategies.Tunnel);
     }
 
     // Called for message input TextBox (tunneling event)
@@ -100,6 +102,50 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         if (sender is Border border)
         {
             border.Background = Avalonia.Media.Brushes.Transparent;
+        }
+    }
+
+    // Called when clicking a member in the members list - opens DMs
+    private void Member_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is Border border && border.Tag is Services.CommunityMemberResponse member)
+        {
+            ViewModel?.StartDMCommand.Execute(member).Subscribe();
+        }
+    }
+
+    // Called for DM message input TextBox (tunneling event)
+    // Enter sends message, Shift+Enter inserts newline
+    private void OnDMMessageKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && !e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+        {
+            e.Handled = true;
+
+            if (ViewModel?.SendDMMessageCommand.CanExecute.FirstAsync().GetAwaiter().GetResult() == true)
+            {
+                ViewModel.SendDMMessageCommand.Execute().Subscribe();
+            }
+        }
+    }
+
+    // Called for DM message edit TextBox (tunneling event)
+    // Enter saves edit, Shift+Enter inserts newline
+    private void OnEditDMMessageKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && !e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+        {
+            e.Handled = true;
+
+            if (ViewModel?.SaveDMMessageEditCommand.CanExecute.FirstAsync().GetAwaiter().GetResult() == true)
+            {
+                ViewModel.SaveDMMessageEditCommand.Execute().Subscribe();
+            }
+        }
+        else if (e.Key == Key.Escape)
+        {
+            ViewModel?.CancelEditDMMessageCommand.Execute().Subscribe();
+            e.Handled = true;
         }
     }
 }

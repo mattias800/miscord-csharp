@@ -50,6 +50,13 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     // Permission state
     private UserRole? _currentUserRole;
 
+    // Inline DM state
+    private Guid? _dmRecipientId;
+    private string? _dmRecipientName;
+    private string _dmMessageInput = string.Empty;
+    private DirectMessageResponse? _editingDMMessage;
+    private string _editingDMMessageContent = string.Empty;
+
     public MainAppViewModel(IApiClient apiClient, ISignalRService signalR, IWebRtcService webRtc, string baseUrl, AuthResponse auth, Action onLogout, Action? onSwitchServer = null, Action? onOpenDMs = null, Action<Guid?, string?>? onOpenDMsWithUser = null, Action? onOpenSettings = null)
     {
         _apiClient = apiClient;
@@ -82,6 +89,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         Channels = new ObservableCollection<ChannelResponse>();
         Messages = new ObservableCollection<MessageResponse>();
         Members = new ObservableCollection<CommunityMemberResponse>();
+        DMMessages = new ObservableCollection<DirectMessageResponse>();
 
         // Commands
         LogoutCommand = ReactiveCommand.Create(_onLogout);
@@ -121,6 +129,22 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         PromoteToAdminCommand = ReactiveCommand.CreateFromTask<CommunityMemberResponse>(PromoteToAdminAsync);
         DemoteToMemberCommand = ReactiveCommand.CreateFromTask<CommunityMemberResponse>(DemoteToMemberAsync);
         TransferOwnershipCommand = ReactiveCommand.CreateFromTask<CommunityMemberResponse>(TransferOwnershipAsync);
+
+        // Inline DM commands
+        var canSendDMMessage = this.WhenAnyValue(
+            x => x.DMMessageInput,
+            x => x.DMRecipientId,
+            x => x.IsLoading,
+            (message, recipientId, isLoading) =>
+                !string.IsNullOrWhiteSpace(message) &&
+                recipientId.HasValue &&
+                !isLoading);
+        SendDMMessageCommand = ReactiveCommand.CreateFromTask(SendDMMessageAsync, canSendDMMessage);
+        CloseDMCommand = ReactiveCommand.Create(CloseDM);
+        StartEditDMMessageCommand = ReactiveCommand.Create<DirectMessageResponse>(StartEditDMMessage);
+        SaveDMMessageEditCommand = ReactiveCommand.CreateFromTask(SaveDMMessageEditAsync);
+        CancelEditDMMessageCommand = ReactiveCommand.Create(CancelEditDMMessage);
+        DeleteDMMessageCommand = ReactiveCommand.CreateFromTask<DirectMessageResponse>(DeleteDMMessageAsync);
 
         // Voice commands
         CreateVoiceChannelCommand = ReactiveCommand.CreateFromTask(CreateVoiceChannelAsync, canCreateChannel);
@@ -277,6 +301,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                     Members.Clear();
                     foreach (var member in result.Data)
                         Members.Add(member);
+                    this.RaisePropertyChanged(nameof(SortedMembers));
                 }
             }
         });
@@ -288,7 +313,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             {
                 var member = Members.FirstOrDefault(m => m.UserId == e.UserId);
                 if (member is not null)
+                {
                     Members.Remove(member);
+                    this.RaisePropertyChanged(nameof(SortedMembers));
+                }
             }
         });
 
@@ -399,6 +427,32 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 _voiceChannelContent?.UpdateSpeakingState(_auth.UserId, isSpeaking);
             }
         });
+
+        // DM SignalR handlers
+        _signalR.DirectMessageReceived += message => Dispatcher.UIThread.Post(() =>
+        {
+            // If this message is from/to the current DM recipient
+            if (DMRecipientId.HasValue &&
+                (message.SenderId == DMRecipientId.Value || message.RecipientId == DMRecipientId.Value))
+            {
+                if (!DMMessages.Any(m => m.Id == message.Id))
+                    DMMessages.Add(message);
+            }
+        });
+
+        _signalR.DirectMessageEdited += message => Dispatcher.UIThread.Post(() =>
+        {
+            var index = DMMessages.ToList().FindIndex(m => m.Id == message.Id);
+            if (index >= 0)
+                DMMessages[index] = message;
+        });
+
+        _signalR.DirectMessageDeleted += e => Dispatcher.UIThread.Post(() =>
+        {
+            var message = DMMessages.FirstOrDefault(m => m.Id == e.MessageId);
+            if (message is not null)
+                DMMessages.Remove(message);
+        });
     }
 
     private async Task OnCommunitySelectedAsync()
@@ -433,6 +487,13 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public ObservableCollection<ChannelResponse> Channels { get; }
     public ObservableCollection<MessageResponse> Messages { get; }
     public ObservableCollection<CommunityMemberResponse> Members { get; }
+    public ObservableCollection<DirectMessageResponse> DMMessages { get; }
+
+    /// <summary>
+    /// Returns members sorted with the current user first.
+    /// </summary>
+    public IEnumerable<CommunityMemberResponse> SortedMembers =>
+        Members.OrderByDescending(m => m.UserId == _auth.UserId).ThenBy(m => m.Username);
 
     public CommunityResponse? SelectedCommunity
     {
@@ -571,6 +632,43 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
     public bool IsViewingVoiceChannel => SelectedVoiceChannelForViewing != null;
 
+    // Inline DM properties
+    public Guid? DMRecipientId
+    {
+        get => _dmRecipientId;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _dmRecipientId, value);
+            this.RaisePropertyChanged(nameof(IsViewingDM));
+        }
+    }
+
+    public string? DMRecipientName
+    {
+        get => _dmRecipientName;
+        set => this.RaiseAndSetIfChanged(ref _dmRecipientName, value);
+    }
+
+    public string DMMessageInput
+    {
+        get => _dmMessageInput;
+        set => this.RaiseAndSetIfChanged(ref _dmMessageInput, value);
+    }
+
+    public DirectMessageResponse? EditingDMMessage
+    {
+        get => _editingDMMessage;
+        set => this.RaiseAndSetIfChanged(ref _editingDMMessage, value);
+    }
+
+    public string EditingDMMessageContent
+    {
+        get => _editingDMMessageContent;
+        set => this.RaiseAndSetIfChanged(ref _editingDMMessageContent, value);
+    }
+
+    public bool IsViewingDM => DMRecipientId.HasValue;
+
     /// <summary>
     /// Gets voice participants for a channel. Used by legacy converters.
     /// The new architecture uses VoiceChannelViewModels with direct binding.
@@ -626,6 +724,14 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<CommunityMemberResponse, Unit> DemoteToMemberCommand { get; }
     public ReactiveCommand<CommunityMemberResponse, Unit> TransferOwnershipCommand { get; }
 
+    // Inline DM commands
+    public ReactiveCommand<Unit, Unit> SendDMMessageCommand { get; }
+    public ReactiveCommand<Unit, Unit> CloseDMCommand { get; }
+    public ReactiveCommand<DirectMessageResponse, Unit> StartEditDMMessageCommand { get; }
+    public ReactiveCommand<Unit, Unit> SaveDMMessageEditCommand { get; }
+    public ReactiveCommand<Unit, Unit> CancelEditDMMessageCommand { get; }
+    public ReactiveCommand<DirectMessageResponse, Unit> DeleteDMMessageCommand { get; }
+
     // Voice commands
     public ReactiveCommand<Unit, Unit> CreateVoiceChannelCommand { get; }
     public ReactiveCommand<ChannelResponse, Unit> JoinVoiceChannelCommand { get; }
@@ -641,7 +747,135 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // Don't DM yourself
         if (member.UserId == _auth.UserId) return;
 
-        _onOpenDMsWithUser?.Invoke(member.UserId, member.Username);
+        // Open DM inline instead of navigating away
+        DMRecipientId = member.UserId;
+        DMRecipientName = member.Username;
+        DMMessageInput = string.Empty;
+
+        // Clear voice channel viewing when opening DM
+        SelectedVoiceChannelForViewing = null;
+
+        // Load messages asynchronously
+        _ = LoadDMMessagesAsync();
+    }
+
+    private async Task LoadDMMessagesAsync()
+    {
+        if (!DMRecipientId.HasValue) return;
+
+        IsLoading = true;
+        try
+        {
+            var result = await _apiClient.GetDirectMessagesAsync(DMRecipientId.Value);
+            if (result.Success && result.Data is not null)
+            {
+                DMMessages.Clear();
+                foreach (var message in result.Data)
+                    DMMessages.Add(message);
+            }
+
+            // Mark conversation as read
+            await _apiClient.MarkConversationAsReadAsync(DMRecipientId.Value);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task SendDMMessageAsync()
+    {
+        if (!DMRecipientId.HasValue || string.IsNullOrWhiteSpace(DMMessageInput)) return;
+
+        var content = DMMessageInput;
+        DMMessageInput = string.Empty;
+
+        var result = await _apiClient.SendDirectMessageAsync(DMRecipientId.Value, content);
+        if (result.Success && result.Data is not null)
+        {
+            DMMessages.Add(result.Data);
+        }
+        else
+        {
+            ErrorMessage = result.Error;
+            DMMessageInput = content; // Restore message on failure
+        }
+    }
+
+    private void CloseDM()
+    {
+        DMRecipientId = null;
+        DMRecipientName = null;
+        DMMessageInput = string.Empty;
+        DMMessages.Clear();
+        EditingDMMessage = null;
+        EditingDMMessageContent = string.Empty;
+    }
+
+    private void StartEditDMMessage(DirectMessageResponse message)
+    {
+        if (message.SenderId != UserId) return;
+
+        EditingDMMessage = message;
+        EditingDMMessageContent = message.Content;
+    }
+
+    private void CancelEditDMMessage()
+    {
+        EditingDMMessage = null;
+        EditingDMMessageContent = string.Empty;
+    }
+
+    private async Task SaveDMMessageEditAsync()
+    {
+        if (EditingDMMessage is null || string.IsNullOrWhiteSpace(EditingDMMessageContent))
+            return;
+
+        IsLoading = true;
+        try
+        {
+            var result = await _apiClient.UpdateDirectMessageAsync(EditingDMMessage.Id, EditingDMMessageContent.Trim());
+
+            if (result.Success && result.Data is not null)
+            {
+                var index = DMMessages.ToList().FindIndex(m => m.Id == EditingDMMessage.Id);
+                if (index >= 0)
+                    DMMessages[index] = result.Data;
+
+                EditingDMMessage = null;
+                EditingDMMessageContent = string.Empty;
+            }
+            else
+            {
+                ErrorMessage = result.Error;
+            }
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task DeleteDMMessageAsync(DirectMessageResponse message)
+    {
+        IsLoading = true;
+        try
+        {
+            var result = await _apiClient.DeleteDirectMessageAsync(message.Id);
+
+            if (result.Success)
+            {
+                DMMessages.Remove(message);
+            }
+            else
+            {
+                ErrorMessage = result.Error;
+            }
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     private async Task PromoteToAdminAsync(CommunityMemberResponse member)
@@ -722,6 +956,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                     Members.Clear();
                     foreach (var m in membersResult.Data)
                         Members.Add(m);
+                    this.RaisePropertyChanged(nameof(SortedMembers));
 
                     // Update current user's role
                     var currentMember = membersResult.Data.FirstOrDefault(m => m.UserId == _auth.UserId);
@@ -818,6 +1053,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 Members.Clear();
                 foreach (var member in membersResult.Data)
                     Members.Add(member);
+                this.RaisePropertyChanged(nameof(SortedMembers));
 
                 // Set current user's role
                 var currentMember = membersResult.Data.FirstOrDefault(m => m.UserId == _auth.UserId);
