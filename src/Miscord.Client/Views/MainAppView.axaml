@@ -764,7 +764,9 @@
                                             CornerRadius="8"
                                             Background="#2f3136"
                                             BorderThickness="0"
-                                            ClipToBounds="True">
+                                            ClipToBounds="True"
+                                            DoubleTapped="OnVideoTileDoubleTapped"
+                                            Tag="{Binding}">
 
                                         <Grid>
                                             <!-- Video content (only shown when watching) -->

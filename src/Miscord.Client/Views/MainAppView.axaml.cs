@@ -18,6 +18,19 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         EditMessageInputBox.AddHandler(KeyDownEvent, OnEditMessageKeyDown, RoutingStrategies.Tunnel);
         DMMessageInputBox.AddHandler(KeyDownEvent, OnDMMessageKeyDown, RoutingStrategies.Tunnel);
         EditDMMessageInputBox.AddHandler(KeyDownEvent, OnEditDMMessageKeyDown, RoutingStrategies.Tunnel);
+
+        // ESC key to exit fullscreen video
+        this.AddHandler(KeyDownEvent, OnGlobalKeyDown, RoutingStrategies.Tunnel);
+    }
+
+    // Global key handler for ESC to exit fullscreen
+    private void OnGlobalKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape && ViewModel?.IsVideoFullscreen == true)
+        {
+            ViewModel.CloseFullscreen();
+            e.Handled = true;
+        }
     }
 
     // Called for message input TextBox (tunneling event)
@@ -172,6 +185,19 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         if (sender is Button button && button.Tag is VideoStreamViewModel stream)
         {
             ViewModel?.OpenFullscreen(stream);
+        }
+    }
+
+    // Called when double-clicking a screen share video tile
+    private void OnVideoTileDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is Border border && border.Tag is VideoStreamViewModel stream)
+        {
+            // Only allow fullscreen for screen shares (not camera streams)
+            if (!string.IsNullOrEmpty(stream.StreamLabel))
+            {
+                ViewModel?.OpenFullscreen(stream);
+            }
         }
     }
 }
