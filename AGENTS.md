@@ -87,11 +87,45 @@ Avalonia UI is a mature, cross-platform XAML framework that allows building desk
 
 ## WebRTC Implementation Notes
 
-- Use SipSorcery library for WebRTC implementation
+- Use SIPSorcery library for WebRTC implementation
 - SignalR handles signaling between peers
-- Support both peer-to-peer and server-mediated connections
 - Handle ICE candidate exchange properly
 - Support STUN/TURN servers for NAT traversal
+
+### SFU Architecture (Implemented)
+
+The project uses a Selective Forwarding Unit (SFU) architecture for voice/video:
+
+- **Server**: Each client connects to the server via a single WebRTC connection
+- **Forwarding**: Server receives RTP packets and forwards them to other participants using `SendRtpRaw()` for minimal latency
+- **Scalability**: N users need N connections (vs N*(N-1)/2 for P2P mesh)
+
+Key server components:
+- `SfuSession` - Manages one client's WebRTC connection
+- `SfuChannelManager` - Coordinates media forwarding per voice channel
+- `SfuService` - Top-level service managing all channels
+
+Key client components:
+- `WebRtcService._serverConnection` - Single connection to SFU server
+- SignalR events: `SfuOfferReceived`, `SfuIceCandidateReceived`
+
+### FFmpeg Video Encoding/Decoding
+
+Video is encoded/decoded using FFmpeg as a subprocess (required on macOS where native bindings don't work):
+
+**Encoder** (`FfmpegProcessEncoder`):
+- Input: Raw BGR24 frames from OpenCV camera capture
+- Output: H264 Annex B NAL units
+- Low-latency flags: `-fflags nobuffer -flags low_delay -flush_packets 1`
+- Codec settings: `-preset ultrafast -tune zerolatency`
+
+**Decoder** (`FfmpegProcessDecoder`):
+- Input: H264 Annex B stream
+- Output: Raw RGB24 frames for display
+- Low-latency flags: `-fflags nobuffer -flags low_delay -probesize 32 -analyzeduration 0`
+- Aspect ratio preservation with `scale=W:H:force_original_aspect_ratio=decrease,pad`
+
+**Important**: NAL units are emitted immediately as they complete (not waiting for frame boundaries) to minimize latency
 
 ## Database Conventions
 
@@ -171,15 +205,18 @@ dotnet run --project src/Miscord.Client -- \
 - ✅ Database models (7 entities) with EF Core DbContext
 - ✅ Build pipeline working (zero errors)
 - ✅ Git repository on GitHub (private)
-- ✅ PLAN.md with complete feature roadmap
+- ✅ User authentication (register, login, JWT)
+- ✅ SignalR hub for real-time communication
+- ✅ Text channels with message history
+- ✅ Voice channels with SFU architecture
+- ✅ Webcam streaming with low-latency H264
+- ✅ Audio device selection in settings
 
 ### In Progress / Next
-- Phase 1.2: User authentication (register, login, JWT)
-- Phase 1.3: SignalR hub setup
-- Phase 2: Messaging (DMs and channels)
-- Phase 3: Voice/media (WebRTC, webcam, screen share)
-- Phase 4: UI implementation
-- Phase 5: Testing and optimization
+- Screen sharing support
+- Direct messages (DMs)
+- Testing and optimization
+- UI polish
 
 ## SDL2 and Audio on macOS
 
