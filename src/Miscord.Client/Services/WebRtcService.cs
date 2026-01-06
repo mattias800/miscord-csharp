@@ -220,6 +220,8 @@ public class WebRtcService : IWebRtcService
     private readonly ConcurrentDictionary<Guid, FfmpegProcessDecoder> _videoDecoders = new();
     // SSRC to UserId mapping for incoming video
     private readonly ConcurrentDictionary<uint, Guid> _ssrcToUserMap = new();
+    // SSRC to payload type mapping for detecting camera vs screen share
+    private readonly ConcurrentDictionary<uint, int> _ssrcPayloadTypeMap = new();
 
     // Pending SFU offer (received before JoinVoiceChannelAsync was called)
     private (Guid ChannelId, string Sdp)? _pendingSfuOffer;
@@ -753,7 +755,8 @@ public class WebRtcService : IWebRtcService
             _videoCodec = formats.First().Codec;
         };
 
-        // Handle incoming RTP packets (audio from server)
+        // Handle incoming RTP packets (audio and video from server)
+        // Track video RTP for stream type detection (PT 96 = camera, PT 97 = screen)
         _serverConnection.OnRtpPacketReceived += (rep, media, rtpPkt) =>
         {
             if (media == SDPMediaTypesEnum.audio && !_isDeafened && _audioSink != null)
@@ -761,6 +764,13 @@ public class WebRtcService : IWebRtcService
                 _audioSink.GotAudioRtp(rep, rtpPkt.Header.SyncSource, rtpPkt.Header.SequenceNumber,
                     rtpPkt.Header.Timestamp, rtpPkt.Header.PayloadType,
                     rtpPkt.Header.MarkerBit == 1, rtpPkt.Payload);
+            }
+            else if (media == SDPMediaTypesEnum.video)
+            {
+                // Track SSRC → payload type mapping for stream type detection
+                var ssrc = rtpPkt.Header.SyncSource;
+                var payloadType = rtpPkt.Header.PayloadType;
+                _ssrcPayloadTypeMap[ssrc] = payloadType;
             }
         };
 
