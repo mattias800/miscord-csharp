@@ -16,13 +16,23 @@ public class AuthServiceTests
         RefreshTokenExpirationDays = 7
     });
 
+    private static async Task<(AuthService service, string inviteCode)> CreateServiceWithInviteAsync(Data.MiscordDbContext db)
+    {
+        var inviteService = new ServerInviteService(db);
+        var service = new AuthService(db, CreateJwtSettings(), inviteService);
+
+        // Create a test invite code
+        var invite = await inviteService.CreateInviteAsync(null, maxUses: 0);
+        return (service, invite.Code);
+    }
+
     [TestMethod]
     public async Task RegisterAsync_WithValidData_CreatesUserAndReturnsTokens()
     {
         // Arrange
         using var db = TestDbContextFactory.Create();
-        var service = new AuthService(db, CreateJwtSettings());
-        var request = new RegisterRequest("testuser", "test@example.com", "Password123!");
+        var (service, inviteCode) = await CreateServiceWithInviteAsync(db);
+        var request = new RegisterRequest("testuser", "test@example.com", "Password123!", inviteCode);
 
         // Act
         var result = await service.RegisterAsync(request);
@@ -37,16 +47,69 @@ public class AuthServiceTests
     }
 
     [TestMethod]
+    public async Task RegisterAsync_FirstUser_BecomesServerAdmin()
+    {
+        // Arrange
+        using var db = TestDbContextFactory.Create();
+        var (service, inviteCode) = await CreateServiceWithInviteAsync(db);
+        var request = new RegisterRequest("firstuser", "first@example.com", "Password123!", inviteCode);
+
+        // Act
+        var result = await service.RegisterAsync(request);
+
+        // Assert
+        Assert.IsTrue(result.IsServerAdmin, "First user should be server admin");
+    }
+
+    [TestMethod]
+    public async Task RegisterAsync_SecondUser_IsNotServerAdmin()
+    {
+        // Arrange
+        using var db = TestDbContextFactory.Create();
+        var inviteService = new ServerInviteService(db);
+        var service = new AuthService(db, CreateJwtSettings(), inviteService);
+
+        var invite1 = await inviteService.CreateInviteAsync(null, maxUses: 0);
+        var invite2 = await inviteService.CreateInviteAsync(null, maxUses: 0);
+
+        // First user
+        await service.RegisterAsync(new RegisterRequest("firstuser", "first@example.com", "Password123!", invite1.Code));
+
+        // Act - second user
+        var result = await service.RegisterAsync(new RegisterRequest("seconduser", "second@example.com", "Password123!", invite2.Code));
+
+        // Assert
+        Assert.IsFalse(result.IsServerAdmin, "Second user should not be server admin");
+    }
+
+    [TestMethod]
+    public async Task RegisterAsync_WithInvalidInviteCode_ThrowsException()
+    {
+        // Arrange
+        using var db = TestDbContextFactory.Create();
+        var (service, _) = await CreateServiceWithInviteAsync(db);
+        var request = new RegisterRequest("testuser", "test@example.com", "Password123!", "invalidcode");
+
+        // Act & Assert
+        var exception = await Assert.ThrowsExceptionAsync<InvalidOperationException>(
+            () => service.RegisterAsync(request));
+        Assert.AreEqual("Invalid or expired invite code.", exception.Message);
+    }
+
+    [TestMethod]
     public async Task RegisterAsync_WithDuplicateEmail_ThrowsException()
     {
         // Arrange
         using var db = TestDbContextFactory.Create();
-        var service = new AuthService(db, CreateJwtSettings());
-        await service.RegisterAsync(new RegisterRequest("user1", "duplicate@example.com", "Password123!"));
+        var inviteService = new ServerInviteService(db);
+        var service = new AuthService(db, CreateJwtSettings(), inviteService);
+        var invite1 = await inviteService.CreateInviteAsync(null);
+        var invite2 = await inviteService.CreateInviteAsync(null);
+        await service.RegisterAsync(new RegisterRequest("user1", "duplicate@example.com", "Password123!", invite1.Code));
 
         // Act & Assert
         var exception = await Assert.ThrowsExceptionAsync<InvalidOperationException>(
-            () => service.RegisterAsync(new RegisterRequest("user2", "duplicate@example.com", "Password123!")));
+            () => service.RegisterAsync(new RegisterRequest("user2", "duplicate@example.com", "Password123!", invite2.Code)));
         Assert.AreEqual("Email is already registered.", exception.Message);
     }
 
@@ -55,12 +118,15 @@ public class AuthServiceTests
     {
         // Arrange
         using var db = TestDbContextFactory.Create();
-        var service = new AuthService(db, CreateJwtSettings());
-        await service.RegisterAsync(new RegisterRequest("duplicateuser", "user1@example.com", "Password123!"));
+        var inviteService = new ServerInviteService(db);
+        var service = new AuthService(db, CreateJwtSettings(), inviteService);
+        var invite1 = await inviteService.CreateInviteAsync(null);
+        var invite2 = await inviteService.CreateInviteAsync(null);
+        await service.RegisterAsync(new RegisterRequest("duplicateuser", "user1@example.com", "Password123!", invite1.Code));
 
         // Act & Assert
         var exception = await Assert.ThrowsExceptionAsync<InvalidOperationException>(
-            () => service.RegisterAsync(new RegisterRequest("duplicateuser", "user2@example.com", "Password123!")));
+            () => service.RegisterAsync(new RegisterRequest("duplicateuser", "user2@example.com", "Password123!", invite2.Code)));
         Assert.AreEqual("Username is already taken.", exception.Message);
     }
 
@@ -69,8 +135,8 @@ public class AuthServiceTests
     {
         // Arrange
         using var db = TestDbContextFactory.Create();
-        var service = new AuthService(db, CreateJwtSettings());
-        await service.RegisterAsync(new RegisterRequest("testuser", "test@example.com", "Password123!"));
+        var (service, inviteCode) = await CreateServiceWithInviteAsync(db);
+        await service.RegisterAsync(new RegisterRequest("testuser", "test@example.com", "Password123!", inviteCode));
 
         // Act
         var result = await service.LoginAsync(new LoginRequest("test@example.com", "Password123!"));
@@ -86,8 +152,8 @@ public class AuthServiceTests
     {
         // Arrange
         using var db = TestDbContextFactory.Create();
-        var service = new AuthService(db, CreateJwtSettings());
-        await service.RegisterAsync(new RegisterRequest("testuser", "test@example.com", "Password123!"));
+        var (service, inviteCode) = await CreateServiceWithInviteAsync(db);
+        await service.RegisterAsync(new RegisterRequest("testuser", "test@example.com", "Password123!", inviteCode));
 
         // Act & Assert
         var exception = await Assert.ThrowsExceptionAsync<InvalidOperationException>(
@@ -100,7 +166,7 @@ public class AuthServiceTests
     {
         // Arrange
         using var db = TestDbContextFactory.Create();
-        var service = new AuthService(db, CreateJwtSettings());
+        var (service, _) = await CreateServiceWithInviteAsync(db);
 
         // Act & Assert
         var exception = await Assert.ThrowsExceptionAsync<InvalidOperationException>(
@@ -113,8 +179,8 @@ public class AuthServiceTests
     {
         // Arrange
         using var db = TestDbContextFactory.Create();
-        var service = new AuthService(db, CreateJwtSettings());
-        var authResult = await service.RegisterAsync(new RegisterRequest("testuser", "test@example.com", "Password123!"));
+        var (service, inviteCode) = await CreateServiceWithInviteAsync(db);
+        var authResult = await service.RegisterAsync(new RegisterRequest("testuser", "test@example.com", "Password123!", inviteCode));
 
         // Act
         var profile = await service.GetProfileAsync(authResult.UserId);
@@ -130,7 +196,7 @@ public class AuthServiceTests
     {
         // Arrange
         using var db = TestDbContextFactory.Create();
-        var service = new AuthService(db, CreateJwtSettings());
+        var (service, _) = await CreateServiceWithInviteAsync(db);
 
         // Act & Assert
         var exception = await Assert.ThrowsExceptionAsync<InvalidOperationException>(
@@ -143,8 +209,8 @@ public class AuthServiceTests
     {
         // Arrange
         using var db = TestDbContextFactory.Create();
-        var service = new AuthService(db, CreateJwtSettings());
-        var authResult = await service.RegisterAsync(new RegisterRequest("testuser", "test@example.com", "Password123!"));
+        var (service, inviteCode) = await CreateServiceWithInviteAsync(db);
+        var authResult = await service.RegisterAsync(new RegisterRequest("testuser", "test@example.com", "Password123!", inviteCode));
         var updateRequest = new UpdateProfileRequest("newusername", "avatar.png", "Hello!");
 
         // Act
@@ -161,9 +227,12 @@ public class AuthServiceTests
     {
         // Arrange
         using var db = TestDbContextFactory.Create();
-        var service = new AuthService(db, CreateJwtSettings());
-        await service.RegisterAsync(new RegisterRequest("existinguser", "existing@example.com", "Password123!"));
-        var authResult = await service.RegisterAsync(new RegisterRequest("testuser", "test@example.com", "Password123!"));
+        var inviteService = new ServerInviteService(db);
+        var service = new AuthService(db, CreateJwtSettings(), inviteService);
+        var invite1 = await inviteService.CreateInviteAsync(null);
+        var invite2 = await inviteService.CreateInviteAsync(null);
+        await service.RegisterAsync(new RegisterRequest("existinguser", "existing@example.com", "Password123!", invite1.Code));
+        var authResult = await service.RegisterAsync(new RegisterRequest("testuser", "test@example.com", "Password123!", invite2.Code));
 
         // Act & Assert
         var exception = await Assert.ThrowsExceptionAsync<InvalidOperationException>(
@@ -176,8 +245,8 @@ public class AuthServiceTests
     {
         // Arrange
         using var db = TestDbContextFactory.Create();
-        var service = new AuthService(db, CreateJwtSettings());
-        var authResult = await service.RegisterAsync(new RegisterRequest("testuser", "test@example.com", "Password123!"));
+        var (service, inviteCode) = await CreateServiceWithInviteAsync(db);
+        var authResult = await service.RegisterAsync(new RegisterRequest("testuser", "test@example.com", "Password123!", inviteCode));
 
         // Act
         var newTokens = await service.RefreshTokenAsync(authResult.RefreshToken);

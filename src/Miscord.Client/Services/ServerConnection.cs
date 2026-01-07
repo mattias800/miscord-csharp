@@ -43,5 +43,7 @@ public record ServerInfoResponse(
     string Name,
     string? Description,
     string Version,
-    bool AllowRegistration
+    bool AllowRegistration,
+    bool HasUsers,
+    string? BootstrapInviteCode
 );

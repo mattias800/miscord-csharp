@@ -12,6 +12,22 @@ public class User
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// Whether this user is a server administrator (can manage invites, users, etc.)
+    /// </summary>
+    public bool IsServerAdmin { get; set; } = false;
+
+    /// <summary>
+    /// Whether the user's email has been verified. Reserved for future use.
+    /// </summary>
+    public bool EmailVerified { get; set; } = false;
+
+    /// <summary>
+    /// The user who invited this user to the server.
+    /// </summary>
+    public Guid? InvitedById { get; set; }
+    public User? InvitedBy { get; set; }
+
     public ICollection<Community> OwnedCommunities { get; set; } = new List<Community>();
     public ICollection<UserCommunity> UserCommunities { get; set; } = new List<UserCommunity>();
     public ICollection<DirectMessage> SentMessages { get; set; } = new List<DirectMessage>();

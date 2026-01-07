@@ -10,13 +10,23 @@ public interface IApiClient
     Task<ApiResult<ServerInfoResponse>> GetServerInfoAsync();
 
     // Auth
-    Task<ApiResult<AuthResponse>> RegisterAsync(string username, string email, string password);
+    Task<ApiResult<AuthResponse>> RegisterAsync(string username, string email, string password, string inviteCode);
     Task<ApiResult<AuthResponse>> LoginAsync(string email, string password);
     Task<ApiResult<AuthResponse>> RefreshTokenAsync(string refreshToken);
     Task<ApiResult<UserProfileResponse>> GetProfileAsync();
+    Task<ApiResult<bool>> ChangePasswordAsync(string currentPassword, string newPassword);
+    Task<ApiResult<bool>> DeleteAccountAsync();
     void SetAuthToken(string token);
     void ClearAuthToken();
     bool IsAuthenticated { get; }
+
+    // Admin
+    Task<ApiResult<List<ServerInviteResponse>>> GetInvitesAsync();
+    Task<ApiResult<ServerInviteResponse>> CreateInviteAsync(int maxUses = 0, DateTime? expiresAt = null);
+    Task<ApiResult<bool>> RevokeInviteAsync(Guid inviteId);
+    Task<ApiResult<List<AdminUserResponse>>> GetAllUsersAsync();
+    Task<ApiResult<AdminUserResponse>> SetUserAdminStatusAsync(Guid userId, bool isAdmin);
+    Task<ApiResult<bool>> DeleteUserAsync(Guid userId);
 
     // Communities
     Task<ApiResult<List<CommunityResponse>>> GetCommunitiesAsync();

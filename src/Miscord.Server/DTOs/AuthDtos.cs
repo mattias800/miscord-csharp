@@ -5,7 +5,8 @@ namespace Miscord.Server.DTOs;
 public record RegisterRequest(
     [Required, StringLength(50, MinimumLength = 3)] string Username,
     [Required, EmailAddress] string Email,
-    [Required, StringLength(100, MinimumLength = 8)] string Password
+    [Required, StringLength(100, MinimumLength = 8)] string Password,
+    [Required] string InviteCode
 );
 
 public record LoginRequest(
@@ -17,6 +18,7 @@ public record AuthResponse(
     Guid UserId,
     string Username,
     string Email,
+    bool IsServerAdmin,
     string AccessToken,
     string RefreshToken,
     DateTime ExpiresAt
@@ -31,6 +33,7 @@ public record UserProfileResponse(
     string? Avatar,
     string? Status,
     bool IsOnline,
+    bool IsServerAdmin,
     DateTime CreatedAt
 );
 
@@ -38,4 +41,9 @@ public record UpdateProfileRequest(
     [StringLength(50, MinimumLength = 3)] string? Username,
     string? Avatar,
     string? Status
+);
+
+public record ChangePasswordRequest(
+    [Required] string CurrentPassword,
+    [Required, StringLength(100, MinimumLength = 8)] string NewPassword
 );

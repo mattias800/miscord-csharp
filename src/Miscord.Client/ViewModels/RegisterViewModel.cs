@@ -15,14 +15,20 @@ public class RegisterViewModel : ViewModelBase
     private string _email = string.Empty;
     private string _password = string.Empty;
     private string _confirmPassword = string.Empty;
+    private string _inviteCode = string.Empty;
     private string? _errorMessage;
     private bool _isLoading;
 
-    public RegisterViewModel(IApiClient apiClient, Action<AuthResponse> onRegisterSuccess, Action onSwitchToLogin)
+    public RegisterViewModel(IApiClient apiClient, Action<AuthResponse> onRegisterSuccess, Action onSwitchToLogin, string? initialInviteCode = null)
     {
         _apiClient = apiClient;
         _onRegisterSuccess = onRegisterSuccess;
         _onSwitchToLogin = onSwitchToLogin;
+
+        if (!string.IsNullOrEmpty(initialInviteCode))
+        {
+            _inviteCode = initialInviteCode;
+        }
 
         var canRegister = this.WhenAnyValue(x => x.IsLoading, isLoading => !isLoading);
 
@@ -54,6 +60,12 @@ public class RegisterViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _confirmPassword, value);
     }
 
+    public string InviteCode
+    {
+        get => _inviteCode;
+        set => this.RaiseAndSetIfChanged(ref _inviteCode, value);
+    }
+
     public string? ErrorMessage
     {
         get => _errorMessage;
@@ -76,7 +88,7 @@ public class RegisterViewModel : ViewModelBase
 
         try
         {
-            var result = await _apiClient.RegisterAsync(Username, Email, Password);
+            var result = await _apiClient.RegisterAsync(Username, Email, Password, InviteCode);
             if (result.Success && result.Data is not null)
             {
                 _onRegisterSuccess(result.Data);

@@ -97,10 +97,19 @@ public class IntegrationTestBase : IDisposable
 
     public async Task<AuthResponse> RegisterUserAsync(string username, string email, string password)
     {
-        var response = await Client.PostAsJsonAsync("/api/auth/register", new RegisterRequest(username, email, password));
+        var inviteCode = await CreateInviteCodeAsync();
+        var response = await Client.PostAsJsonAsync("/api/auth/register", new RegisterRequest(username, email, password, inviteCode));
         response.EnsureSuccessStatusCode();
         var auth = await response.Content.ReadFromJsonAsync<AuthResponse>();
         return auth!;
+    }
+
+    public async Task<string> CreateInviteCodeAsync()
+    {
+        using var scope = Factory.Services.CreateScope();
+        var inviteService = scope.ServiceProvider.GetRequiredService<IServerInviteService>();
+        var invite = await inviteService.CreateInviteAsync(null, maxUses: 0);
+        return invite.Code;
     }
 
     public async Task<AuthResponse> LoginUserAsync(string email, string password)

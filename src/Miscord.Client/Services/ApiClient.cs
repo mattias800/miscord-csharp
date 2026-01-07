@@ -50,11 +50,11 @@ public class ApiClient : IApiClient
         _httpClient.DefaultRequestHeaders.Authorization = null;
     }
 
-    public async Task<ApiResult<AuthResponse>> RegisterAsync(string username, string email, string password)
+    public async Task<ApiResult<AuthResponse>> RegisterAsync(string username, string email, string password, string inviteCode)
     {
         try
         {
-            var request = new RegisterRequest(username, email, password);
+            var request = new RegisterRequest(username, email, password, inviteCode);
             var response = await _httpClient.PostAsJsonAsync(BuildUrl("/api/auth/register"), request);
 
             if (response.IsSuccessStatusCode)
@@ -151,6 +151,52 @@ public class ApiClient : IApiClient
     public async Task<ApiResult<UserProfileResponse>> GetProfileAsync()
     {
         return await GetAsync<UserProfileResponse>("/api/users/me");
+    }
+
+    public async Task<ApiResult<bool>> ChangePasswordAsync(string currentPassword, string newPassword)
+    {
+        return await PutWithBodyNoResponseAsync("/api/users/me/password",
+            new ChangePasswordRequest(currentPassword, newPassword));
+    }
+
+    public async Task<ApiResult<bool>> DeleteAccountAsync()
+    {
+        return await DeleteAsync("/api/users/me");
+    }
+
+    // Admin methods
+    public async Task<ApiResult<List<ServerInviteResponse>>> GetInvitesAsync()
+    {
+        return await GetAsync<List<ServerInviteResponse>>("/api/admin/invites");
+    }
+
+    public async Task<ApiResult<ServerInviteResponse>> CreateInviteAsync(int maxUses = 0, DateTime? expiresAt = null)
+    {
+        return await PostAsync<CreateInviteRequest, ServerInviteResponse>(
+            "/api/admin/invites",
+            new CreateInviteRequest(maxUses, expiresAt));
+    }
+
+    public async Task<ApiResult<bool>> RevokeInviteAsync(Guid inviteId)
+    {
+        return await DeleteAsync($"/api/admin/invites/{inviteId}");
+    }
+
+    public async Task<ApiResult<List<AdminUserResponse>>> GetAllUsersAsync()
+    {
+        return await GetAsync<List<AdminUserResponse>>("/api/admin/users");
+    }
+
+    public async Task<ApiResult<AdminUserResponse>> SetUserAdminStatusAsync(Guid userId, bool isAdmin)
+    {
+        return await PutAsync<SetAdminStatusRequest, AdminUserResponse>(
+            $"/api/admin/users/{userId}/admin",
+            new SetAdminStatusRequest(isAdmin));
+    }
+
+    public async Task<ApiResult<bool>> DeleteUserAsync(Guid userId)
+    {
+        return await DeleteAsync($"/api/admin/users/{userId}");
     }
 
     // Community methods
@@ -421,6 +467,30 @@ public class ApiClient : IApiClient
         try
         {
             var response = await _httpClient.PostAsJsonAsync(BuildUrl(path), request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<bool>.Ok(true);
+            }
+
+            var error = await TryReadError(response);
+            return ApiResult<bool>.Fail(error);
+        }
+        catch (HttpRequestException ex)
+        {
+            return ApiResult<bool>.Fail($"Connection error: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<bool>.Fail($"Unexpected error: {ex.Message}");
+        }
+    }
+
+    private async Task<ApiResult<bool>> PutWithBodyNoResponseAsync<TRequest>(string path, TRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync(BuildUrl(path), request);
 
             if (response.IsSuccessStatusCode)
             {

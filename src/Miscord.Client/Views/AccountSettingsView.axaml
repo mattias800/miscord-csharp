@@ -1,0 +1,158 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Miscord.Client.ViewModels"
+             x:Class="Miscord.Client.Views.AccountSettingsView"
+             x:DataType="vm:AccountSettingsViewModel">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="32" MaxWidth="600">
+            <!-- Header -->
+            <TextBlock Text="My Account"
+                       FontSize="20"
+                       FontWeight="Bold"
+                       Foreground="White"/>
+
+            <!-- Change Password Section -->
+            <StackPanel Spacing="16">
+                <TextBlock Text="CHANGE PASSWORD"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           Foreground="#72767d"/>
+
+                <StackPanel Spacing="8">
+                    <TextBlock Text="CURRENT PASSWORD"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="#b9bbbe"/>
+                    <TextBox Text="{Binding CurrentPassword}"
+                             PasswordChar="*"
+                             Background="#202225"
+                             Foreground="White"
+                             BorderThickness="0"
+                             CornerRadius="4"
+                             Padding="12"
+                             Width="300"
+                             HorizontalAlignment="Left"/>
+                </StackPanel>
+
+                <StackPanel Spacing="8">
+                    <TextBlock Text="NEW PASSWORD"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="#b9bbbe"/>
+                    <TextBox Text="{Binding NewPassword}"
+                             PasswordChar="*"
+                             Watermark="Min 8 characters"
+                             Background="#202225"
+                             Foreground="White"
+                             BorderThickness="0"
+                             CornerRadius="4"
+                             Padding="12"
+                             Width="300"
+                             HorizontalAlignment="Left"/>
+                </StackPanel>
+
+                <StackPanel Spacing="8">
+                    <TextBlock Text="CONFIRM NEW PASSWORD"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="#b9bbbe"/>
+                    <TextBox Text="{Binding ConfirmPassword}"
+                             PasswordChar="*"
+                             Background="#202225"
+                             Foreground="White"
+                             BorderThickness="0"
+                             CornerRadius="4"
+                             Padding="12"
+                             Width="300"
+                             HorizontalAlignment="Left"/>
+                </StackPanel>
+
+                <TextBlock Text="{Binding PasswordMessage}"
+                           IsVisible="{Binding PasswordMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           FontSize="13"
+                           TextWrapping="Wrap"
+                           Classes.error="{Binding PasswordMessageIsError}"
+                           Classes.success="{Binding !PasswordMessageIsError}">
+                    <TextBlock.Styles>
+                        <Style Selector="TextBlock.success">
+                            <Setter Property="Foreground" Value="#43b581"/>
+                        </Style>
+                        <Style Selector="TextBlock.error">
+                            <Setter Property="Foreground" Value="#f04747"/>
+                        </Style>
+                    </TextBlock.Styles>
+                </TextBlock>
+
+                <Button Command="{Binding ChangePasswordCommand}"
+                        Content="Change Password"
+                        Background="#5865f2"
+                        Foreground="White"
+                        Padding="16,8"
+                        CornerRadius="4"
+                        FontWeight="SemiBold"
+                        HorizontalAlignment="Left"
+                        IsEnabled="{Binding !IsChangingPassword}"/>
+            </StackPanel>
+
+            <!-- Divider -->
+            <Rectangle Height="1" Fill="#42464d"/>
+
+            <!-- Delete Account Section -->
+            <StackPanel Spacing="16">
+                <TextBlock Text="DELETE ACCOUNT"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           Foreground="#f04747"/>
+
+                <TextBlock Text="Deleting your account is permanent. All your data will be removed and cannot be recovered."
+                           FontSize="14"
+                           Foreground="#b9bbbe"
+                           TextWrapping="Wrap"/>
+
+                <TextBlock Text="{Binding DeleteAccountError}"
+                           Foreground="#f04747"
+                           FontSize="13"
+                           IsVisible="{Binding DeleteAccountError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           TextWrapping="Wrap"/>
+
+                <!-- Delete confirmation panel -->
+                <Panel>
+                    <Button Command="{Binding ShowDeleteConfirmationCommand}"
+                            Content="Delete Account"
+                            Background="#f04747"
+                            Foreground="White"
+                            Padding="16,8"
+                            CornerRadius="4"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Left"
+                            IsVisible="{Binding !ShowDeleteConfirmation}"/>
+
+                    <StackPanel IsVisible="{Binding ShowDeleteConfirmation}" Spacing="12">
+                        <TextBlock Text="Are you sure you want to delete your account?"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Foreground="#f04747"/>
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <Button Command="{Binding DeleteAccountCommand}"
+                                    Content="Yes, Delete My Account"
+                                    Background="#f04747"
+                                    Foreground="White"
+                                    Padding="16,8"
+                                    CornerRadius="4"
+                                    FontWeight="SemiBold"
+                                    IsEnabled="{Binding !IsDeletingAccount}"/>
+                            <Button Command="{Binding CancelDeleteCommand}"
+                                    Content="Cancel"
+                                    Background="#4f545c"
+                                    Foreground="White"
+                                    Padding="16,8"
+                                    CornerRadius="4"
+                                    FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Panel>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

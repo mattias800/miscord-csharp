@@ -74,6 +74,20 @@
                          Padding="12"/>
             </StackPanel>
 
+            <StackPanel Spacing="8">
+                <TextBlock Text="INVITE CODE"
+                           FontSize="12"
+                           FontWeight="Bold"
+                           Foreground="#b9bbbe"/>
+                <TextBox Text="{Binding InviteCode}"
+                         Watermark="Enter invite code"
+                         Background="#202225"
+                         Foreground="White"
+                         BorderThickness="0"
+                         CornerRadius="4"
+                         Padding="12"/>
+            </StackPanel>
+
             <TextBlock Text="{Binding ErrorMessage}"
                        Foreground="#f04747"
                        FontSize="14"

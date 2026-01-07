@@ -14,6 +14,7 @@ public sealed class MiscordDbContext : DbContext
     public DbSet<DirectMessage> DirectMessages => Set<DirectMessage>();
     public DbSet<UserCommunity> UserCommunities => Set<UserCommunity>();
     public DbSet<VoiceParticipant> VoiceParticipants => Set<VoiceParticipant>();
+    public DbSet<ServerInvite> ServerInvites => Set<ServerInvite>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -105,5 +106,24 @@ public sealed class MiscordDbContext : DbContext
             .WithMany(c => c.VoiceParticipants)
             .HasForeignKey(vp => vp.ChannelId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // ServerInvite configuration
+        modelBuilder.Entity<ServerInvite>()
+            .HasKey(si => si.Id);
+        modelBuilder.Entity<ServerInvite>()
+            .HasIndex(si => si.Code)
+            .IsUnique();
+        modelBuilder.Entity<ServerInvite>()
+            .HasOne(si => si.CreatedBy)
+            .WithMany()
+            .HasForeignKey(si => si.CreatedById)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // User.InvitedBy self-referential relationship
+        modelBuilder.Entity<User>()
+            .HasOne(u => u.InvitedBy)
+            .WithMany()
+            .HasForeignKey(u => u.InvitedById)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

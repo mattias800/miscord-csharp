@@ -3,14 +3,16 @@ using Miscord.Shared.Models;
 namespace Miscord.Client.Services;
 
 // Auth Models
-public record RegisterRequest(string Username, string Email, string Password);
+public record RegisterRequest(string Username, string Email, string Password, string InviteCode);
 public record LoginRequest(string Email, string Password);
 public record RefreshTokenRequest(string RefreshToken);
+public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 
 public record AuthResponse(
     Guid UserId,
     string Username,
     string Email,
+    bool IsServerAdmin,
     string AccessToken,
     string RefreshToken,
     DateTime ExpiresAt
@@ -23,8 +25,35 @@ public record UserProfileResponse(
     string? Avatar,
     string? Status,
     bool IsOnline,
+    bool IsServerAdmin,
     DateTime CreatedAt
 );
+
+// Admin Models
+public record CreateInviteRequest(int MaxUses = 0, DateTime? ExpiresAt = null);
+
+public record ServerInviteResponse(
+    Guid Id,
+    string Code,
+    int MaxUses,
+    int CurrentUses,
+    DateTime? ExpiresAt,
+    bool IsRevoked,
+    string? CreatedByUsername,
+    DateTime CreatedAt
+);
+
+public record AdminUserResponse(
+    Guid Id,
+    string Username,
+    string Email,
+    bool IsServerAdmin,
+    bool IsOnline,
+    DateTime CreatedAt,
+    string? InvitedByUsername
+);
+
+public record SetAdminStatusRequest(bool IsAdmin);
 
 // Community Models
 public record CommunityResponse(

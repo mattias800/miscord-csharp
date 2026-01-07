@@ -73,6 +73,7 @@ builder.Services.AddAuthorization();
 
 // Add services
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IServerInviteService, ServerInviteService>();
 builder.Services.AddScoped<IDirectMessageService, DirectMessageService>();
 builder.Services.AddScoped<ICommunityService, CommunityService>();
 builder.Services.AddScoped<IChannelService, ChannelService>();

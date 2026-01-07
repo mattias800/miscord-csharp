@@ -69,9 +69,19 @@ public class MainWindowViewModel : ViewModelBase
             // Login failed - maybe user doesn't exist, try to register
             Console.WriteLine($"Dev mode: login failed ({loginResult.Error}), trying to register...");
 
+            // Get bootstrap invite code
+            var serverInfo = await _apiClient.GetServerInfoAsync();
+            var inviteCode = serverInfo.Data?.BootstrapInviteCode ?? "";
+            if (string.IsNullOrEmpty(inviteCode))
+            {
+                Console.WriteLine($"Dev mode: no bootstrap invite code available");
+                CurrentView = CreateServerConnectionViewModel();
+                return;
+            }
+
             // Extract username from email (before @)
             var username = config.Email.Split('@')[0];
-            var registerResult = await _apiClient.RegisterAsync(username, config.Email, config.Password);
+            var registerResult = await _apiClient.RegisterAsync(username, config.Email, config.Password, inviteCode);
 
             if (registerResult.Success && registerResult.Data is not null)
             {
@@ -167,6 +177,7 @@ public class MainWindowViewModel : ViewModelBase
                 UserId: profile.Id,
                 Username: profile.Username,
                 Email: profile.Email,
+                IsServerAdmin: profile.IsServerAdmin,
                 AccessToken: server.AccessToken!,
                 RefreshToken: server.RefreshToken ?? "",
                 ExpiresAt: DateTime.UtcNow.AddHours(1)
@@ -291,6 +302,7 @@ public class MainWindowViewModel : ViewModelBase
                 UserId: profile.Id,
                 Username: profile.Username,
                 Email: profile.Email,
+                IsServerAdmin: profile.IsServerAdmin,
                 AccessToken: server.AccessToken!,
                 RefreshToken: server.RefreshToken ?? "",
                 ExpiresAt: DateTime.UtcNow.AddHours(1) // We don't know exact expiry
@@ -349,7 +361,8 @@ public class MainWindowViewModel : ViewModelBase
         return new RegisterViewModel(
             _apiClient,
             onRegisterSuccess: OnAuthSuccess,
-            onSwitchToLogin: () => CurrentView = CreateLoginViewModel(_currentServerInfo?.AllowRegistration ?? true)
+            onSwitchToLogin: () => CurrentView = CreateLoginViewModel(_currentServerInfo?.AllowRegistration ?? true),
+            initialInviteCode: _currentServerInfo?.BootstrapInviteCode
         );
     }
 
@@ -387,7 +400,10 @@ public class MainWindowViewModel : ViewModelBase
             onClose: () => OnAuthSuccess(CurrentUser),
             settingsStore: _settingsStore,
             audioDeviceService: _audioDeviceService,
-            videoDeviceService: _videoDeviceService
+            videoDeviceService: _videoDeviceService,
+            apiClient: _apiClient,
+            onAccountDeleted: OnLogout,
+            isServerAdmin: CurrentUser.IsServerAdmin
         );
     }
 

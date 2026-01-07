@@ -15,15 +15,22 @@ public sealed class AuthService : IAuthService
 {
     private readonly MiscordDbContext _db;
     private readonly JwtSettings _jwtSettings;
+    private readonly IServerInviteService _inviteService;
 
-    public AuthService(MiscordDbContext db, IOptions<JwtSettings> jwtSettings)
+    public AuthService(MiscordDbContext db, IOptions<JwtSettings> jwtSettings, IServerInviteService inviteService)
     {
         _db = db;
         _jwtSettings = jwtSettings.Value;
+        _inviteService = inviteService;
     }
 
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
     {
+        // Validate invite code first
+        var invite = await _inviteService.ValidateInviteCodeAsync(request.InviteCode, cancellationToken);
+        if (invite == null)
+            throw new InvalidOperationException("Invalid or expired invite code.");
+
         var normalizedEmail = request.Email.ToLowerInvariant();
 
         if (await _db.Users.AnyAsync(u => u.Email == normalizedEmail, cancellationToken))
@@ -32,16 +39,27 @@ public sealed class AuthService : IAuthService
         if (await _db.Users.AnyAsync(u => u.Username == request.Username, cancellationToken))
             throw new InvalidOperationException("Username is already taken.");
 
+        // Check if this will be the first user (server admin)
+        var isFirstUser = !await _inviteService.HasAnyUsersAsync(cancellationToken);
+
+        // Get inviter ID (who created the invite)
+        var inviterId = await _inviteService.GetInviterIdAsync(request.InviteCode, cancellationToken);
+
         var user = new User
         {
             Username = request.Username,
             Email = normalizedEmail,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-            IsOnline = true
+            IsOnline = true,
+            IsServerAdmin = isFirstUser,  // First user becomes server admin
+            InvitedById = inviterId
         };
 
         _db.Users.Add(user);
         await _db.SaveChangesAsync(cancellationToken);
+
+        // Mark invite as used
+        await _inviteService.UseInviteAsync(request.InviteCode, cancellationToken);
 
         return GenerateTokens(user);
     }
@@ -89,6 +107,7 @@ public sealed class AuthService : IAuthService
             user.Avatar,
             user.Status,
             user.IsOnline,
+            user.IsServerAdmin,
             user.CreatedAt
         );
     }
@@ -122,8 +141,33 @@ public sealed class AuthService : IAuthService
             user.Avatar,
             user.Status,
             user.IsOnline,
+            user.IsServerAdmin,
             user.CreatedAt
         );
+    }
+
+    public async Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request, CancellationToken cancellationToken = default)
+    {
+        var user = await _db.Users.FindAsync([userId], cancellationToken);
+        if (user is null)
+            throw new InvalidOperationException("User not found.");
+
+        if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
+            throw new InvalidOperationException("Current password is incorrect.");
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task DeleteAccountAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var user = await _db.Users.FindAsync([userId], cancellationToken);
+        if (user is null)
+            throw new InvalidOperationException("User not found.");
+
+        _db.Users.Remove(user);
+        await _db.SaveChangesAsync(cancellationToken);
     }
 
     private AuthResponse GenerateTokens(User user)
@@ -136,6 +180,7 @@ public sealed class AuthService : IAuthService
             user.Id,
             user.Username,
             user.Email,
+            user.IsServerAdmin,
             accessToken,
             refreshToken,
             expiresAt
