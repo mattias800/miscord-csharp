@@ -232,25 +232,6 @@ public class WebRtcService : IWebRtcService
         _localUserId = userId;
     }
 
-    // SDL2 P/Invoke for audio init
-    [DllImport("SDL2")]
-    private static extern int SDL_Init(uint flags);
-    private const uint SDL_INIT_AUDIO = 0x00000010;
-
-    private static bool _sdl2AudioInitialized;
-    private static readonly object _sdl2InitLock = new();
-
-    private static void EnsureSdl2AudioInitialized()
-    {
-        if (_sdl2AudioInitialized) return;
-        lock (_sdl2InitLock)
-        {
-            if (_sdl2AudioInitialized) return;
-            SDL_Init(SDL_INIT_AUDIO);
-            _sdl2AudioInitialized = true;
-        }
-    }
-
     private async Task InitializeAudioSourceAsync()
     {
         if (_audioSource != null) return;
@@ -258,7 +239,7 @@ public class WebRtcService : IWebRtcService
         try
         {
             // Ensure SDL2 audio is initialized
-            EnsureSdl2AudioInitialized();
+            NativeLibraryInitializer.EnsureSdl2AudioInitialized();
 
             // Use selected audio input device from settings
             var audioEncoder = new AudioEncoder();
@@ -1587,7 +1568,7 @@ public class WebRtcService : IWebRtcService
         const byte H264PayloadType = 97; // Screen share uses payload type 97 (camera uses 96)
 
         // Find NAL units in the encoded sample (separated by 00 00 00 01 or 00 00 01)
-        var nalUnits = FindH264NalUnits(encodedSample);
+        var nalUnits = H264FrameAssembler.FindNalUnits(encodedSample);
 
         // Update timestamp
         rtpTimestamp += durationRtpUnits;
@@ -1614,74 +1595,6 @@ public class WebRtcService : IWebRtcService
                 SendFuAFragments(nalUnit, rtpTimestamp, isLastNalUnit, H264PayloadType, ref seqNum, MaxRtpPayloadSize);
             }
         }
-    }
-
-    /// <summary>
-    /// Finds H264 NAL units in a byte stream (Annex B format).
-    /// </summary>
-    private List<byte[]> FindH264NalUnits(byte[] data)
-    {
-        var nalUnits = new List<byte[]>();
-        var startIndices = new List<int>();
-
-        // Find all start code positions (00 00 01 or 00 00 00 01)
-        for (int i = 0; i < data.Length - 3; i++)
-        {
-            if (data[i] == 0 && data[i + 1] == 0)
-            {
-                if (data[i + 2] == 1)
-                {
-                    startIndices.Add(i + 3); // 3-byte start code
-                }
-                else if (i < data.Length - 4 && data[i + 2] == 0 && data[i + 3] == 1)
-                {
-                    startIndices.Add(i + 4); // 4-byte start code
-                    i++; // Skip extra byte
-                }
-            }
-        }
-
-        // Extract NAL units between start codes
-        for (int i = 0; i < startIndices.Count; i++)
-        {
-            int start = startIndices[i];
-            int end = (i + 1 < startIndices.Count) ? FindStartCodeBefore(data, startIndices[i + 1]) : data.Length;
-            int length = end - start;
-
-            if (length > 0)
-            {
-                var nalUnit = new byte[length];
-                Array.Copy(data, start, nalUnit, 0, length);
-                nalUnits.Add(nalUnit);
-            }
-        }
-
-        // If no start codes found, treat entire buffer as single NAL unit
-        if (nalUnits.Count == 0 && data.Length > 0)
-        {
-            nalUnits.Add(data);
-        }
-
-        return nalUnits;
-    }
-
-    /// <summary>
-    /// Finds the start of the start code before the given position.
-    /// </summary>
-    private int FindStartCodeBefore(byte[] data, int position)
-    {
-        // Check for 4-byte start code
-        if (position >= 4 && data[position - 4] == 0 && data[position - 3] == 0 &&
-            data[position - 2] == 0 && data[position - 1] == 1)
-        {
-            return position - 4;
-        }
-        // Check for 3-byte start code
-        if (position >= 3 && data[position - 3] == 0 && data[position - 2] == 0 && data[position - 1] == 1)
-        {
-            return position - 3;
-        }
-        return position;
     }
 
     /// <summary>

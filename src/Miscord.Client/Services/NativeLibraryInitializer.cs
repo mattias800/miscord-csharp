@@ -14,6 +14,13 @@ public static class NativeLibraryInitializer
     private static readonly object _ffmpegInitLock = new();
     private static bool _vpxInitialized;
     private static readonly object _vpxInitLock = new();
+    private static bool _sdl2AudioInitialized;
+    private static readonly object _sdl2AudioInitLock = new();
+
+    // SDL2 P/Invoke for audio initialization
+    [DllImport("SDL2")]
+    private static extern int SDL_Init(uint flags);
+    private const uint SDL_INIT_AUDIO = 0x00000010;
 
     // VPX library paths for macOS
     private static readonly string[] VpxPaths =
@@ -147,6 +154,33 @@ public static class NativeLibraryInitializer
     }
 
     /// <summary>
+    /// Ensures SDL2 audio subsystem is initialized.
+    /// Required before using SDL2AudioSource for microphone capture.
+    /// Thread-safe and only runs once.
+    /// </summary>
+    public static void EnsureSdl2AudioInitialized()
+    {
+        if (_sdl2AudioInitialized) return;
+
+        lock (_sdl2AudioInitLock)
+        {
+            if (_sdl2AudioInitialized) return;
+
+            try
+            {
+                SDL_Init(SDL_INIT_AUDIO);
+                _sdl2AudioInitialized = true;
+                Console.WriteLine("NativeLibrary: SDL2 audio initialized");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"NativeLibrary: Failed to initialize SDL2 audio - {ex.Message}");
+                _sdl2AudioInitialized = true; // Mark as attempted
+            }
+        }
+    }
+
+    /// <summary>
     /// Initializes all native libraries required for WebRTC.
     /// Call this once during application startup.
     /// </summary>
@@ -154,5 +188,6 @@ public static class NativeLibraryInitializer
     {
         EnsureFfmpegInitialized();
         EnsureVpxInitialized();
+        EnsureSdl2AudioInitialized();
     }
 }

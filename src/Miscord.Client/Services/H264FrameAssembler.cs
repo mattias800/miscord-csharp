@@ -173,4 +173,77 @@ public class H264FrameAssembler
         _hasReceivedKeyframe = false;
         _droppedFrameCount = 0;
     }
+
+    #region Static NAL Unit Parsing Utilities
+
+    /// <summary>
+    /// Finds H264 NAL units in a byte stream (Annex B format).
+    /// Used for packetization when sending video.
+    /// </summary>
+    public static List<byte[]> FindNalUnits(byte[] data)
+    {
+        var nalUnits = new List<byte[]>();
+        var startIndices = new List<int>();
+
+        // Find all start code positions (00 00 01 or 00 00 00 01)
+        for (int i = 0; i < data.Length - 3; i++)
+        {
+            if (data[i] == 0 && data[i + 1] == 0)
+            {
+                if (data[i + 2] == 1)
+                {
+                    startIndices.Add(i + 3); // 3-byte start code
+                }
+                else if (i < data.Length - 4 && data[i + 2] == 0 && data[i + 3] == 1)
+                {
+                    startIndices.Add(i + 4); // 4-byte start code
+                    i++; // Skip extra byte
+                }
+            }
+        }
+
+        // Extract NAL units between start codes
+        for (int i = 0; i < startIndices.Count; i++)
+        {
+            int start = startIndices[i];
+            int end = (i + 1 < startIndices.Count) ? FindStartCodeBefore(data, startIndices[i + 1]) : data.Length;
+            int length = end - start;
+
+            if (length > 0)
+            {
+                var nalUnit = new byte[length];
+                Array.Copy(data, start, nalUnit, 0, length);
+                nalUnits.Add(nalUnit);
+            }
+        }
+
+        // If no start codes found, treat entire buffer as single NAL unit
+        if (nalUnits.Count == 0 && data.Length > 0)
+        {
+            nalUnits.Add(data);
+        }
+
+        return nalUnits;
+    }
+
+    /// <summary>
+    /// Finds the start of the start code before the given position.
+    /// </summary>
+    private static int FindStartCodeBefore(byte[] data, int position)
+    {
+        // Check for 4-byte start code
+        if (position >= 4 && data[position - 4] == 0 && data[position - 3] == 0 &&
+            data[position - 2] == 0 && data[position - 1] == 1)
+        {
+            return position - 4;
+        }
+        // Check for 3-byte start code
+        if (position >= 3 && data[position - 3] == 0 && data[position - 2] == 0 && data[position - 1] == 1)
+        {
+            return position - 3;
+        }
+        return position;
+    }
+
+    #endregion
 }
