@@ -6,6 +6,7 @@ using Miscord.Server.Data;
 using Miscord.Server.DTOs;
 using Miscord.Server.Services;
 using Miscord.Server.Services.Sfu;
+using Miscord.Shared.Models;
 
 namespace Miscord.Server.Hubs;
 
@@ -482,6 +483,53 @@ public class MiscordHub : Hub
             userId.Value, streamerUserId, channelId);
 
         await Task.CompletedTask;
+    }
+
+    // ==================== Drawing Annotation Methods ====================
+
+    /// <summary>
+    /// Send a drawing annotation to all users viewing a screen share.
+    /// Broadcasts to all users in the voice channel.
+    /// </summary>
+    public async Task SendAnnotation(AnnotationMessage message)
+    {
+        var userId = GetUserId();
+        if (userId is null) return;
+
+        // Get the channel to find its community
+        var channel = await _db.Channels
+            .FirstOrDefaultAsync(c => c.Id == message.ChannelId);
+
+        if (channel is null) return;
+
+        // Broadcast annotation to all users in the voice channel
+        await Clients.Group($"voice:{message.ChannelId}")
+            .SendAsync("ReceiveAnnotation", message);
+
+        _logger.LogDebug("User {UserId} sent annotation ({Action}) for screen share by {SharerUserId} in channel {ChannelId}",
+            userId.Value, message.Action, message.SharerUserId, message.ChannelId);
+    }
+
+    /// <summary>
+    /// Clear all annotations for a screen share session.
+    /// </summary>
+    public async Task ClearAnnotations(Guid channelId, Guid sharerUserId)
+    {
+        var userId = GetUserId();
+        if (userId is null) return;
+
+        var clearMessage = new AnnotationMessage
+        {
+            ChannelId = channelId,
+            SharerUserId = sharerUserId,
+            Action = "clear"
+        };
+
+        await Clients.Group($"voice:{channelId}")
+            .SendAsync("ReceiveAnnotation", clearMessage);
+
+        _logger.LogInformation("User {UserId} cleared annotations for screen share by {SharerUserId} in channel {ChannelId}",
+            userId.Value, sharerUserId, channelId);
     }
 
     // ==================== WebRTC Signaling Methods ====================

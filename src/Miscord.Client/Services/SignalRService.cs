@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR.Client;
+using Miscord.Shared.Models;
 
 namespace Miscord.Client.Services;
 
@@ -31,6 +32,10 @@ public interface ISignalRService : IAsyncDisposable
     // Screen share viewing methods
     Task WatchScreenShareAsync(Guid channelId, Guid streamerUserId);
     Task StopWatchingScreenShareAsync(Guid channelId, Guid streamerUserId);
+
+    // Drawing annotation methods
+    Task SendAnnotationAsync(AnnotationMessage message);
+    Task ClearAnnotationsAsync(Guid channelId, Guid sharerUserId);
 
     // Channel events
     event Action<ChannelResponse>? ChannelCreated;
@@ -71,6 +76,9 @@ public interface ISignalRService : IAsyncDisposable
     // Video stream signaling events
     event Action<VideoStreamStartedEvent>? VideoStreamStarted;
     event Action<VideoStreamStoppedEvent>? VideoStreamStopped;
+
+    // Drawing annotation events
+    event Action<AnnotationMessage>? AnnotationReceived;
 }
 
 public class SignalRService : ISignalRService
@@ -118,6 +126,9 @@ public class SignalRService : ISignalRService
     // Video stream signaling events
     public event Action<VideoStreamStartedEvent>? VideoStreamStarted;
     public event Action<VideoStreamStoppedEvent>? VideoStreamStopped;
+
+    // Drawing annotation events
+    public event Action<AnnotationMessage>? AnnotationReceived;
 
     public async Task ConnectAsync(string baseUrl, string accessToken)
     {
@@ -306,6 +317,21 @@ public class SignalRService : ISignalRService
         Console.WriteLine($"SignalR: Stopped watching screen share from {streamerUserId} in channel {channelId}");
     }
 
+    // Drawing annotation methods
+    public async Task SendAnnotationAsync(AnnotationMessage message)
+    {
+        if (_hubConnection is null || !IsConnected) return;
+        await _hubConnection.InvokeAsync("SendAnnotation", message);
+        Console.WriteLine($"SignalR: Sent annotation ({message.Action}) for screen share by {message.SharerUserId}");
+    }
+
+    public async Task ClearAnnotationsAsync(Guid channelId, Guid sharerUserId)
+    {
+        if (_hubConnection is null || !IsConnected) return;
+        await _hubConnection.InvokeAsync("ClearAnnotations", channelId, sharerUserId);
+        Console.WriteLine($"SignalR: Cleared annotations for screen share by {sharerUserId} in channel {channelId}");
+    }
+
     private void RegisterHandlers()
     {
         if (_hubConnection is null) return;
@@ -458,6 +484,13 @@ public class SignalRService : ISignalRService
         {
             Console.WriteLine($"SignalR: VideoStreamStopped - {e.UserId} stopped {e.StreamType} in channel {e.ChannelId}");
             VideoStreamStopped?.Invoke(e);
+        });
+
+        // Drawing annotation events
+        _hubConnection.On<AnnotationMessage>("ReceiveAnnotation", message =>
+        {
+            Console.WriteLine($"SignalR: ReceiveAnnotation ({message.Action}) for screen share by {message.SharerUserId}");
+            AnnotationReceived?.Invoke(message);
         });
 
         _hubConnection.Reconnecting += error =>
