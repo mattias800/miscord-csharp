@@ -112,7 +112,7 @@ Polish and enhanced functionality:
 - [ ] Use existing pagination API (skip/take)
 - [ ] "Jump to present" button when scrolled up
 - [ ] Loading indicator while fetching
-- [ ] Preserve scroll position when new messages arrive
+- [x] Smart auto-scroll (scroll to new messages only when at bottom, preserve position when reading older messages)
 
 #### 3.4 Message Search
 - [ ] Search within current channel or DM
@@ -214,6 +214,7 @@ Another agent is currently working on server, community, and user account manage
   - [x] Message replies/threading (reply button, preview in messages)
   - [x] Link previews (OpenGraph metadata, YouTube embeds)
   - [x] User mentions (highlight @username in messages)
+  - [x] Smart auto-scroll (preserve position when reading old messages)
 
 ### In Progress
 - [ ] Phase 3: Medium Impact Features
