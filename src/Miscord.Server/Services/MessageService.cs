@@ -15,6 +15,8 @@ public sealed class MessageService : IMessageService
     {
         var messages = await _db.Messages
             .Include(m => m.Author)
+            .Include(m => m.ReplyTo)
+            .ThenInclude(r => r!.Author)
             .Where(m => m.ChannelId == channelId)
             .OrderByDescending(m => m.CreatedAt)
             .Skip(skip)
@@ -24,7 +26,7 @@ public sealed class MessageService : IMessageService
         return messages.Select(ToMessageResponse).Reverse();
     }
 
-    public async Task<MessageResponse> SendMessageAsync(Guid channelId, Guid authorId, string content, CancellationToken cancellationToken = default)
+    public async Task<MessageResponse> SendMessageAsync(Guid channelId, Guid authorId, string content, Guid? replyToId = null, CancellationToken cancellationToken = default)
     {
         var author = await _db.Users.FindAsync([authorId], cancellationToken)
             ?? throw new InvalidOperationException("User not found.");
@@ -32,17 +34,28 @@ public sealed class MessageService : IMessageService
         var channel = await _db.Channels.FindAsync([channelId], cancellationToken)
             ?? throw new InvalidOperationException("Channel not found.");
 
+        Message? replyTo = null;
+        if (replyToId.HasValue)
+        {
+            replyTo = await _db.Messages
+                .Include(m => m.Author)
+                .FirstOrDefaultAsync(m => m.Id == replyToId.Value && m.ChannelId == channelId, cancellationToken);
+            // Silently ignore invalid reply references
+        }
+
         var message = new Message
         {
             Content = content,
             AuthorId = authorId,
-            ChannelId = channelId
+            ChannelId = channelId,
+            ReplyToId = replyTo?.Id
         };
 
         _db.Messages.Add(message);
         await _db.SaveChangesAsync(cancellationToken);
 
         message.Author = author;
+        message.ReplyTo = replyTo;
         return ToMessageResponse(message);
     }
 
@@ -93,6 +106,13 @@ public sealed class MessageService : IMessageService
         m.ChannelId,
         m.CreatedAt,
         m.UpdatedAt,
-        m.IsEdited
+        m.IsEdited,
+        m.ReplyToId,
+        m.ReplyTo is not null ? new ReplyPreview(
+            m.ReplyTo.Id,
+            m.ReplyTo.Content.Length > 100 ? m.ReplyTo.Content[..100] + "..." : m.ReplyTo.Content,
+            m.ReplyTo.AuthorId,
+            m.ReplyTo.Author?.Username ?? "Unknown"
+        ) : null
     );
 }

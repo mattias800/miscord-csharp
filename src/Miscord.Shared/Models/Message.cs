@@ -11,4 +11,10 @@ public class Message
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public bool IsEdited => UpdatedAt > CreatedAt;
+
+    /// <summary>
+    /// Optional reference to the message this is replying to
+    /// </summary>
+    public Guid? ReplyToId { get; set; }
+    public Message? ReplyTo { get; set; }
 }

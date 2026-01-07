@@ -388,6 +388,7 @@
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
                                                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
                                                     <TextBlock Text="#"
@@ -399,7 +400,20 @@
                                                                FontSize="15"
                                                                VerticalAlignment="Center"/>
                                                 </StackPanel>
-                                                <Button Grid.Column="1"
+                                                <!-- Unread badge -->
+                                                <Border Grid.Column="1"
+                                                        Background="#ed4245"
+                                                        CornerRadius="8"
+                                                        Padding="5,1"
+                                                        Margin="4,0"
+                                                        VerticalAlignment="Center"
+                                                        IsVisible="{Binding UnreadCount, Converter={x:Static conv:IntGreaterThanZeroConverter.Instance}}">
+                                                    <TextBlock Text="{Binding UnreadCount}"
+                                                               Foreground="White"
+                                                               FontSize="11"
+                                                               FontWeight="SemiBold"/>
+                                                </Border>
+                                                <Button Grid.Column="2"
                                                         Command="{Binding #TextChannelsList.DataContext.StartEditChannelCommand}"
                                                         CommandParameter="{Binding}"
                                                         Background="Transparent"
@@ -588,13 +602,21 @@
 
                     <!-- DM Message Input -->
                     <Border DockPanel.Dock="Bottom" Padding="16" Background="#36393f">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <!-- DM Typing Indicator -->
+                            <TextBlock Text="{Binding DMTypingIndicatorText}"
+                                       IsVisible="{Binding IsDMTyping}"
+                                       Foreground="#72767d"
+                                       FontSize="12"
+                                       FontStyle="Italic"
+                                       Margin="0,0,0,4"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
 
-                            <TextBox x:Name="DMMessageInputBox"
+                                <TextBox x:Name="DMMessageInputBox"
                                      Grid.Column="0"
                                      Text="{Binding DMMessageInput}"
                                      Watermark="{Binding DMRecipientName, StringFormat='Message @{0}'}"
@@ -619,7 +641,8 @@
                                     <TextBlock Text="..." IsVisible="{Binding IsLoading}"/>
                                 </Panel>
                             </Button>
-                        </Grid>
+                            </Grid>
+                        </StackPanel>
                     </Border>
 
                     <!-- DM Messages List -->
@@ -1005,6 +1028,51 @@
                                        Margin="4,0,0,0"/>
                         </StackPanel>
 
+                        <!-- Reply Preview Banner -->
+                        <Border Background="#2f3136"
+                                CornerRadius="4"
+                                Padding="12,8"
+                                Margin="0,0,0,8"
+                                IsVisible="{Binding IsReplying}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="↩" Foreground="#5865f2" FontSize="14" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Replying to" Foreground="#72767d" FontSize="13" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding ReplyingToMessage.AuthorUsername}"
+                                               Foreground="#5865f2"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding ReplyingToMessage.Content}"
+                                               Foreground="#72767d"
+                                               FontSize="13"
+                                               TextTrimming="CharacterEllipsis"
+                                               MaxWidth="350"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Button Grid.Column="1"
+                                        Command="{Binding CancelReplyCommand}"
+                                        Background="Transparent"
+                                        Padding="4"
+                                        Cursor="Hand"
+                                        ToolTip.Tip="Cancel Reply">
+                                    <TextBlock Text="✕" Foreground="#72767d" FontSize="14"/>
+                                </Button>
+                            </Grid>
+                        </Border>
+
+                        <!-- Typing Indicator -->
+                        <TextBlock Text="{Binding TypingIndicatorText}"
+                                   IsVisible="{Binding IsAnyoneTyping}"
+                                   Foreground="#72767d"
+                                   FontSize="12"
+                                   FontStyle="Italic"
+                                   Margin="0,0,0,4"/>
+
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -1090,6 +1158,30 @@
 
                                         <!-- Message Content -->
                                         <StackPanel Grid.Column="1">
+                                            <!-- Reply Preview (if this message is a reply) -->
+                                            <Border Background="#2f3136"
+                                                    CornerRadius="4"
+                                                    Padding="8,4"
+                                                    Margin="0,0,0,4"
+                                                    BorderBrush="#5865f2"
+                                                    BorderThickness="2,0,0,0"
+                                                    IsVisible="{Binding ReplyTo, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <TextBlock Text="↩" Foreground="#5865f2" FontSize="12" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding ReplyTo.AuthorUsername}"
+                                                               Foreground="#5865f2"
+                                                               FontSize="12"
+                                                               FontWeight="SemiBold"
+                                                               VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding ReplyTo.Content}"
+                                                               Foreground="#72767d"
+                                                               FontSize="12"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               MaxWidth="400"
+                                                               VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Border>
+
                                             <StackPanel Orientation="Horizontal" Spacing="8">
                                                 <TextBlock Text="{Binding AuthorUsername}"
                                                            Foreground="White"
@@ -1111,8 +1203,16 @@
                                                                     Margin="0,4,0,0"/>
                                         </StackPanel>
 
-                                        <!-- Edit/Delete Buttons (only show for own messages) -->
+                                        <!-- Reply/Edit/Delete Buttons -->
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Top">
+                                            <Button Command="{Binding #MessagesList.DataContext.ReplyToMessageCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    Background="Transparent"
+                                                    Padding="4"
+                                                    Cursor="Hand"
+                                                    ToolTip.Tip="Reply">
+                                                <TextBlock Text="↩" Foreground="#72767d" FontSize="12"/>
+                                            </Button>
                                             <Button Command="{Binding #MessagesList.DataContext.StartEditMessageCommand}"
                                                     CommandParameter="{Binding}"
                                                     Background="Transparent"

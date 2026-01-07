@@ -22,6 +22,25 @@ public class LinkRun : Run
     }
 }
 
+/// <summary>
+/// A Run that represents a @mention (user mention).
+/// </summary>
+public class MentionRun : Run
+{
+    private static readonly IBrush MentionForeground = new SolidColorBrush(Color.Parse("#dee0fc"));
+    private static readonly IBrush MentionBackground = new SolidColorBrush(Color.Parse("rgba(88, 101, 242, 0.3)"));
+
+    public string Username { get; }
+
+    public MentionRun(string username) : base($"@{username}")
+    {
+        Username = username;
+        Foreground = MentionForeground;
+        Background = MentionBackground;
+        FontWeight = FontWeight.Medium;
+    }
+}
+
 public static class MarkdownParser
 {
     private static readonly IBrush CodeBackground = new SolidColorBrush(Color.Parse("#2f3136"));
@@ -40,6 +59,9 @@ public static class MarkdownParser
     private static readonly Regex UrlRegex = new(
         @"(https?://[^\s<>\[\]""'`]+|www\.[^\s<>\[\]""'`]+)",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    // Mention regex - matches @username (alphanumeric and underscore, 1-32 chars)
+    private static readonly Regex MentionRegex = new(@"@(\w{1,32})", RegexOptions.Compiled);
 
     // Block-level patterns
     private static readonly Regex HeadingRegex = new(@"^(#{1,6})\s+(.+)$", RegexOptions.Compiled);
@@ -333,16 +355,26 @@ public static class MarkdownParser
     }
 
     /// <summary>
-    /// Adds text to inlines, converting URLs to clickable links.
+    /// Adds text to inlines, converting URLs to clickable links and @mentions to highlighted spans.
     /// </summary>
     private static void AddTextWithUrls(List<Inline> inlines, string text, FontWeight weight, FontStyle style)
     {
         if (string.IsNullOrEmpty(text)) return;
 
+        // Combine URL and mention matches and process them in order
+        var urlMatches = UrlRegex.Matches(text).Cast<Match>().Select(m => (m, IsUrl: true));
+        var mentionMatches = MentionRegex.Matches(text).Cast<Match>().Select(m => (m, IsUrl: false));
+        var allMatches = urlMatches.Concat(mentionMatches)
+            .OrderBy(x => x.m.Index)
+            .ToList();
+
         var lastIndex = 0;
-        foreach (Match match in UrlRegex.Matches(text))
+        foreach (var (match, isUrl) in allMatches)
         {
-            // Add text before the URL
+            // Skip if this match overlaps with a previous one
+            if (match.Index < lastIndex) continue;
+
+            // Add text before the match
             if (match.Index > lastIndex)
             {
                 var beforeText = text.Substring(lastIndex, match.Index - lastIndex);
@@ -354,19 +386,27 @@ public static class MarkdownParser
                 });
             }
 
-            // Add the URL as a clickable link
-            var url = match.Value;
-            // Ensure URL has protocol for the stored value
-            var fullUrl = url.StartsWith("www.", StringComparison.OrdinalIgnoreCase)
-                ? "https://" + url
-                : url;
-
-            inlines.Add(new LinkRun(url, fullUrl));
+            if (isUrl)
+            {
+                // Add the URL as a clickable link
+                var url = match.Value;
+                // Ensure URL has protocol for the stored value
+                var fullUrl = url.StartsWith("www.", StringComparison.OrdinalIgnoreCase)
+                    ? "https://" + url
+                    : url;
+                inlines.Add(new LinkRun(url, fullUrl));
+            }
+            else
+            {
+                // Add the mention as a highlighted span
+                var username = match.Groups[1].Value;
+                inlines.Add(new MentionRun(username));
+            }
 
             lastIndex = match.Index + match.Length;
         }
 
-        // Add remaining text after the last URL
+        // Add remaining text after the last match
         if (lastIndex < text.Length)
         {
             var afterText = text.Substring(lastIndex);
@@ -379,7 +419,7 @@ public static class MarkdownParser
         }
         else if (lastIndex == 0)
         {
-            // No URLs found, add the whole text
+            // No matches found, add the whole text
             inlines.Add(new Run(text)
             {
                 Foreground = TextForeground,

@@ -39,10 +39,11 @@ public interface IApiClient
     Task<ApiResult<List<ChannelResponse>>> GetChannelsAsync(Guid communityId);
     Task<ApiResult<ChannelResponse>> CreateChannelAsync(Guid communityId, string name, string? topic, ChannelType type = ChannelType.Text);
     Task<ApiResult<ChannelResponse>> UpdateChannelAsync(Guid communityId, Guid channelId, string? name, string? topic);
+    Task<ApiResult<bool>> MarkChannelAsReadAsync(Guid communityId, Guid channelId);
 
     // Messages
     Task<ApiResult<List<MessageResponse>>> GetMessagesAsync(Guid channelId, int skip = 0, int take = 50);
-    Task<ApiResult<MessageResponse>> SendMessageAsync(Guid channelId, string content);
+    Task<ApiResult<MessageResponse>> SendMessageAsync(Guid channelId, string content, Guid? replyToId = null);
     Task<ApiResult<MessageResponse>> UpdateMessageAsync(Guid channelId, Guid messageId, string content);
     Task<ApiResult<bool>> DeleteMessageAsync(Guid channelId, Guid messageId);
 

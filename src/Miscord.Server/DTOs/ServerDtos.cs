@@ -32,7 +32,8 @@ public record ChannelResponse(
     Guid CommunityId,
     ChannelType Type,
     int Position,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    int UnreadCount = 0
 );
 
 public record CreateChannelRequest(
@@ -56,10 +57,25 @@ public record MessageResponse(
     Guid ChannelId,
     DateTime CreatedAt,
     DateTime UpdatedAt,
-    bool IsEdited
+    bool IsEdited,
+    Guid? ReplyToId = null,
+    ReplyPreview? ReplyTo = null
 );
 
-public record SendMessageRequest([Required, StringLength(2000, MinimumLength = 1)] string Content);
+/// <summary>
+/// Preview of the message being replied to
+/// </summary>
+public record ReplyPreview(
+    Guid Id,
+    string Content,
+    Guid AuthorId,
+    string AuthorUsername
+);
+
+public record SendMessageRequest(
+    [Required, StringLength(2000, MinimumLength = 1)] string Content,
+    Guid? ReplyToId = null
+);
 
 public record UpdateMessageRequest([Required, StringLength(2000, MinimumLength = 1)] string Content);
 
@@ -82,3 +98,8 @@ public record ChannelDeletedEvent(Guid ChannelId);
 public record MessageDeletedEvent(Guid ChannelId, Guid MessageId);
 
 public record UserOfflineEvent(Guid UserId);
+
+// Typing indicator events
+public record TypingEvent(Guid ChannelId, Guid UserId, string Username);
+
+public record DMTypingEvent(Guid UserId, string Username);

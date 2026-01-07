@@ -247,17 +247,22 @@ public class ApiClient : IApiClient
             new UpdateChannelRequest(name, topic));
     }
 
+    public async Task<ApiResult<bool>> MarkChannelAsReadAsync(Guid communityId, Guid channelId)
+    {
+        return await PostEmptyAsync($"/api/communities/{communityId}/channels/{channelId}/read");
+    }
+
     // Message methods
     public async Task<ApiResult<List<MessageResponse>>> GetMessagesAsync(Guid channelId, int skip = 0, int take = 50)
     {
         return await GetAsync<List<MessageResponse>>($"/api/channels/{channelId}/messages?skip={skip}&take={take}");
     }
 
-    public async Task<ApiResult<MessageResponse>> SendMessageAsync(Guid channelId, string content)
+    public async Task<ApiResult<MessageResponse>> SendMessageAsync(Guid channelId, string content, Guid? replyToId = null)
     {
         return await PostAsync<SendMessageRequest, MessageResponse>(
             $"/api/channels/{channelId}/messages",
-            new SendMessageRequest(content));
+            new SendMessageRequest(content, replyToId));
     }
 
     public async Task<ApiResult<MessageResponse>> UpdateMessageAsync(Guid channelId, Guid messageId, string content)

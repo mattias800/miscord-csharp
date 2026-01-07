@@ -15,6 +15,7 @@ public sealed class MiscordDbContext : DbContext
     public DbSet<UserCommunity> UserCommunities => Set<UserCommunity>();
     public DbSet<VoiceParticipant> VoiceParticipants => Set<VoiceParticipant>();
     public DbSet<ServerInvite> ServerInvites => Set<ServerInvite>();
+    public DbSet<ChannelReadState> ChannelReadStates => Set<ChannelReadState>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -61,6 +62,11 @@ public sealed class MiscordDbContext : DbContext
             .WithMany(c => c.Messages)
             .HasForeignKey(m => m.ChannelId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Message>()
+            .HasOne(m => m.ReplyTo)
+            .WithMany()
+            .HasForeignKey(m => m.ReplyToId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         // DirectMessage configuration
         modelBuilder.Entity<DirectMessage>()
@@ -125,5 +131,27 @@ public sealed class MiscordDbContext : DbContext
             .WithMany()
             .HasForeignKey(u => u.InvitedById)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // ChannelReadState configuration
+        modelBuilder.Entity<ChannelReadState>()
+            .HasKey(crs => crs.Id);
+        modelBuilder.Entity<ChannelReadState>()
+            .HasOne(crs => crs.User)
+            .WithMany(u => u.ChannelReadStates)
+            .HasForeignKey(crs => crs.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ChannelReadState>()
+            .HasOne(crs => crs.Channel)
+            .WithMany(c => c.ChannelReadStates)
+            .HasForeignKey(crs => crs.ChannelId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ChannelReadState>()
+            .HasOne(crs => crs.LastReadMessage)
+            .WithMany()
+            .HasForeignKey(crs => crs.LastReadMessageId)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<ChannelReadState>()
+            .HasIndex(crs => new { crs.UserId, crs.ChannelId })
+            .IsUnique();
     }
 }

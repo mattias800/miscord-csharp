@@ -38,7 +38,7 @@ public class ChannelsController : ControllerBase
         if (!await _memberService.IsMemberAsync(communityId, userId.Value, cancellationToken))
             return Forbid();
 
-        var channels = await _channelService.GetChannelsAsync(communityId, cancellationToken);
+        var channels = await _channelService.GetChannelsAsync(communityId, userId.Value, cancellationToken);
         return Ok(channels);
     }
 
@@ -144,6 +144,29 @@ public class ChannelsController : ControllerBase
         }
     }
 
+    [HttpPost("{channelId:guid}/read")]
+    public async Task<IActionResult> MarkChannelAsRead(
+        Guid communityId,
+        Guid channelId,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        if (userId is null) return Unauthorized();
+
+        if (!await _memberService.IsMemberAsync(communityId, userId.Value, cancellationToken))
+            return Forbid();
+
+        try
+        {
+            await _channelService.MarkChannelAsReadAsync(channelId, userId.Value, cancellationToken);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+    }
+
     private Guid? GetCurrentUserId()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -197,7 +220,7 @@ public class MessagesController : ControllerBase
 
         try
         {
-            var message = await _messageService.SendMessageAsync(channelId, userId.Value, request.Content, cancellationToken);
+            var message = await _messageService.SendMessageAsync(channelId, userId.Value, request.Content, request.ReplyToId, cancellationToken);
             await _hubContext.Clients.Group($"channel:{channelId}")
                 .SendAsync("ReceiveChannelMessage", message, cancellationToken);
             return Ok(message);

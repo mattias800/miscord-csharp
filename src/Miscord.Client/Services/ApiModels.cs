@@ -77,7 +77,8 @@ public record ChannelResponse(
     Guid CommunityId,
     ChannelType Type,
     int Position,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    int UnreadCount = 0
 );
 
 public record CreateChannelRequest(string Name, string? Topic, ChannelType Type = ChannelType.Text);
@@ -93,10 +94,22 @@ public record MessageResponse(
     Guid ChannelId,
     DateTime CreatedAt,
     DateTime UpdatedAt,
-    bool IsEdited
+    bool IsEdited,
+    Guid? ReplyToId = null,
+    ReplyPreview? ReplyTo = null
 );
 
-public record SendMessageRequest(string Content);
+/// <summary>
+/// Preview of the message being replied to
+/// </summary>
+public record ReplyPreview(
+    Guid Id,
+    string Content,
+    Guid AuthorId,
+    string AuthorUsername
+);
+
+public record SendMessageRequest(string Content, Guid? ReplyToId = null);
 public record UpdateMessageRequest(string Content);
 
 // Member Models

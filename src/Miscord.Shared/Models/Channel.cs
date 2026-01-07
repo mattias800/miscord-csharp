@@ -14,6 +14,7 @@ public class Channel
 
     public ICollection<Message> Messages { get; set; } = new List<Message>();
     public ICollection<VoiceParticipant> VoiceParticipants { get; set; } = new List<VoiceParticipant>();
+    public ICollection<ChannelReadState> ChannelReadStates { get; set; } = new List<ChannelReadState>();
 }
 
 public enum ChannelType

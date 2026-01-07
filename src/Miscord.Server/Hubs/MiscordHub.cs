@@ -191,6 +191,58 @@ public class MiscordHub : Hub
         return onlineUsers;
     }
 
+    // ==================== Typing Indicator Methods ====================
+
+    /// <summary>
+    /// Notifies other users in a channel that the current user is typing.
+    /// </summary>
+    public async Task SendTyping(Guid channelId)
+    {
+        var userId = GetUserId();
+        if (userId is null) return;
+
+        var user = await _db.Users.FindAsync(userId.Value);
+        if (user is null) return;
+
+        // Get the channel to verify membership and get community
+        var channel = await _db.Channels
+            .FirstOrDefaultAsync(c => c.Id == channelId);
+        if (channel is null) return;
+
+        var isMember = await _db.UserCommunities
+            .AnyAsync(uc => uc.UserId == userId.Value && uc.CommunityId == channel.CommunityId);
+        if (!isMember) return;
+
+        // Broadcast typing event to others in the channel
+        await Clients.OthersInGroup($"channel:{channelId}")
+            .SendAsync("UserTyping", new TypingEvent(channelId, userId.Value, user.Username));
+    }
+
+    /// <summary>
+    /// Notifies a user that someone is typing in a DM conversation.
+    /// </summary>
+    public async Task SendDMTyping(Guid recipientUserId)
+    {
+        var userId = GetUserId();
+        if (userId is null) return;
+
+        var user = await _db.Users.FindAsync(userId.Value);
+        if (user is null) return;
+
+        // Find recipient's connection
+        string? targetConnectionId;
+        lock (Lock)
+        {
+            UserConnections.TryGetValue(recipientUserId, out targetConnectionId);
+        }
+
+        if (targetConnectionId is not null)
+        {
+            await Clients.Client(targetConnectionId)
+                .SendAsync("DMUserTyping", new DMTypingEvent(userId.Value, user.Username));
+        }
+    }
+
     // ==================== Voice Channel Methods ====================
 
     public async Task<VoiceParticipantResponse?> JoinVoiceChannel(Guid channelId)

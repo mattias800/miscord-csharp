@@ -48,25 +48,25 @@ These improvements require minimal changes and can be implemented quickly:
 
 ---
 
-### Phase 2: High Impact Features
+### Phase 2: High Impact Features ✅ COMPLETED
 
 These features significantly improve the core messaging experience:
 
-#### 2.1 Typing Indicators
-- [ ] Show "User is typing..." when someone is composing a message
-- [ ] Throttled SignalR events (send every ~3 seconds while typing)
-- [ ] Auto-dismiss after ~5 seconds of inactivity
-- [ ] Support multiple users typing simultaneously in channels
+#### 2.1 Typing Indicators ✅
+- [x] Show "User is typing..." when someone is composing a message
+- [x] Throttled SignalR events (send every ~3 seconds while typing)
+- [x] Auto-dismiss after ~5 seconds of inactivity
+- [x] Support multiple users typing simultaneously in channels
 
-#### 2.2 Unread Indicators for Text Channels
-- [ ] Track last read message per user per channel (server-side)
-- [ ] Show unread badge on channel list in sidebar
+#### 2.2 Unread Indicators for Text Channels ✅
+- [x] Track last read message per user per channel (server-side)
+- [x] Show unread badge on channel list in sidebar
 - [ ] Display "NEW MESSAGES" separator when returning to a channel
-- [ ] API endpoint to mark channel as read
+- [x] API endpoint to mark channel as read
 
-#### 2.3 Message Replies/Threading
-- [ ] Add "Reply" button on message hover
-- [ ] Show quoted preview above the reply message
+#### 2.3 Message Replies/Threading ✅
+- [x] Add "Reply" button on message hover
+- [x] Show quoted preview above the reply message
 - [ ] Click preview to jump to original message
 - [ ] Visual connection line between reply and original
 
@@ -79,10 +79,10 @@ These features significantly improve the core messaging experience:
 - [x] Server-side proxy to avoid CORS issues
 - [x] Support YouTube embeds (via oEmbed API)
 
-#### 2.5 User Mentions (@username)
+#### 2.5 User Mentions (@username) ✅
 - [ ] Autocomplete dropdown when typing `@`
 - [ ] Filter by partial username match
-- [ ] Highlight mentions in rendered message
+- [x] Highlight mentions in rendered message
 - [ ] Notification/ping when user is mentioned
 - [ ] `@everyone` and `@here` for channels (admin only)
 
@@ -208,10 +208,15 @@ Another agent is currently working on server, community, and user account manage
   - [x] Selected conversation highlight (DMs show selected state)
   - [x] Relative timestamps with full timestamp tooltip
   - [x] Message formatting toolbar (Bold, Italic, Code buttons)
+- [x] Phase 2: High Impact Features
+  - [x] Typing indicators (shows "User is typing..." with throttling)
+  - [x] Unread indicators for text channels (badge on channel list)
+  - [x] Message replies/threading (reply button, preview in messages)
+  - [x] Link previews (OpenGraph metadata, YouTube embeds)
+  - [x] User mentions (highlight @username in messages)
 
 ### In Progress
-- [ ] Phase 2: High Impact Features
+- [ ] Phase 3: Medium Impact Features
 
 ### Not Started
-- [ ] Phase 3: Medium Impact Features
 - [ ] Phase 4: Nice to Have

@@ -37,6 +37,10 @@ public interface ISignalRService : IAsyncDisposable
     Task SendAnnotationAsync(AnnotationMessage message);
     Task ClearAnnotationsAsync(Guid channelId, Guid sharerUserId);
 
+    // Typing indicator methods
+    Task SendTypingAsync(Guid channelId);
+    Task SendDMTypingAsync(Guid recipientUserId);
+
     // Channel events
     event Action<ChannelResponse>? ChannelCreated;
     event Action<ChannelResponse>? ChannelUpdated;
@@ -79,7 +83,15 @@ public interface ISignalRService : IAsyncDisposable
 
     // Drawing annotation events
     event Action<AnnotationMessage>? AnnotationReceived;
+
+    // Typing indicator events
+    event Action<TypingEvent>? UserTyping;
+    event Action<DMTypingEvent>? DMUserTyping;
 }
+
+// Typing indicator event DTOs
+public record TypingEvent(Guid ChannelId, Guid UserId, string Username);
+public record DMTypingEvent(Guid UserId, string Username);
 
 public class SignalRService : ISignalRService
 {
@@ -129,6 +141,10 @@ public class SignalRService : ISignalRService
 
     // Drawing annotation events
     public event Action<AnnotationMessage>? AnnotationReceived;
+
+    // Typing indicator events
+    public event Action<TypingEvent>? UserTyping;
+    public event Action<DMTypingEvent>? DMUserTyping;
 
     public async Task ConnectAsync(string baseUrl, string accessToken)
     {
@@ -332,6 +348,19 @@ public class SignalRService : ISignalRService
         Console.WriteLine($"SignalR: Cleared annotations for screen share by {sharerUserId} in channel {channelId}");
     }
 
+    // Typing indicator methods
+    public async Task SendTypingAsync(Guid channelId)
+    {
+        if (_hubConnection is null || !IsConnected) return;
+        await _hubConnection.InvokeAsync("SendTyping", channelId);
+    }
+
+    public async Task SendDMTypingAsync(Guid recipientUserId)
+    {
+        if (_hubConnection is null || !IsConnected) return;
+        await _hubConnection.InvokeAsync("SendDMTyping", recipientUserId);
+    }
+
     private void RegisterHandlers()
     {
         if (_hubConnection is null) return;
@@ -491,6 +520,17 @@ public class SignalRService : ISignalRService
         {
             Console.WriteLine($"SignalR: ReceiveAnnotation ({message.Action}) for screen share by {message.SharerUserId}");
             AnnotationReceived?.Invoke(message);
+        });
+
+        // Typing indicator events
+        _hubConnection.On<TypingEvent>("UserTyping", e =>
+        {
+            UserTyping?.Invoke(e);
+        });
+
+        _hubConnection.On<DMTypingEvent>("DMUserTyping", e =>
+        {
+            DMUserTyping?.Invoke(e);
         });
 
         _hubConnection.Reconnecting += error =>

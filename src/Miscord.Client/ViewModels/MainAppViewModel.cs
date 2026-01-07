@@ -31,6 +31,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private string _editingChannelName = string.Empty;
     private MessageResponse? _editingMessage;
     private string _editingMessageContent = string.Empty;
+    private MessageResponse? _replyingToMessage;
     private Guid? _previousChannelId;
 
     // Voice channel state
@@ -78,6 +79,15 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private ScreenShareSettings? _currentScreenShareSettings;
     private Views.ScreenAnnotationWindow? _screenAnnotationWindow;
     private Views.AnnotationToolbarWindow? _annotationToolbarWindow;
+
+    // Typing indicator state
+    private ObservableCollection<TypingUser> _typingUsers = new();
+    private ObservableCollection<TypingUser> _dmTypingUsers = new();
+    private DateTime _lastTypingSent = DateTime.MinValue;
+    private DateTime _lastDMTypingSent = DateTime.MinValue;
+    private const int TypingThrottleMs = 3000; // Send typing event every 3 seconds
+    private const int TypingTimeoutMs = 5000; // Clear typing after 5 seconds of inactivity
+    private System.Timers.Timer? _typingCleanupTimer;
     private ScreenAnnotationViewModel? _screenAnnotationViewModel;
 
     public MainAppViewModel(IApiClient apiClient, ISignalRService signalR, IWebRtcService webRtc, IScreenCaptureService screenCaptureService, string baseUrl, AuthResponse auth, Action onLogout, Action? onSwitchServer = null, Action? onOpenDMs = null, Action<Guid?, string?>? onOpenDMsWithUser = null, Action? onOpenSettings = null)
@@ -153,6 +163,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         SaveMessageEditCommand = ReactiveCommand.CreateFromTask(SaveMessageEditAsync);
         CancelEditMessageCommand = ReactiveCommand.Create(CancelEditMessage);
         DeleteMessageCommand = ReactiveCommand.CreateFromTask<MessageResponse>(DeleteMessageAsync);
+        ReplyToMessageCommand = ReactiveCommand.Create<MessageResponse>(StartReplyToMessage);
+        CancelReplyCommand = ReactiveCommand.Create(CancelReply);
 
         // Member commands
         StartDMCommand = ReactiveCommand.Create<CommunityMemberResponse>(StartDMWithMember);
@@ -290,6 +302,16 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 // Don't add if it's our own message (we already added it optimistically)
                 if (!Messages.Any(m => m.Id == message.Id))
                     Messages.Add(message);
+            }
+            else
+            {
+                // Update unread count for channels not currently selected
+                var channelIndex = Channels.ToList().FindIndex(c => c.Id == message.ChannelId);
+                if (channelIndex >= 0 && message.AuthorId != _auth.UserId)
+                {
+                    var channel = Channels[channelIndex];
+                    Channels[channelIndex] = channel with { UnreadCount = channel.UnreadCount + 1 };
+                }
             }
         });
 
@@ -500,6 +522,63 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             if (message is not null)
                 DMMessages.Remove(message);
         });
+
+        // Typing indicator events
+        _signalR.UserTyping += e => Dispatcher.UIThread.Post(() =>
+        {
+            // Only show typing for the currently selected channel
+            if (SelectedChannel is not null && e.ChannelId == SelectedChannel.Id && e.UserId != _auth.UserId)
+            {
+                var existing = _typingUsers.FirstOrDefault(t => t.UserId == e.UserId);
+                if (existing != null)
+                    _typingUsers.Remove(existing);
+                _typingUsers.Add(new TypingUser(e.UserId, e.Username, DateTime.UtcNow));
+                this.RaisePropertyChanged(nameof(TypingIndicatorText));
+                this.RaisePropertyChanged(nameof(IsAnyoneTyping));
+            }
+        });
+
+        _signalR.DMUserTyping += e => Dispatcher.UIThread.Post(() =>
+        {
+            // Only show typing for the current DM recipient
+            if (DMRecipientId.HasValue && e.UserId == DMRecipientId.Value)
+            {
+                var existing = _dmTypingUsers.FirstOrDefault(t => t.UserId == e.UserId);
+                if (existing != null)
+                    _dmTypingUsers.Remove(existing);
+                _dmTypingUsers.Add(new TypingUser(e.UserId, e.Username, DateTime.UtcNow));
+                this.RaisePropertyChanged(nameof(DMTypingIndicatorText));
+                this.RaisePropertyChanged(nameof(IsDMTyping));
+            }
+        });
+
+        // Set up typing cleanup timer
+        _typingCleanupTimer = new System.Timers.Timer(1000); // Check every second
+        _typingCleanupTimer.Elapsed += (s, e) => Dispatcher.UIThread.Post(CleanupExpiredTypingIndicators);
+        _typingCleanupTimer.Start();
+    }
+
+    private void CleanupExpiredTypingIndicators()
+    {
+        var now = DateTime.UtcNow;
+        var expiredChannel = _typingUsers.Where(t => (now - t.LastTypingAt).TotalMilliseconds > TypingTimeoutMs).ToList();
+        var expiredDM = _dmTypingUsers.Where(t => (now - t.LastTypingAt).TotalMilliseconds > TypingTimeoutMs).ToList();
+
+        foreach (var user in expiredChannel)
+            _typingUsers.Remove(user);
+        foreach (var user in expiredDM)
+            _dmTypingUsers.Remove(user);
+
+        if (expiredChannel.Count > 0)
+        {
+            this.RaisePropertyChanged(nameof(TypingIndicatorText));
+            this.RaisePropertyChanged(nameof(IsAnyoneTyping));
+        }
+        if (expiredDM.Count > 0)
+        {
+            this.RaisePropertyChanged(nameof(DMTypingIndicatorText));
+            this.RaisePropertyChanged(nameof(IsDMTyping));
+        }
     }
 
     private async Task OnCommunitySelectedAsync()
@@ -517,10 +596,22 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         if (_previousChannelId.HasValue)
             await _signalR.LeaveChannelAsync(_previousChannelId.Value);
 
-        if (SelectedChannel is not null)
+        if (SelectedChannel is not null && SelectedCommunity is not null)
         {
             _previousChannelId = SelectedChannel.Id;
             await _signalR.JoinChannelAsync(SelectedChannel.Id);
+
+            // Mark channel as read and update the local unread count
+            await _apiClient.MarkChannelAsReadAsync(SelectedCommunity.Id, SelectedChannel.Id);
+
+            // Update local channel with zero unread count
+            var idx = Channels.IndexOf(SelectedChannel);
+            if (idx >= 0)
+            {
+                var updated = SelectedChannel with { UnreadCount = 0 };
+                Channels[idx] = updated;
+                SelectedChannel = updated;
+            }
         }
 
         await LoadMessagesAsync();
@@ -557,7 +648,45 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public string MessageInput
     {
         get => _messageInput;
-        set => this.RaiseAndSetIfChanged(ref _messageInput, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _messageInput, value);
+            // Send typing indicator (throttled)
+            if (!string.IsNullOrEmpty(value) && SelectedChannel is not null)
+            {
+                var now = DateTime.UtcNow;
+                if ((now - _lastTypingSent).TotalMilliseconds > TypingThrottleMs)
+                {
+                    _lastTypingSent = now;
+                    _ = _signalR.SendTypingAsync(SelectedChannel.Id);
+                }
+            }
+        }
+    }
+
+    // Typing indicator properties
+    public bool IsAnyoneTyping => _typingUsers.Count > 0;
+
+    public string TypingIndicatorText
+    {
+        get
+        {
+            if (_typingUsers.Count == 0) return string.Empty;
+            if (_typingUsers.Count == 1) return $"{_typingUsers[0].Username} is typing...";
+            if (_typingUsers.Count == 2) return $"{_typingUsers[0].Username} and {_typingUsers[1].Username} are typing...";
+            return $"{_typingUsers[0].Username} and {_typingUsers.Count - 1} others are typing...";
+        }
+    }
+
+    public bool IsDMTyping => _dmTypingUsers.Count > 0;
+
+    public string DMTypingIndicatorText
+    {
+        get
+        {
+            if (_dmTypingUsers.Count == 0) return string.Empty;
+            return $"{_dmTypingUsers[0].Username} is typing...";
+        }
     }
 
     public bool IsLoading
@@ -595,6 +724,14 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         get => _editingMessageContent;
         set => this.RaiseAndSetIfChanged(ref _editingMessageContent, value);
     }
+
+    public MessageResponse? ReplyingToMessage
+    {
+        get => _replyingToMessage;
+        set => this.RaiseAndSetIfChanged(ref _replyingToMessage, value);
+    }
+
+    public bool IsReplying => ReplyingToMessage is not null;
 
     // Voice channel properties
     public ChannelResponse? CurrentVoiceChannel
@@ -727,7 +864,20 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public string DMMessageInput
     {
         get => _dmMessageInput;
-        set => this.RaiseAndSetIfChanged(ref _dmMessageInput, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _dmMessageInput, value);
+            // Send DM typing indicator (throttled)
+            if (!string.IsNullOrEmpty(value) && DMRecipientId.HasValue)
+            {
+                var now = DateTime.UtcNow;
+                if ((now - _lastDMTypingSent).TotalMilliseconds > TypingThrottleMs)
+                {
+                    _lastDMTypingSent = now;
+                    _ = _signalR.SendDMTypingAsync(DMRecipientId.Value);
+                }
+            }
+        }
     }
 
     public DirectMessageResponse? EditingDMMessage
@@ -943,6 +1093,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<Unit, Unit> SaveMessageEditCommand { get; }
     public ReactiveCommand<Unit, Unit> CancelEditMessageCommand { get; }
     public ReactiveCommand<MessageResponse, Unit> DeleteMessageCommand { get; }
+    public ReactiveCommand<MessageResponse, Unit> ReplyToMessageCommand { get; }
+    public ReactiveCommand<Unit, Unit> CancelReplyCommand { get; }
     public ReactiveCommand<CommunityMemberResponse, Unit> StartDMCommand { get; }
     public ReactiveCommand<CommunityMemberResponse, Unit> PromoteToAdminCommand { get; }
     public ReactiveCommand<CommunityMemberResponse, Unit> DemoteToMemberCommand { get; }
@@ -1317,9 +1469,12 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         if (SelectedChannel is null || string.IsNullOrWhiteSpace(MessageInput)) return;
 
         var content = MessageInput;
+        var replyToId = ReplyingToMessage?.Id;
         MessageInput = string.Empty;
+        ReplyingToMessage = null;
+        this.RaisePropertyChanged(nameof(IsReplying));
 
-        var result = await _apiClient.SendMessageAsync(SelectedChannel.Id, content);
+        var result = await _apiClient.SendMessageAsync(SelectedChannel.Id, content, replyToId);
         if (result.Success && result.Data is not null)
         {
             Messages.Add(result.Data);
@@ -1329,6 +1484,18 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             ErrorMessage = result.Error;
             MessageInput = content; // Restore message on failure
         }
+    }
+
+    private void StartReplyToMessage(MessageResponse message)
+    {
+        ReplyingToMessage = message;
+        this.RaisePropertyChanged(nameof(IsReplying));
+    }
+
+    private void CancelReply()
+    {
+        ReplyingToMessage = null;
+        this.RaisePropertyChanged(nameof(IsReplying));
     }
 
     private async Task CreateCommunityAsync()
@@ -1966,6 +2133,12 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         HideSharerAnnotationOverlay();
+        _typingCleanupTimer?.Dispose();
         _ = _signalR.DisposeAsync();
     }
 }
+
+/// <summary>
+/// Represents a user who is currently typing.
+/// </summary>
+public record TypingUser(Guid UserId, string Username, DateTime LastTypingAt);
