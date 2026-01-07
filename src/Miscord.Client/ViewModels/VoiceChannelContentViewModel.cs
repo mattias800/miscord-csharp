@@ -57,6 +57,7 @@ public class VideoStreamViewModel : ReactiveObject
             this.RaiseAndSetIfChanged(ref _isWatching, value);
             this.RaisePropertyChanged(nameof(ShowWatchButton));
             this.RaisePropertyChanged(nameof(ShowVideoContent));
+            this.RaisePropertyChanged(nameof(IsLoadingStream));
         }
     }
 
@@ -69,6 +70,11 @@ public class VideoStreamViewModel : ReactiveObject
     /// Whether to show video content (bitmap or placeholder). True when watching or for non-screen shares.
     /// </summary>
     public bool ShowVideoContent => IsWatching;
+
+    /// <summary>
+    /// Whether to show loading indicator. True when watching a screen share but no frames received yet.
+    /// </summary>
+    public bool IsLoadingStream => IsRemoteScreenShare && IsWatching && VideoBitmap == null;
 
     /// <summary>
     /// Display label shown on the tile. Empty for camera, "Screen" for screen share.
@@ -93,7 +99,11 @@ public class VideoStreamViewModel : ReactiveObject
     public WriteableBitmap? VideoBitmap
     {
         get => _videoBitmap;
-        set => this.RaiseAndSetIfChanged(ref _videoBitmap, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _videoBitmap, value);
+            this.RaisePropertyChanged(nameof(IsLoadingStream));
+        }
     }
 
     private int _frameCount;

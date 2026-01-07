@@ -53,15 +53,38 @@
                                            Stretch="UniformToFill"
                                            IsVisible="{Binding VideoBitmap, Converter={x:Static ObjectConverters.IsNotNull}}"/>
 
-                                    <!-- Avatar placeholder (shown when no video frame yet) -->
+                                    <!-- Loading indicator for screen shares (shown when waiting for first frame) -->
+                                    <StackPanel VerticalAlignment="Center"
+                                                HorizontalAlignment="Center"
+                                                Spacing="16"
+                                                IsVisible="{Binding IsLoadingStream}">
+                                        <!-- Animated loading indicator -->
+                                        <Border Width="64" Height="64"
+                                                CornerRadius="32"
+                                                Background="#5865f2"
+                                                HorizontalAlignment="Center">
+                                            <TextBlock Text="📡"
+                                                       FontSize="28"
+                                                       Foreground="#faa61a"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Text="Connecting to stream..."
+                                                   Foreground="#faa61a"
+                                                   FontSize="14"
+                                                   HorizontalAlignment="Center"/>
+                                    </StackPanel>
+
+                                    <!-- Avatar placeholder for camera streams (shown when no video frame yet, not loading) -->
                                     <StackPanel VerticalAlignment="Center"
                                                 HorizontalAlignment="Center"
                                                 IsVisible="{Binding VideoBitmap, Converter={x:Static ObjectConverters.IsNull}}">
-                                        <!-- Large Avatar Circle -->
+                                        <!-- Only show avatar when NOT loading a screen share -->
                                         <Border Width="80" Height="80"
                                                 CornerRadius="40"
                                                 Background="#5865f2"
-                                                HorizontalAlignment="Center">
+                                                HorizontalAlignment="Center"
+                                                IsVisible="{Binding !IsLoadingStream}">
                                             <TextBlock Text="{Binding Username[0]}"
                                                        Foreground="White"
                                                        FontSize="36"
