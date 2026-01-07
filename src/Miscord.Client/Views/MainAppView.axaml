@@ -627,6 +627,26 @@
                         <ItemsControl x:Name="DMMessagesList" ItemsSource="{Binding DMMessages}" Margin="16,0">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
+                                    <StackPanel>
+                                        <!-- Date separator -->
+                                        <Border Margin="0,16,0,8" Padding="0">
+                                            <Border.IsVisible>
+                                                <MultiBinding Converter="{x:Static conv:ShowDateSeparatorConverter.Instance}">
+                                                    <Binding />
+                                                    <Binding Path="DataContext.DMMessages" ElementName="DMMessagesList" />
+                                                </MultiBinding>
+                                            </Border.IsVisible>
+                                            <Grid>
+                                                <Separator Background="#42464d" Margin="0,8"/>
+                                                <Border Background="#36393f" HorizontalAlignment="Center" Padding="8,2">
+                                                    <TextBlock Text="{Binding CreatedAt, Converter={x:Static conv:DateSeparatorTextConverter.Instance}}"
+                                                               Foreground="#72767d"
+                                                               FontSize="11"
+                                                               FontWeight="SemiBold"/>
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+
                                     <Border Margin="0,8" Padding="0">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -657,7 +677,8 @@
                                                                Foreground="White"
                                                                FontWeight="SemiBold"
                                                                FontSize="15"/>
-                                                    <TextBlock Text="{Binding CreatedAt, StringFormat='{}{0:MMM d, yyyy h:mm tt}'}"
+                                                    <TextBlock Text="{Binding CreatedAt, Converter={x:Static conv:RelativeTimestampConverter.Instance}}"
+                                                               ToolTip.Tip="{Binding CreatedAt, Converter={x:Static conv:FullTimestampConverter.Instance}}"
                                                                Foreground="#72767d"
                                                                FontSize="12"
                                                                VerticalAlignment="Center"/>
@@ -667,7 +688,7 @@
                                                                VerticalAlignment="Center"
                                                                IsVisible="{Binding IsEdited}"/>
                                                 </StackPanel>
-                                                <controls:MarkdownTextBlock Markdown="{Binding Content}"
+                                                <controls:MessageContentBlock Content="{Binding Content}"
                                                                         FontSize="15"
                                                                         Margin="0,4,0,0"/>
                                             </StackPanel>
@@ -693,6 +714,7 @@
                                             </StackPanel>
                                         </Grid>
                                     </Border>
+                                    </StackPanel>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -950,39 +972,72 @@
                     </Border>
 
                 <!-- Message Input -->
-                <Border DockPanel.Dock="Bottom" Padding="16" Background="#36393f">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
+                <Border DockPanel.Dock="Bottom" Padding="16,8,16,16" Background="#36393f">
+                    <StackPanel Spacing="8">
+                        <!-- Formatting Toolbar -->
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <Button Background="Transparent"
+                                    Padding="8,4"
+                                    Cursor="Hand"
+                                    ToolTip.Tip="Bold (wrap with **)"
+                                    Click="OnBoldClick">
+                                <TextBlock Text="B" Foreground="#b9bbbe" FontWeight="Bold" FontSize="14"/>
+                            </Button>
+                            <Button Background="Transparent"
+                                    Padding="8,4"
+                                    Cursor="Hand"
+                                    ToolTip.Tip="Italic (wrap with *)"
+                                    Click="OnItalicClick">
+                                <TextBlock Text="I" Foreground="#b9bbbe" FontStyle="Italic" FontSize="14"/>
+                            </Button>
+                            <Button Background="Transparent"
+                                    Padding="8,4"
+                                    Cursor="Hand"
+                                    ToolTip.Tip="Code (wrap with `)"
+                                    Click="OnCodeClick">
+                                <TextBlock Text="&lt;/&gt;" Foreground="#b9bbbe" FontFamily="Consolas,monospace" FontSize="12"/>
+                            </Button>
+                            <Border Width="1" Background="#42464d" Margin="4,2"/>
+                            <TextBlock Text="Markdown supported"
+                                       Foreground="#72767d"
+                                       FontSize="11"
+                                       VerticalAlignment="Center"
+                                       Margin="4,0,0,0"/>
+                        </StackPanel>
 
-                        <TextBox x:Name="MessageInputBox"
-                                 Grid.Column="0"
-                                 Text="{Binding MessageInput}"
-                                 Watermark="{Binding SelectedChannel.Name, StringFormat='Message #{0}'}"
-                                 Background="#40444b"
-                                 Foreground="White"
-                                 BorderThickness="0"
-                                 CornerRadius="8"
-                                 Padding="16,12"
-                                 AcceptsReturn="True"
-                                 TextWrapping="Wrap"
-                                 MaxHeight="200"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
 
-                        <Button Grid.Column="1"
-                                Command="{Binding SendMessageCommand}"
-                                Background="#5865f2"
-                                Foreground="White"
-                                Padding="16,10"
-                                Margin="8,0,0,0"
-                                CornerRadius="4">
-                            <Panel>
-                                <TextBlock Text="Send" IsVisible="{Binding IsLoading, Converter={x:Static BoolConverters.Not}}"/>
-                                <TextBlock Text="..." IsVisible="{Binding IsLoading}"/>
-                            </Panel>
-                        </Button>
-                    </Grid>
+                            <TextBox x:Name="MessageInputBox"
+                                     Grid.Column="0"
+                                     Text="{Binding MessageInput}"
+                                     Watermark="{Binding SelectedChannel.Name, StringFormat='Message #{0}'}"
+                                     Background="#40444b"
+                                     Foreground="White"
+                                     BorderThickness="0"
+                                     CornerRadius="8"
+                                     Padding="16,12"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     MaxHeight="200"/>
+
+                            <Button Grid.Column="1"
+                                    Command="{Binding SendMessageCommand}"
+                                    Background="#5865f2"
+                                    Foreground="White"
+                                    Padding="16,10"
+                                    Margin="8,0,0,0"
+                                    CornerRadius="4">
+                                <Panel>
+                                    <TextBlock Text="Send" IsVisible="{Binding IsLoading, Converter={x:Static BoolConverters.Not}}"/>
+                                    <TextBlock Text="..." IsVisible="{Binding IsLoading}"/>
+                                </Panel>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
                 </Border>
 
                 <!-- Messages List -->
@@ -990,6 +1045,26 @@
                     <ItemsControl x:Name="MessagesList" ItemsSource="{Binding Messages}" Margin="16,0">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
+                                <StackPanel>
+                                    <!-- Date separator -->
+                                    <Border Margin="0,16,0,8" Padding="0">
+                                        <Border.IsVisible>
+                                            <MultiBinding Converter="{x:Static conv:ShowDateSeparatorConverter.Instance}">
+                                                <Binding />
+                                                <Binding Path="DataContext.Messages" ElementName="MessagesList" />
+                                            </MultiBinding>
+                                        </Border.IsVisible>
+                                        <Grid>
+                                            <Separator Background="#42464d" Margin="0,8"/>
+                                            <Border Background="#36393f" HorizontalAlignment="Center" Padding="8,2">
+                                                <TextBlock Text="{Binding CreatedAt, Converter={x:Static conv:DateSeparatorTextConverter.Instance}}"
+                                                           Foreground="#72767d"
+                                                           FontSize="11"
+                                                           FontWeight="SemiBold"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+
                                 <Border Margin="0,8" Padding="0" x:Name="MessageBorder">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -1020,7 +1095,8 @@
                                                            Foreground="White"
                                                            FontWeight="SemiBold"
                                                            FontSize="15"/>
-                                                <TextBlock Text="{Binding CreatedAt, StringFormat='{}{0:MMM d, yyyy h:mm tt}'}"
+                                                <TextBlock Text="{Binding CreatedAt, Converter={x:Static conv:RelativeTimestampConverter.Instance}}"
+                                                           ToolTip.Tip="{Binding CreatedAt, Converter={x:Static conv:FullTimestampConverter.Instance}}"
                                                            Foreground="#72767d"
                                                            FontSize="12"
                                                            VerticalAlignment="Center"/>
@@ -1030,7 +1106,7 @@
                                                            VerticalAlignment="Center"
                                                            IsVisible="{Binding IsEdited}"/>
                                             </StackPanel>
-                                            <controls:MarkdownTextBlock Markdown="{Binding Content}"
+                                            <controls:MessageContentBlock Content="{Binding Content}"
                                                                     FontSize="15"
                                                                     Margin="0,4,0,0"/>
                                         </StackPanel>
@@ -1056,6 +1132,7 @@
                                         </StackPanel>
                                     </Grid>
                                 </Border>
+                                </StackPanel>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>

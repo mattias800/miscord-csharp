@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Miscord.Client.Controls;
 using Miscord.Client.Services;
 using Miscord.Client.ViewModels;
 using Miscord.Client.Views;
@@ -18,6 +19,10 @@ public partial class App : Application
             // HttpClient without a predefined base address - will be set dynamically
             var httpClient = new HttpClient();
             var apiClient = new ApiClient(httpClient);
+
+            // Initialize MessageContentBlock with API client for link previews
+            MessageContentBlock.SetApiClient(apiClient);
+
             var connectionStore = new ServerConnectionStore();
             var signalR = new SignalRService();
             var settingsStore = new SettingsStore(Program.Profile);

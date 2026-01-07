@@ -6,6 +6,25 @@
              x:Class="Miscord.Client.Views.DirectMessagesView"
              x:DataType="vm:DirectMessagesViewModel"
              x:CompileBindings="False">
+    <UserControl.Styles>
+        <!-- Conversation item style with selected state -->
+        <Style Selector="Button.conversation-btn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.conversation-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#35373c"/>
+        </Style>
+        <Style Selector="Button.conversation-btn:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#3f4248"/>
+        </Style>
+        <Style Selector="Button.conversation-btn.selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="#42464d"/>
+        </Style>
+        <Style Selector="Button.conversation-btn.selected:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#4a4e57"/>
+        </Style>
+    </UserControl.Styles>
     <Grid Background="#202225">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="72"/>
@@ -100,12 +119,17 @@
                                 <DataTemplate>
                                     <Button Command="{Binding #ConversationsList.DataContext.SelectConversationCommand}"
                                             CommandParameter="{Binding}"
-                                            Background="Transparent"
                                             HorizontalAlignment="Stretch"
                                             HorizontalContentAlignment="Stretch"
                                             Padding="8,8"
                                             Margin="0,1"
                                             Cursor="Hand">
+                                        <Button.Classes>
+                                            <MultiBinding Converter="{x:Static converters:IsSelectedConversationConverter.Instance}">
+                                                <Binding />
+                                                <Binding Path="DataContext.SelectedConversation" ElementName="ConversationsList" />
+                                            </MultiBinding>
+                                        </Button.Classes>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto"/>
@@ -193,41 +217,74 @@
                 </Border>
 
                 <!-- Message Input -->
-                <Border DockPanel.Dock="Bottom" Padding="16" Background="#36393f"
+                <Border DockPanel.Dock="Bottom" Padding="16,8,16,16" Background="#36393f"
                         IsVisible="{Binding SelectedConversation, Converter={x:Static ObjectConverters.IsNotNull}}">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
+                    <StackPanel Spacing="8">
+                        <!-- Formatting Toolbar -->
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <Button Background="Transparent"
+                                    Padding="8,4"
+                                    Cursor="Hand"
+                                    ToolTip.Tip="Bold (wrap with **)"
+                                    Click="OnBoldClick">
+                                <TextBlock Text="B" Foreground="#b9bbbe" FontWeight="Bold" FontSize="14"/>
+                            </Button>
+                            <Button Background="Transparent"
+                                    Padding="8,4"
+                                    Cursor="Hand"
+                                    ToolTip.Tip="Italic (wrap with *)"
+                                    Click="OnItalicClick">
+                                <TextBlock Text="I" Foreground="#b9bbbe" FontStyle="Italic" FontSize="14"/>
+                            </Button>
+                            <Button Background="Transparent"
+                                    Padding="8,4"
+                                    Cursor="Hand"
+                                    ToolTip.Tip="Code (wrap with `)"
+                                    Click="OnCodeClick">
+                                <TextBlock Text="&lt;/&gt;" Foreground="#b9bbbe" FontFamily="Consolas,monospace" FontSize="12"/>
+                            </Button>
+                            <Border Width="1" Background="#42464d" Margin="4,2"/>
+                            <TextBlock Text="Markdown supported"
+                                       Foreground="#72767d"
+                                       FontSize="11"
+                                       VerticalAlignment="Center"
+                                       Margin="4,0,0,0"/>
+                        </StackPanel>
 
-                        <TextBox x:Name="MessageInputBox"
-                                 Grid.Column="0"
-                                 Text="{Binding MessageInput}"
-                                 Watermark="{Binding SelectedConversation.Username, StringFormat='Message @{0}'}"
-                                 Background="#40444b"
-                                 Foreground="White"
-                                 BorderThickness="0"
-                                 CornerRadius="8"
-                                 Padding="16,12"
-                                 AcceptsReturn="True"
-                                 TextWrapping="Wrap"
-                                 MaxHeight="200"
-                                 KeyDown="OnMessageKeyDown"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
 
-                        <Button Grid.Column="1"
-                                Command="{Binding SendMessageCommand}"
-                                Background="#5865f2"
-                                Foreground="White"
-                                Padding="16,10"
-                                Margin="8,0,0,0"
-                                CornerRadius="4">
-                            <Panel>
-                                <TextBlock Text="Send" IsVisible="{Binding IsLoading, Converter={x:Static BoolConverters.Not}}"/>
-                                <TextBlock Text="..." IsVisible="{Binding IsLoading}"/>
-                            </Panel>
-                        </Button>
-                    </Grid>
+                            <TextBox x:Name="MessageInputBox"
+                                     Grid.Column="0"
+                                     Text="{Binding MessageInput}"
+                                     Watermark="{Binding SelectedConversation.Username, StringFormat='Message @{0}'}"
+                                     Background="#40444b"
+                                     Foreground="White"
+                                     BorderThickness="0"
+                                     CornerRadius="8"
+                                     Padding="16,12"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     MaxHeight="200"
+                                     KeyDown="OnMessageKeyDown"/>
+
+                            <Button Grid.Column="1"
+                                    Command="{Binding SendMessageCommand}"
+                                    Background="#5865f2"
+                                    Foreground="White"
+                                    Padding="16,10"
+                                    Margin="8,0,0,0"
+                                    CornerRadius="4">
+                                <Panel>
+                                    <TextBlock Text="Send" IsVisible="{Binding IsLoading, Converter={x:Static BoolConverters.Not}}"/>
+                                    <TextBlock Text="..." IsVisible="{Binding IsLoading}"/>
+                                </Panel>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
                 </Border>
 
                 <!-- Messages List -->
@@ -236,6 +293,25 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel>
+                                    <!-- Date separator -->
+                                    <Border Margin="0,16,0,8" Padding="0">
+                                        <Border.IsVisible>
+                                            <MultiBinding Converter="{x:Static converters:ShowDateSeparatorConverter.Instance}">
+                                                <Binding />
+                                                <Binding Path="DataContext.Messages" ElementName="MessagesList" />
+                                            </MultiBinding>
+                                        </Border.IsVisible>
+                                        <Grid>
+                                            <Separator Background="#42464d" Margin="0,8"/>
+                                            <Border Background="#36393f" HorizontalAlignment="Center" Padding="8,2">
+                                                <TextBlock Text="{Binding CreatedAt, Converter={x:Static converters:DateSeparatorTextConverter.Instance}}"
+                                                           Foreground="#72767d"
+                                                           FontSize="11"
+                                                           FontWeight="SemiBold"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+
                                     <!-- Unread separator -->
                                     <Border Margin="0,8" Padding="0">
                                         <Border.IsVisible>
@@ -287,12 +363,13 @@
                                                            Foreground="White"
                                                            FontWeight="SemiBold"
                                                            FontSize="15"/>
-                                                <TextBlock Text="{Binding CreatedAt, StringFormat='{}{0:MMM d, yyyy h:mm tt}'}"
+                                                <TextBlock Text="{Binding CreatedAt, Converter={x:Static converters:RelativeTimestampConverter.Instance}}"
+                                                           ToolTip.Tip="{Binding CreatedAt, Converter={x:Static converters:FullTimestampConverter.Instance}}"
                                                            Foreground="#72767d"
                                                            FontSize="12"
                                                            VerticalAlignment="Center"/>
                                             </StackPanel>
-                                            <controls:MarkdownTextBlock Markdown="{Binding Content}"
+                                            <controls:MessageContentBlock Content="{Binding Content}"
                                                                         FontSize="15"
                                                                         Margin="0,4,0,0"/>
                                         </StackPanel>

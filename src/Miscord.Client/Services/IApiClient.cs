@@ -59,6 +59,9 @@ public interface IApiClient
     Task<ApiResult<DirectMessageResponse>> UpdateDirectMessageAsync(Guid messageId, string content);
     Task<ApiResult<bool>> DeleteDirectMessageAsync(Guid messageId);
     Task<ApiResult<bool>> MarkConversationAsReadAsync(Guid userId);
+
+    // Link Previews
+    Task<ApiResult<LinkPreview>> GetLinkPreviewAsync(string url);
 }
 
 public record ApiResult<T>

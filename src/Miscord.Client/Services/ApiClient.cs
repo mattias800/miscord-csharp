@@ -332,6 +332,12 @@ public class ApiClient : IApiClient
         return await PostEmptyAsync($"/api/directmessages/{userId}/read");
     }
 
+    // Link Preview methods
+    public async Task<ApiResult<LinkPreview>> GetLinkPreviewAsync(string url)
+    {
+        return await GetAsync<LinkPreview>($"/api/linkpreview?url={Uri.EscapeDataString(url)}");
+    }
+
     // Generic HTTP helpers
     private async Task<ApiResult<T>> GetAsync<T>(string path)
     {

@@ -81,6 +81,9 @@ builder.Services.AddScoped<IMessageService, MessageService>();
 builder.Services.AddScoped<ICommunityMemberService, CommunityMemberService>();
 builder.Services.AddScoped<IVoiceService, VoiceService>();
 
+// Add link preview service with HttpClient
+builder.Services.AddHttpClient<ILinkPreviewService, LinkPreviewService>();
+
 // Add SFU service (Singleton to maintain WebRTC connections across requests)
 builder.Services.AddSingleton<ISfuService, SfuService>();
 
@@ -111,6 +114,26 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<MiscordDbContext>();
     db.Database.EnsureCreated();
+
+    // In development, ensure there are unlimited bootstrap invites for easy testing
+    if (app.Environment.IsDevelopment())
+    {
+        var devInviteCount = db.ServerInvites
+            .Where(i => i.CreatedById == null && !i.IsRevoked && (i.ExpiresAt == null || i.ExpiresAt > DateTime.UtcNow))
+            .Count();
+
+        // Create multiple unlimited invites for concurrent dev testing
+        while (devInviteCount < 10)
+        {
+            var inviteService = scope.ServiceProvider.GetRequiredService<IServerInviteService>();
+            var invite = inviteService.CreateInviteAsync(null, maxUses: 0).Result;  // maxUses: 0 = unlimited
+            devInviteCount++;
+        }
+        if (devInviteCount > 0)
+        {
+            Console.WriteLine("Development: Created unlimited bootstrap invites for testing");
+        }
+    }
 
     // Reset all users to offline on server startup
     // This handles cases where the server was restarted without proper disconnect cleanup

@@ -1,8 +1,26 @@
+using System.Diagnostics;
 using System.Text.RegularExpressions;
 using Avalonia.Controls.Documents;
 using Avalonia.Media;
 
 namespace Miscord.Client.Services;
+
+/// <summary>
+/// A Run that represents a clickable URL link.
+/// </summary>
+public class LinkRun : Run
+{
+    private static readonly IBrush LinkForeground = new SolidColorBrush(Color.Parse("#00aff4"));
+
+    public string Url { get; }
+
+    public LinkRun(string displayText, string url) : base(displayText)
+    {
+        Url = url;
+        Foreground = LinkForeground;
+        TextDecorations = Avalonia.Media.TextDecorations.Underline;
+    }
+}
 
 public static class MarkdownParser
 {
@@ -10,6 +28,7 @@ public static class MarkdownParser
     private static readonly IBrush CodeForeground = new SolidColorBrush(Color.Parse("#e9967a"));
     private static readonly IBrush TextForeground = new SolidColorBrush(Color.Parse("#dcddde"));
     private static readonly IBrush HeadingForeground = new SolidColorBrush(Color.Parse("#ffffff"));
+    private static readonly IBrush LinkForeground = new SolidColorBrush(Color.Parse("#00aff4"));
 
     // Regex patterns for markdown
     private static readonly Regex CodeBlockRegex = new(@"```(\w+)?\n?([\s\S]*?)```", RegexOptions.Compiled);
@@ -17,12 +36,59 @@ public static class MarkdownParser
     private static readonly Regex BoldRegex = new(@"\*\*(.+?)\*\*|__(.+?)__", RegexOptions.Compiled);
     private static readonly Regex ItalicRegex = new(@"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)|(?<!_)_(?!_)(.+?)(?<!_)_(?!_)", RegexOptions.Compiled);
 
+    // URL regex - matches http://, https://, and www. URLs
+    private static readonly Regex UrlRegex = new(
+        @"(https?://[^\s<>\[\]""'`]+|www\.[^\s<>\[\]""'`]+)",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
     // Block-level patterns
     private static readonly Regex HeadingRegex = new(@"^(#{1,6})\s+(.+)$", RegexOptions.Compiled);
     private static readonly Regex UnorderedListRegex = new(@"^[\s]*[-*+]\s+(.+)$", RegexOptions.Compiled);
     private static readonly Regex OrderedListRegex = new(@"^[\s]*(\d+)\.\s+(.+)$", RegexOptions.Compiled);
 
     public record MarkdownBlock(string Content, bool IsCodeBlock, string? Language = null);
+
+    /// <summary>
+    /// Extracts all URLs from the given text.
+    /// </summary>
+    public static List<string> ExtractUrls(string text)
+    {
+        var urls = new List<string>();
+        if (string.IsNullOrEmpty(text)) return urls;
+
+        foreach (Match match in UrlRegex.Matches(text))
+        {
+            var url = match.Value;
+            // Ensure URL has protocol
+            if (url.StartsWith("www.", StringComparison.OrdinalIgnoreCase))
+                url = "https://" + url;
+            urls.Add(url);
+        }
+        return urls;
+    }
+
+    /// <summary>
+    /// Opens a URL in the default browser.
+    /// </summary>
+    public static void OpenUrl(string url)
+    {
+        try
+        {
+            // Ensure URL has protocol
+            if (url.StartsWith("www.", StringComparison.OrdinalIgnoreCase))
+                url = "https://" + url;
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to open URL: {ex.Message}");
+        }
+    }
 
     /// <summary>
     /// Splits markdown text into blocks (code blocks vs regular text).
@@ -72,7 +138,7 @@ public static class MarkdownParser
     }
 
     /// <summary>
-    /// Parses inline markdown (headings, lists, bold, italic, inline code) and returns Inline elements.
+    /// Parses inline markdown (headings, lists, bold, italic, inline code, URLs) and returns Inline elements.
     /// </summary>
     public static List<Inline> ParseInlines(string text)
     {
@@ -244,16 +310,8 @@ public static class MarkdownParser
                 var italicSegments = SplitByItalic(segment.Content);
                 foreach (var italicSegment in italicSegments)
                 {
-                    var run = new Run(italicSegment.Content)
-                    {
-                        FontWeight = FontWeight.Bold,
-                        Foreground = TextForeground
-                    };
-                    if (italicSegment.IsItalic)
-                    {
-                        run.FontStyle = FontStyle.Italic;
-                    }
-                    inlines.Add(run);
+                    AddTextWithUrls(inlines, italicSegment.Content, FontWeight.Bold,
+                        italicSegment.IsItalic ? FontStyle.Italic : FontStyle.Normal);
                 }
             }
             else
@@ -263,19 +321,71 @@ public static class MarkdownParser
                 {
                     if (italicSegment.IsItalic)
                     {
-                        var run = new Run(italicSegment.Content)
-                        {
-                            FontStyle = FontStyle.Italic,
-                            Foreground = TextForeground
-                        };
-                        inlines.Add(run);
+                        AddTextWithUrls(inlines, italicSegment.Content, FontWeight.Normal, FontStyle.Italic);
                     }
                     else if (!string.IsNullOrEmpty(italicSegment.Content))
                     {
-                        inlines.Add(new Run(italicSegment.Content) { Foreground = TextForeground });
+                        AddTextWithUrls(inlines, italicSegment.Content, FontWeight.Normal, FontStyle.Normal);
                     }
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// Adds text to inlines, converting URLs to clickable links.
+    /// </summary>
+    private static void AddTextWithUrls(List<Inline> inlines, string text, FontWeight weight, FontStyle style)
+    {
+        if (string.IsNullOrEmpty(text)) return;
+
+        var lastIndex = 0;
+        foreach (Match match in UrlRegex.Matches(text))
+        {
+            // Add text before the URL
+            if (match.Index > lastIndex)
+            {
+                var beforeText = text.Substring(lastIndex, match.Index - lastIndex);
+                inlines.Add(new Run(beforeText)
+                {
+                    Foreground = TextForeground,
+                    FontWeight = weight,
+                    FontStyle = style
+                });
+            }
+
+            // Add the URL as a clickable link
+            var url = match.Value;
+            // Ensure URL has protocol for the stored value
+            var fullUrl = url.StartsWith("www.", StringComparison.OrdinalIgnoreCase)
+                ? "https://" + url
+                : url;
+
+            inlines.Add(new LinkRun(url, fullUrl));
+
+            lastIndex = match.Index + match.Length;
+        }
+
+        // Add remaining text after the last URL
+        if (lastIndex < text.Length)
+        {
+            var afterText = text.Substring(lastIndex);
+            inlines.Add(new Run(afterText)
+            {
+                Foreground = TextForeground,
+                FontWeight = weight,
+                FontStyle = style
+            });
+        }
+        else if (lastIndex == 0)
+        {
+            // No URLs found, add the whole text
+            inlines.Add(new Run(text)
+            {
+                Foreground = TextForeground,
+                FontWeight = weight,
+                FontStyle = style
+            });
         }
     }
 
