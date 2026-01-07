@@ -5,7 +5,7 @@
         x:Class="Miscord.Client.Views.AnnotationToolbarWindow"
         x:DataType="vm:ScreenAnnotationViewModel"
         Title="Drawing Tools"
-        Width="380"
+        Width="420"
         Height="56"
         SystemDecorations="None"
         Background="Transparent"
@@ -23,13 +23,14 @@
             Padding="12,8"
             PointerPressed="OnToolbarPointerPressed">
         <StackPanel Orientation="Horizontal" Spacing="10">
-            <!-- Draw mode toggle - THIS IS THE KEY BUTTON -->
+            <!-- Draw mode toggle - for host to draw -->
             <ToggleButton IsChecked="{Binding IsDrawModeEnabled}"
                           Padding="14,8"
                           Background="#40FFFFFF"
                           Foreground="White"
                           CornerRadius="6"
-                          FontWeight="SemiBold">
+                          FontWeight="SemiBold"
+                          ToolTip.Tip="Enable drawing mode for yourself">
                 <StackPanel Orientation="Horizontal" Spacing="6">
                     <TextBlock Text="✏️" VerticalAlignment="Center" FontSize="14"/>
                     <TextBlock Text="Draw" VerticalAlignment="Center"/>

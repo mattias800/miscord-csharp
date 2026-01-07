@@ -220,10 +220,6 @@ public class FfmpegProcessEncoder : IDisposable
                 if (bytesRead == 0) break;
 
                 totalBytesRead += bytesRead;
-                if (totalBytesRead < 1000 || totalBytesRead % 100000 < bytesRead)
-                {
-                    Console.WriteLine($"FfmpegProcessEncoder: Read {bytesRead} bytes (total: {totalBytesRead})");
-                }
 
                 // Add to buffer
                 _buffer.Write(buffer, 0, bytesRead);

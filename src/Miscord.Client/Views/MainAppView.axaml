@@ -259,6 +259,16 @@
                                     <TextBlock Text="🖥️" Foreground="White" FontSize="16"/>
                                 </Button>
                             </Panel>
+                            <!-- Allow Drawing Button - only visible when screen sharing -->
+                            <Panel IsVisible="{Binding IsScreenSharing}">
+                                <ToggleButton IsChecked="{Binding IsDrawingAllowedForViewers}"
+                                              Padding="8"
+                                              CornerRadius="4"
+                                              Cursor="Hand"
+                                              ToolTip.Tip="Allow viewers to draw on your screen">
+                                    <TextBlock Text="✏️" Foreground="White" FontSize="16"/>
+                                </ToggleButton>
+                            </Panel>
                             <Button Command="{Binding LeaveVoiceChannelCommand}"
                                     Background="#ed4245"
                                     Padding="8"
@@ -864,7 +874,7 @@
                                                     BorderBrush="#3ba55c"
                                                     IsVisible="{Binding ShowSpeakingIndicator}"/>
 
-                                            <!-- Fullscreen button - top right corner (only for screen shares) -->
+                                            <!-- Fullscreen button - top right corner (only for screen shares when watching) -->
                                             <Button VerticalAlignment="Top"
                                                     HorizontalAlignment="Right"
                                                     Margin="8"
@@ -873,9 +883,14 @@
                                                     BorderThickness="0"
                                                     CornerRadius="4"
                                                     Cursor="Hand"
-                                                    IsVisible="{Binding StreamLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                                     Click="OnFullscreenButtonClick"
                                                     Tag="{Binding}">
+                                                <Button.IsVisible>
+                                                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                        <Binding Path="ShowVideoContent"/>
+                                                        <Binding Path="StreamLabel" Converter="{x:Static StringConverters.IsNotNullOrEmpty}"/>
+                                                    </MultiBinding>
+                                                </Button.IsVisible>
                                                 <TextBlock Text="⛶" Foreground="White" FontSize="16"/>
                                             </Button>
                                         </Grid>
@@ -1288,15 +1303,16 @@
                         PointerMoved="OnAnnotationCanvasPointerMoved"
                         PointerReleased="OnAnnotationCanvasPointerReleased"/>
 
-                <!-- Drawing Toolbar - bottom center -->
+                <!-- Drawing Toolbar - bottom center (only visible when host allows drawing) -->
                 <Border VerticalAlignment="Bottom"
                         HorizontalAlignment="Center"
                         Margin="0,0,0,80"
                         Background="#E0202020"
                         CornerRadius="8"
-                        Padding="12,8">
+                        Padding="12,8"
+                        IsVisible="{Binding IsDrawingAllowedByHost}">
                     <StackPanel Orientation="Horizontal" Spacing="12">
-                        <!-- Draw mode toggle -->
+                        <!-- Draw mode toggle - only visible when host allows drawing -->
                         <ToggleButton IsChecked="{Binding IsAnnotationEnabled}"
                                       Padding="12,6"
                                       Background="#40FFFFFF"
@@ -1312,36 +1328,40 @@
                         <Border Width="1" Background="#40FFFFFF" Margin="4,0"/>
 
                         <!-- Color buttons -->
-                        <Button Width="28" Height="28" Padding="0" CornerRadius="4"
-                                Background="#FF0000" BorderThickness="2"
-                                BorderBrush="{Binding AnnotationColor, Converter={StaticResource ColorToBorderConverter}, ConverterParameter=#FF0000}"
-                                Click="OnAnnotationColorClick" Tag="#FF0000"/>
-                        <Button Width="28" Height="28" Padding="0" CornerRadius="4"
-                                Background="#00FF00" BorderThickness="2"
-                                BorderBrush="{Binding AnnotationColor, Converter={StaticResource ColorToBorderConverter}, ConverterParameter=#00FF00}"
-                                Click="OnAnnotationColorClick" Tag="#00FF00"/>
-                        <Button Width="28" Height="28" Padding="0" CornerRadius="4"
-                                Background="#0080FF" BorderThickness="2"
-                                BorderBrush="{Binding AnnotationColor, Converter={StaticResource ColorToBorderConverter}, ConverterParameter=#0080FF}"
-                                Click="OnAnnotationColorClick" Tag="#0080FF"/>
-                        <Button Width="28" Height="28" Padding="0" CornerRadius="4"
-                                Background="#FFFF00" BorderThickness="2"
-                                BorderBrush="{Binding AnnotationColor, Converter={StaticResource ColorToBorderConverter}, ConverterParameter=#FFFF00}"
-                                Click="OnAnnotationColorClick" Tag="#FFFF00"/>
-                        <Button Width="28" Height="28" Padding="0" CornerRadius="4"
-                                Background="#FFFFFF" BorderThickness="2"
-                                BorderBrush="{Binding AnnotationColor, Converter={StaticResource ColorToBorderConverter}, ConverterParameter=#FFFFFF}"
-                                Click="OnAnnotationColorClick" Tag="#FFFFFF"/>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <Button Width="28" Height="28" Padding="0" CornerRadius="4"
+                                    Background="#FF0000" BorderThickness="2"
+                                    BorderBrush="{Binding AnnotationColor, Converter={StaticResource ColorToBorderConverter}, ConverterParameter=#FF0000}"
+                                    Click="OnAnnotationColorClick" Tag="#FF0000"/>
+                            <Button Width="28" Height="28" Padding="0" CornerRadius="4"
+                                    Background="#00FF00" BorderThickness="2"
+                                    BorderBrush="{Binding AnnotationColor, Converter={StaticResource ColorToBorderConverter}, ConverterParameter=#00FF00}"
+                                    Click="OnAnnotationColorClick" Tag="#00FF00"/>
+                            <Button Width="28" Height="28" Padding="0" CornerRadius="4"
+                                    Background="#0080FF" BorderThickness="2"
+                                    BorderBrush="{Binding AnnotationColor, Converter={StaticResource ColorToBorderConverter}, ConverterParameter=#0080FF}"
+                                    Click="OnAnnotationColorClick" Tag="#0080FF"/>
+                            <Button Width="28" Height="28" Padding="0" CornerRadius="4"
+                                    Background="#FFFF00" BorderThickness="2"
+                                    BorderBrush="{Binding AnnotationColor, Converter={StaticResource ColorToBorderConverter}, ConverterParameter=#FFFF00}"
+                                    Click="OnAnnotationColorClick" Tag="#FFFF00"/>
+                            <Button Width="28" Height="28" Padding="0" CornerRadius="4"
+                                    Background="#FFFFFF" BorderThickness="2"
+                                    BorderBrush="{Binding AnnotationColor, Converter={StaticResource ColorToBorderConverter}, ConverterParameter=#FFFFFF}"
+                                    Click="OnAnnotationColorClick" Tag="#FFFFFF"/>
+                        </StackPanel>
 
-                        <!-- Clear separator -->
-                        <Border Width="1" Background="#40FFFFFF" Margin="4,0"/>
+                        <!-- Clear separator (only show when drawing allowed) -->
+                        <Border Width="1" Background="#40FFFFFF" Margin="4,0"
+                                IsVisible="{Binding IsDrawingAllowedByHost}"/>
 
-                        <!-- Clear button -->
+                        <!-- Clear button (only show when drawing allowed) -->
                         <Button Padding="12,6"
                                 Background="#40FFFFFF"
                                 Foreground="White"
                                 CornerRadius="4"
-                                Click="OnClearAnnotationsClick">
+                                Click="OnClearAnnotationsClick"
+                                IsVisible="{Binding IsDrawingAllowedByHost}">
                             <TextBlock Text="Clear"/>
                         </Button>
                     </StackPanel>

@@ -6,6 +6,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.ReactiveUI;
+using Avalonia.Threading;
 using Miscord.Client.ViewModels;
 using Miscord.Shared.Models;
 
@@ -17,6 +18,9 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
     private bool _isDrawing;
     private List<PointF> _currentStrokePoints = new();
     private Polyline? _currentPolyline;
+    private Guid _currentStrokeId;
+    private int _lastSentPointCount;
+    private const int LiveUpdateThreshold = 30; // Send update every N points
 
     public MainAppView()
     {
@@ -30,6 +34,30 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
 
         // ESC key to exit fullscreen video
         this.AddHandler(KeyDownEvent, OnGlobalKeyDown, RoutingStrategies.Tunnel);
+
+        // Subscribe to ViewModel changes for annotation redraw
+        this.DataContextChanged += OnDataContextChanged;
+    }
+
+    private void OnDataContextChanged(object? sender, EventArgs e)
+    {
+        if (ViewModel != null)
+        {
+            ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+        }
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(MainAppViewModel.CurrentAnnotationStrokes))
+        {
+            // Don't redraw while actively drawing - it would clear our current polyline
+            // The redraw will happen when drawing completes
+            if (_isDrawing) return;
+
+            // Redraw annotations when strokes change (from host or other guests)
+            RedrawAnnotations();
+        }
     }
 
     // Global key handler for ESC to exit fullscreen
@@ -221,6 +249,8 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
 
         _isDrawing = true;
         _currentStrokePoints.Clear();
+        _currentStrokeId = Guid.NewGuid(); // New stroke ID for this drawing
+        _lastSentPointCount = 0;
 
         // Get position and normalize to 0-1 range
         var pos = e.GetPosition(canvas);
@@ -243,7 +273,7 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
 
     private void OnAnnotationCanvasPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (!_isDrawing || _currentPolyline == null) return;
+        if (!_isDrawing || _currentPolyline == null || ViewModel == null) return;
 
         var canvas = AnnotationCanvas;
         if (canvas == null) return;
@@ -252,38 +282,70 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         var normalizedPoint = new PointF((float)(pos.X / canvas.Bounds.Width), (float)(pos.Y / canvas.Bounds.Height));
         _currentStrokePoints.Add(normalizedPoint);
         _currentPolyline.Points.Add(pos);
-    }
 
-    private async void OnAnnotationCanvasPointerReleased(object? sender, PointerReleasedEventArgs e)
-    {
-        if (!_isDrawing) return;
-        _isDrawing = false;
-
-        var canvas = AnnotationCanvas;
-        if (canvas == null) return;
-
-        e.Pointer.Capture(null);
-
-        // Only save stroke if we have at least 2 points
-        if (_currentStrokePoints.Count >= 2 && ViewModel != null)
+        // Send live update every N points (fire-and-forget to avoid blocking drawing)
+        if (_currentStrokePoints.Count - _lastSentPointCount >= LiveUpdateThreshold)
         {
+            _lastSentPointCount = _currentStrokePoints.Count;
             var stroke = new DrawingStroke
             {
+                Id = _currentStrokeId,
                 UserId = ViewModel.UserId,
                 Username = ViewModel.Username,
                 Points = new List<PointF>(_currentStrokePoints),
                 Color = ViewModel.AnnotationColor,
                 Thickness = 3.0f
             };
-
-            await ViewModel.AddAnnotationStrokeAsync(stroke);
+            // Fire-and-forget - don't await to keep drawing smooth
+            _ = ViewModel.UpdateAnnotationStrokeAsync(stroke);
         }
+    }
 
-        _currentStrokePoints.Clear();
-        _currentPolyline = null;
+    private async void OnAnnotationCanvasPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        try
+        {
+            if (!_isDrawing) return;
+            _isDrawing = false;
 
-        // Redraw all strokes to ensure consistency
-        RedrawAnnotations();
+            var canvas = AnnotationCanvas;
+            if (canvas == null) return;
+
+            e.Pointer.Capture(null);
+
+            // Only save stroke if we have at least 2 points
+            if (_currentStrokePoints.Count >= 2 && ViewModel != null)
+            {
+                var stroke = new DrawingStroke
+                {
+                    Id = _currentStrokeId, // Use the same ID from the live updates
+                    UserId = ViewModel.UserId,
+                    Username = ViewModel.Username,
+                    Points = new List<PointF>(_currentStrokePoints),
+                    Color = ViewModel.AnnotationColor,
+                    Thickness = 3.0f
+                };
+
+                await ViewModel.AddAnnotationStrokeAsync(stroke);
+            }
+
+            _currentStrokePoints.Clear();
+            _currentPolyline = null;
+
+            // Schedule a redraw after the stroke is added to _currentStrokes
+            // This catches up on any strokes received during drawing (which were skipped)
+            Dispatcher.UIThread.Post(RedrawAnnotations, DispatcherPriority.Background);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"MainAppView: ERROR in OnAnnotationCanvasPointerReleased: {ex.Message}");
+            Console.WriteLine($"MainAppView: Stack trace: {ex.StackTrace}");
+
+            // Clean up state to prevent further issues
+            _isDrawing = false;
+            _currentStrokePoints.Clear();
+            _currentPolyline = null;
+        }
     }
 
     private void OnAnnotationColorClick(object? sender, RoutedEventArgs e)
@@ -309,32 +371,45 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
     /// </summary>
     private void RedrawAnnotations()
     {
-        var canvas = AnnotationCanvas;
-        if (canvas == null || ViewModel == null) return;
-
-        canvas.Children.Clear();
-
-        foreach (var stroke in ViewModel.CurrentAnnotationStrokes)
+        try
         {
-            if (stroke.Points.Count < 2) continue;
+            var canvas = AnnotationCanvas;
+            if (canvas == null || ViewModel == null) return;
 
-            var polyline = new Polyline
-            {
-                Stroke = new SolidColorBrush(Color.Parse(stroke.Color)),
-                StrokeThickness = stroke.Thickness,
-                StrokeLineCap = PenLineCap.Round,
-                StrokeJoin = PenLineJoin.Round
-            };
+            canvas.Children.Clear();
 
-            // Convert normalized coordinates back to screen coordinates
-            foreach (var point in stroke.Points)
+            // Take a snapshot of strokes to avoid collection modification during iteration
+            var strokes = ViewModel.CurrentAnnotationStrokes.ToList();
+
+            foreach (var stroke in strokes)
             {
-                var screenX = point.X * canvas.Bounds.Width;
-                var screenY = point.Y * canvas.Bounds.Height;
-                polyline.Points.Add(new Point(screenX, screenY));
+                if (stroke.Points.Count < 2) continue;
+
+                var polyline = new Polyline
+                {
+                    Stroke = new SolidColorBrush(Color.Parse(stroke.Color)),
+                    StrokeThickness = stroke.Thickness,
+                    StrokeLineCap = PenLineCap.Round,
+                    StrokeJoin = PenLineJoin.Round
+                };
+
+                // Convert normalized coordinates back to screen coordinates
+                // Take a snapshot of points too
+                var points = stroke.Points.ToList();
+                foreach (var point in points)
+                {
+                    var screenX = point.X * canvas.Bounds.Width;
+                    var screenY = point.Y * canvas.Bounds.Height;
+                    polyline.Points.Add(new Point(screenX, screenY));
+                }
+
+                canvas.Children.Add(polyline);
             }
-
-            canvas.Children.Add(polyline);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"MainAppView: ERROR in RedrawAnnotations: {ex.Message}");
+            Console.WriteLine($"MainAppView: Stack trace: {ex.StackTrace}");
         }
     }
 }

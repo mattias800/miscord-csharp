@@ -18,6 +18,7 @@ public class ScreenAnnotationViewModel : ViewModelBase
     private readonly string _sharerUsername;
 
     private bool _isDrawModeEnabled;
+    private bool _isDrawingAllowedForViewers;
     private string _currentColor = "#FF0000";
     private ObservableCollection<DrawingStroke> _strokes = new();
 
@@ -49,6 +50,32 @@ public class ScreenAnnotationViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _isDrawModeEnabled, value);
     }
 
+    /// <summary>
+    /// Whether viewers are allowed to draw on this screen share.
+    /// Only the host (sharer) can change this setting.
+    /// </summary>
+    public bool IsDrawingAllowedForViewers
+    {
+        get => _isDrawingAllowedForViewers;
+        set
+        {
+            if (this.RaiseAndSetIfChanged(ref _isDrawingAllowedForViewers, value) != value) return;
+            // Broadcast the change to all viewers
+            _ = SetDrawingAllowedAsync(value);
+        }
+    }
+
+    private async Task SetDrawingAllowedAsync(bool isAllowed)
+    {
+        await _annotationService.SetDrawingAllowedAsync(_channelId, _sharerId, isAllowed);
+
+        // Clear all drawings when disabling - useful if someone draws something inappropriate
+        if (!isAllowed)
+        {
+            await ClearStrokesAsync();
+        }
+    }
+
     public string CurrentColor
     {
         get => _currentColor;
@@ -65,12 +92,15 @@ public class ScreenAnnotationViewModel : ViewModelBase
 
     private void OnStrokeAdded(Guid sharerId, DrawingStroke stroke)
     {
+        Console.WriteLine($"ScreenAnnotationViewModel: OnStrokeAdded - sharerId={sharerId}, _sharerId={_sharerId}, match={sharerId == _sharerId}, strokePoints={stroke.Points.Count}");
+
         // Only handle strokes for our screen share
         if (sharerId != _sharerId) return;
 
         Dispatcher.UIThread.Post(() =>
         {
             _strokes.Add(stroke);
+            Console.WriteLine($"ScreenAnnotationViewModel: Added stroke, total strokes now: {_strokes.Count}");
             this.RaisePropertyChanged(nameof(Strokes));
         });
     }
@@ -89,6 +119,11 @@ public class ScreenAnnotationViewModel : ViewModelBase
     public async Task AddStrokeAsync(DrawingStroke stroke)
     {
         await _annotationService.AddStrokeAsync(_channelId, _sharerId, stroke);
+    }
+
+    public async Task UpdateStrokeAsync(DrawingStroke stroke)
+    {
+        await _annotationService.UpdateStrokeAsync(_channelId, _sharerId, stroke);
     }
 
     public async Task ClearStrokesAsync()

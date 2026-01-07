@@ -70,6 +70,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     // Drawing annotation state
     private readonly AnnotationService _annotationService;
     private bool _isAnnotationEnabled;
+    private bool _isDrawingAllowedByHost;
     private string _annotationColor = "#FF0000";
     private List<DrawingStroke> _currentStrokes = new();
 
@@ -77,6 +78,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private ScreenShareSettings? _currentScreenShareSettings;
     private Views.ScreenAnnotationWindow? _screenAnnotationWindow;
     private Views.AnnotationToolbarWindow? _annotationToolbarWindow;
+    private ScreenAnnotationViewModel? _screenAnnotationViewModel;
 
     public MainAppViewModel(IApiClient apiClient, ISignalRService signalR, IWebRtcService webRtc, IScreenCaptureService screenCaptureService, string baseUrl, AuthResponse auth, Action onLogout, Action? onSwitchServer = null, Action? onOpenDMs = null, Action<Guid?, string?>? onOpenDMsWithUser = null, Action? onOpenSettings = null)
     {
@@ -105,6 +107,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         _annotationService = new AnnotationService(_signalR);
         _annotationService.StrokeAdded += OnAnnotationStrokeAdded;
         _annotationService.StrokesCleared += OnAnnotationStrokesCleared;
+        _annotationService.DrawingAllowedChanged += OnDrawingAllowedChanged;
 
         // Subscribe to WebRTC connection status changes
         _webRtc.ConnectionStatusChanged += status =>
@@ -456,6 +459,16 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             }
         });
 
+        // Video stream stopped - close fullscreen if viewing that stream
+        _signalR.VideoStreamStopped += e => Dispatcher.UIThread.Post(() =>
+        {
+            // If we're viewing this stream in fullscreen, close it
+            if (IsVideoFullscreen && FullscreenStream?.UserId == e.UserId)
+            {
+                CloseFullscreen();
+            }
+        });
+
         // DM SignalR handlers
         _signalR.DirectMessageReceived += message => Dispatcher.UIThread.Post(() =>
         {
@@ -614,6 +627,23 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref _isScreenSharing, value);
     }
 
+    /// <summary>
+    /// Whether the host (sharer) allows viewers to draw on the screen share.
+    /// This is only relevant when this user is sharing their screen.
+    /// </summary>
+    public bool IsDrawingAllowedForViewers
+    {
+        get => _screenAnnotationViewModel?.IsDrawingAllowedForViewers ?? false;
+        set
+        {
+            if (_screenAnnotationViewModel != null)
+            {
+                _screenAnnotationViewModel.IsDrawingAllowedForViewers = value;
+                this.RaisePropertyChanged();
+            }
+        }
+    }
+
     public VoiceConnectionStatus VoiceConnectionStatus
     {
         get => _voiceConnectionStatus;
@@ -736,6 +766,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // Load existing strokes for this screen share
         _currentStrokes = _annotationService.GetStrokes(stream.UserId).ToList();
         this.RaisePropertyChanged(nameof(CurrentAnnotationStrokes));
+
+        // Check if drawing is allowed for this screen share
+        IsDrawingAllowedByHost = _annotationService.IsDrawingAllowed(stream.UserId);
     }
 
     public void CloseFullscreen()
@@ -750,6 +783,15 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     {
         get => _isAnnotationEnabled;
         set => this.RaiseAndSetIfChanged(ref _isAnnotationEnabled, value);
+    }
+
+    /// <summary>
+    /// Whether the host (sharer) has allowed viewers to draw on the screen share.
+    /// </summary>
+    public bool IsDrawingAllowedByHost
+    {
+        get => _isDrawingAllowedByHost;
+        private set => this.RaiseAndSetIfChanged(ref _isDrawingAllowedByHost, value);
     }
 
     public string AnnotationColor
@@ -794,11 +836,38 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         }
     }
 
+    private void OnDrawingAllowedChanged(Guid sharerId, bool isAllowed)
+    {
+        // Only update if we're viewing this sharer's screen in fullscreen
+        if (FullscreenStream?.UserId == sharerId)
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                IsDrawingAllowedByHost = isAllowed;
+                // If drawing was disabled by host, turn off our drawing mode
+                if (!isAllowed && IsAnnotationEnabled)
+                {
+                    IsAnnotationEnabled = false;
+                }
+            });
+        }
+    }
+
     public async Task AddAnnotationStrokeAsync(DrawingStroke stroke)
     {
         if (CurrentVoiceChannel == null || FullscreenStream == null) return;
 
         await _annotationService.AddStrokeAsync(
+            CurrentVoiceChannel.Id,
+            FullscreenStream.UserId,
+            stroke);
+    }
+
+    public async Task UpdateAnnotationStrokeAsync(DrawingStroke stroke)
+    {
+        if (CurrentVoiceChannel == null || FullscreenStream == null) return;
+
+        await _annotationService.UpdateStrokeAsync(
             CurrentVoiceChannel.Id,
             FullscreenStream.UserId,
             stroke);
@@ -1727,83 +1796,110 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     {
         if (CurrentVoiceChannel is null) return;
 
+        Console.WriteLine("ShowSharerAnnotationOverlay: Starting...");
+        var logFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "miscord-overlay-debug.log");
+        void Log(string msg) { System.IO.File.AppendAllText(logFile, $"{DateTime.Now:HH:mm:ss.fff} {msg}\n"); Console.WriteLine(msg); }
+        Log("ShowSharerAnnotationOverlay: Starting...");
+
         try
         {
-            // Create the view model for the annotation overlay
-            var viewModel = new ScreenAnnotationViewModel(
+            // Step 1: Create the view model
+            Log("ShowSharerAnnotationOverlay: Step 1 - Creating ViewModel...");
+            _screenAnnotationViewModel = new ScreenAnnotationViewModel(
                 _annotationService,
                 CurrentVoiceChannel.Id,
                 _auth.UserId,
                 _auth.Username);
+            this.RaisePropertyChanged(nameof(IsDrawingAllowedForViewers));
+            Log("ShowSharerAnnotationOverlay: Step 1 - ViewModel created");
 
-            // Find the screen that matches the shared display
-            Avalonia.Controls.Screens? screensService = null;
-            Avalonia.Platform.Screen? targetScreen = null;
+            // Step 2: Find the screen
+            Log("ShowSharerAnnotationOverlay: Step 2 - Finding screen...");
+            Avalonia.PixelRect? targetBounds = null;
 
             if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
             {
-                screensService = desktop.MainWindow?.Screens;
+                var screensService = desktop.MainWindow?.Screens;
                 if (screensService != null && int.TryParse(settings.Source.Id, out var displayIndex))
                 {
                     var allScreens = screensService.All.ToList();
+                    Log($"ShowSharerAnnotationOverlay: Found {allScreens.Count} screens, target index: {displayIndex}");
                     if (displayIndex < allScreens.Count)
                     {
-                        targetScreen = allScreens[displayIndex];
+                        targetBounds = allScreens[displayIndex].Bounds;
+                        Log($"ShowSharerAnnotationOverlay: Target screen bounds: {targetBounds}");
                     }
                 }
             }
 
-            // Create and position the overlay window
-            _screenAnnotationWindow = new Views.ScreenAnnotationWindow
-            {
-                DataContext = viewModel
-            };
+            // Step 3: Create overlay window
+            Log("ShowSharerAnnotationOverlay: Step 3 - Creating overlay window...");
+            _screenAnnotationWindow = new Views.ScreenAnnotationWindow();
+            Log("ShowSharerAnnotationOverlay: Step 3a - Window created, setting DataContext...");
+            _screenAnnotationWindow.DataContext = _screenAnnotationViewModel;
+            Log("ShowSharerAnnotationOverlay: Step 3b - DataContext set");
 
-            if (targetScreen != null)
+            // Step 4: Position the window
+            Log("ShowSharerAnnotationOverlay: Step 4 - Positioning window...");
+            if (targetBounds.HasValue)
             {
-                // Position on the target screen
                 _screenAnnotationWindow.Position = new Avalonia.PixelPoint(
-                    (int)targetScreen.Bounds.X,
-                    (int)targetScreen.Bounds.Y);
-                _screenAnnotationWindow.Width = targetScreen.Bounds.Width;
-                _screenAnnotationWindow.Height = targetScreen.Bounds.Height;
+                    targetBounds.Value.X,
+                    targetBounds.Value.Y);
+                _screenAnnotationWindow.Width = targetBounds.Value.Width;
+                _screenAnnotationWindow.Height = targetBounds.Value.Height;
             }
             else
             {
-                // Fallback: maximize the window
                 _screenAnnotationWindow.WindowState = Avalonia.Controls.WindowState.Maximized;
             }
+            Log("ShowSharerAnnotationOverlay: Step 4 - Window positioned");
 
-            _screenAnnotationWindow.Show();
-
-            // Create and position the toolbar window
-            _annotationToolbarWindow = new Views.AnnotationToolbarWindow
+            // Step 5: Show the overlay window
+            // On macOS, the window starts hidden and only shows when draw mode is enabled
+            // On other platforms, show immediately (input pass-through handles click behavior)
+            Log("ShowSharerAnnotationOverlay: Step 5 - Showing overlay window...");
+            if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX))
             {
-                DataContext = viewModel
-            };
+                _screenAnnotationWindow.Show();
+            }
+            Log("ShowSharerAnnotationOverlay: Step 5 - Overlay window configured");
+
+            // Step 6: Create toolbar window
+            Log("ShowSharerAnnotationOverlay: Step 6 - Creating toolbar window...");
+            _annotationToolbarWindow = new Views.AnnotationToolbarWindow();
+            Log("ShowSharerAnnotationOverlay: Step 6a - Toolbar created, setting DataContext...");
+            _annotationToolbarWindow.DataContext = _screenAnnotationViewModel;
+            Log("ShowSharerAnnotationOverlay: Step 6b - Setting overlay reference...");
             _annotationToolbarWindow.SetOverlayWindow(_screenAnnotationWindow);
+            Log("ShowSharerAnnotationOverlay: Step 6 - Toolbar window created");
 
-            // Position toolbar at bottom center of the shared screen
-            if (targetScreen != null)
+            // Step 7: Position toolbar
+            Log("ShowSharerAnnotationOverlay: Step 7 - Positioning toolbar...");
+            if (targetBounds.HasValue)
             {
-                var toolbarX = (int)(targetScreen.Bounds.X + (targetScreen.Bounds.Width - 380) / 2);
-                var toolbarY = (int)(targetScreen.Bounds.Y + targetScreen.Bounds.Height - 80);
+                var toolbarX = targetBounds.Value.X + (targetBounds.Value.Width - 380) / 2;
+                var toolbarY = targetBounds.Value.Y + targetBounds.Value.Height - 80;
                 _annotationToolbarWindow.Position = new Avalonia.PixelPoint(toolbarX, toolbarY);
             }
             else
             {
-                // Fallback position - near bottom center of primary screen
                 _annotationToolbarWindow.Position = new Avalonia.PixelPoint(400, 700);
             }
+            Log("ShowSharerAnnotationOverlay: Step 7 - Toolbar positioned");
 
+            // Step 8: Show toolbar
+            Log("ShowSharerAnnotationOverlay: Step 8 - Showing toolbar...");
             _annotationToolbarWindow.CloseRequested += OnAnnotationToolbarCloseRequested;
             _annotationToolbarWindow.Show();
+            Log("ShowSharerAnnotationOverlay: Step 8 - Toolbar shown");
 
-            Console.WriteLine($"Showed annotation overlay on display {settings.Source.Name}");
+            Log($"ShowSharerAnnotationOverlay: Complete - overlay on {settings.Source.Name}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to show annotation overlay: {ex.Message}");
+            Log($"ShowSharerAnnotationOverlay: EXCEPTION: {ex.Message}");
+            Log($"ShowSharerAnnotationOverlay: Stack trace: {ex.StackTrace}");
         }
     }
 
@@ -1823,6 +1919,13 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         {
             _screenAnnotationWindow.Close();
             _screenAnnotationWindow = null;
+        }
+
+        if (_screenAnnotationViewModel != null)
+        {
+            _screenAnnotationViewModel.Cleanup();
+            _screenAnnotationViewModel = null;
+            this.RaisePropertyChanged(nameof(IsDrawingAllowedForViewers));
         }
 
         Console.WriteLine("Closed annotation overlay");

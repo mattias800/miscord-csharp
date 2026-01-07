@@ -58,13 +58,21 @@ public class AnnotationMessage
     public required Guid SharerUserId { get; set; }
 
     /// <summary>
-    /// Action type: "stroke" (add new stroke), "erase" (remove stroke), "clear" (remove all)
+    /// Action type:
+    /// - "stroke" (completed stroke)
+    /// - "stroke_update" (live update while drawing - replace stroke with same ID)
+    /// - "erase" (remove stroke)
+    /// - "clear" (remove all)
+    /// - "allow_drawing" (host allows/disallows drawing by viewers)
     /// </summary>
     public required string Action { get; set; }
 
-    /// <summary>The stroke data (for "stroke" action)</summary>
+    /// <summary>The stroke data (for "stroke" and "stroke_update" actions)</summary>
     public DrawingStroke? Stroke { get; set; }
 
     /// <summary>ID of stroke to erase (for "erase" action)</summary>
     public Guid? EraseStrokeId { get; set; }
+
+    /// <summary>Whether drawing is allowed (for "allow_drawing" action)</summary>
+    public bool? IsDrawingAllowed { get; set; }
 }

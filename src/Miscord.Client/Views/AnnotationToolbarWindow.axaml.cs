@@ -3,6 +3,8 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Miscord.Client.ViewModels;
+using ReactiveUI;
+using System.Reactive.Linq;
 
 namespace Miscord.Client.Views;
 
@@ -10,6 +12,7 @@ namespace Miscord.Client.Views;
 /// Floating toolbar window for controlling screen share annotations.
 /// Always stays on top and captures input (never passes through).
 /// Can be dragged to reposition.
+/// Only visible when IsDrawingAllowedForViewers is true.
 /// </summary>
 public partial class AnnotationToolbarWindow : Window
 {
@@ -17,6 +20,7 @@ public partial class AnnotationToolbarWindow : Window
     private ScreenAnnotationWindow? _overlayWindow;
     private bool _isDragging;
     private Point _dragStartPosition;
+    private IDisposable? _drawingAllowedSubscription;
 
     /// <summary>
     /// Event raised when the user closes the toolbar (stops screen annotation).
@@ -39,7 +43,35 @@ public partial class AnnotationToolbarWindow : Window
 
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
+        // Unsubscribe from previous viewmodel
+        _drawingAllowedSubscription?.Dispose();
+
         _viewModel = DataContext as ScreenAnnotationViewModel;
+
+        if (_viewModel != null)
+        {
+            // Subscribe to IsDrawingAllowedForViewers changes to show/hide toolbar
+            _drawingAllowedSubscription = _viewModel
+                .WhenAnyValue(x => x.IsDrawingAllowedForViewers)
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(isAllowed =>
+                {
+                    if (isAllowed)
+                    {
+                        Show();
+                    }
+                    else
+                    {
+                        Hide();
+                    }
+                });
+
+            // Set initial visibility
+            if (!_viewModel.IsDrawingAllowedForViewers)
+            {
+                Hide();
+            }
+        }
     }
 
     private void OnToolbarPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -100,6 +132,7 @@ public partial class AnnotationToolbarWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _drawingAllowedSubscription?.Dispose();
         _viewModel?.Cleanup();
         base.OnClosed(e);
     }

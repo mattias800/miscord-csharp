@@ -370,10 +370,6 @@ public class VoiceChannelContentViewModel : ReactiveObject, IDisposable
     {
         // Update local user's video preview for the appropriate stream
         var stream = VideoStreams.FirstOrDefault(s => s.UserId == _localUserId && s.StreamType == streamType);
-        if (stream == null)
-        {
-            Console.WriteLine($"VoiceChannelContent: No VideoStream found for local user {_localUserId} streamType={streamType}. Available streams: {string.Join(", ", VideoStreams.Select(s => $"{s.Username}/{s.StreamType}"))}");
-        }
         stream?.UpdateVideoFrame(rgbData, width, height);
     }
 

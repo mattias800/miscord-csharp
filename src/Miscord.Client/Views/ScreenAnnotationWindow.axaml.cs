@@ -4,7 +4,6 @@ using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Media;
-using Avalonia.Platform.Storage;
 using Miscord.Client.ViewModels;
 using Miscord.Shared.Models;
 
@@ -22,6 +21,9 @@ public partial class ScreenAnnotationWindow : Window
     private bool _isDrawing;
     private List<PointF> _currentStrokePoints = new();
     private Polyline? _currentPolyline;
+    private Guid _currentStrokeId;
+    private int _lastSentPointCount;
+    private const int LiveUpdateThreshold = 30; // Send update every N points
 
     // Platform-specific handles
     private IntPtr _windowHandle;
@@ -84,25 +86,38 @@ public partial class ScreenAnnotationWindow : Window
     /// </summary>
     private void UpdateInputPassThrough()
     {
-        var passThrough = _viewModel?.IsDrawModeEnabled != true;
+        var drawModeEnabled = _viewModel?.IsDrawModeEnabled == true;
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            UpdateInputPassThroughWindows(passThrough);
+            // Windows: use native input pass-through
+            UpdateInputPassThroughWindows(!drawModeEnabled);
+            AnnotationCanvas.IsHitTestVisible = drawModeEnabled;
         }
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
-            UpdateInputPassThroughMacOS(passThrough);
+            // macOS: hide/show window based on draw mode
+            // P/Invoke for ignoresMouseEvents crashes on ARM64, so we can't have click-through
+            // Limitation: Guest drawings only visible when host has draw mode enabled
+            if (drawModeEnabled)
+            {
+                this.Show();
+                // Set Topmost to false so the toolbar (which has Topmost=true) stays on top
+                this.Topmost = false;
+                // Redraw strokes when showing (may have received strokes while hidden)
+                RedrawStrokes();
+            }
+            else
+            {
+                this.Hide();
+            }
+            AnnotationCanvas.IsHitTestVisible = drawModeEnabled;
         }
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
-            UpdateInputPassThroughLinux(passThrough);
+            UpdateInputPassThroughLinux(!drawModeEnabled);
+            AnnotationCanvas.IsHitTestVisible = drawModeEnabled;
         }
-
-        // Update canvas hit test
-        AnnotationCanvas.IsHitTestVisible = !passThrough;
-
-        Console.WriteLine($"ScreenAnnotationWindow: Input pass-through = {passThrough}");
     }
 
     #region Platform-Specific Input Pass-Through
@@ -145,38 +160,22 @@ public partial class ScreenAnnotationWindow : Window
         }
     }
 
-    // macOS
-    [DllImport("/usr/lib/libobjc.dylib", EntryPoint = "objc_getClass")]
-    private static extern IntPtr objc_getClass(string className);
-
+    // macOS - Input pass-through via NSWindow.ignoresMouseEvents
+    // Note: Using ObjCRuntime for safer P/Invoke on both x64 and ARM64
     [DllImport("/usr/lib/libobjc.dylib", EntryPoint = "sel_registerName")]
     private static extern IntPtr sel_registerName(string selector);
 
     [DllImport("/usr/lib/libobjc.dylib", EntryPoint = "objc_msgSend")]
-    private static extern void objc_msgSend_void_bool(IntPtr receiver, IntPtr selector, bool arg);
+    private static extern IntPtr objc_msgSend_IntPtr(IntPtr receiver, IntPtr selector);
 
     [DllImport("/usr/lib/libobjc.dylib", EntryPoint = "objc_msgSend")]
-    private static extern IntPtr objc_msgSend(IntPtr receiver, IntPtr selector);
+    private static extern void objc_msgSend_void_byte(IntPtr receiver, IntPtr selector, byte arg);
 
     private void UpdateInputPassThroughMacOS(bool passThrough)
     {
-        if (_windowHandle == IntPtr.Zero) return;
-
-        try
-        {
-            // On macOS, the handle is the NSView, we need to get the NSWindow
-            var nsWindow = objc_msgSend(_windowHandle, sel_registerName("window"));
-            if (nsWindow != IntPtr.Zero)
-            {
-                // Set ignoresMouseEvents property
-                var selector = sel_registerName("setIgnoresMouseEvents:");
-                objc_msgSend_void_bool(nsWindow, selector, passThrough);
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"ScreenAnnotationWindow: Failed to update macOS input pass-through: {ex.Message}");
-        }
+        // TODO: macOS input pass-through disabled - P/Invoke crashes on ARM64
+        // The window will capture all input when visible. Users must use the toolbar to toggle draw mode.
+        Console.WriteLine($"ScreenAnnotationWindow: macOS input pass-through skipped (requested: {passThrough})");
     }
 
     // Linux (X11)
@@ -245,6 +244,8 @@ public partial class ScreenAnnotationWindow : Window
         var canvas = AnnotationCanvas;
         _isDrawing = true;
         _currentStrokePoints.Clear();
+        _currentStrokeId = Guid.NewGuid(); // New stroke ID for this drawing
+        _lastSentPointCount = 0;
 
         var pos = e.GetPosition(canvas);
         var normalizedPoint = new PointF(
@@ -262,7 +263,11 @@ public partial class ScreenAnnotationWindow : Window
         _currentPolyline.Points.Add(pos);
         canvas.Children.Add(_currentPolyline);
 
-        e.Pointer.Capture(canvas);
+        // Note: Pointer capture disabled on macOS as it can cause native crashes
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            e.Pointer.Capture(canvas);
+        }
     }
 
     private void OnCanvasPointerMoved(object? sender, PointerEventArgs e)
@@ -276,33 +281,63 @@ public partial class ScreenAnnotationWindow : Window
             (float)(pos.Y / canvas.Bounds.Height));
         _currentStrokePoints.Add(normalizedPoint);
         _currentPolyline.Points.Add(pos);
-    }
 
-    private async void OnCanvasPointerReleased(object? sender, PointerReleasedEventArgs e)
-    {
-        if (!_isDrawing || _viewModel == null) return;
-        _isDrawing = false;
-
-        e.Pointer.Capture(null);
-
-        if (_currentStrokePoints.Count >= 2)
+        // Send live update every N points (fire-and-forget to avoid blocking drawing)
+        if (_currentStrokePoints.Count - _lastSentPointCount >= LiveUpdateThreshold)
         {
+            _lastSentPointCount = _currentStrokePoints.Count;
             var stroke = new DrawingStroke
             {
+                Id = _currentStrokeId,
                 UserId = _viewModel.SharerId,
                 Username = _viewModel.SharerUsername,
                 Points = new List<PointF>(_currentStrokePoints),
                 Color = _viewModel.CurrentColor,
                 Thickness = 3.0f
             };
-
-            await _viewModel.AddStrokeAsync(stroke);
+            // Fire-and-forget - don't await to keep drawing smooth
+            _ = _viewModel.UpdateStrokeAsync(stroke);
         }
+    }
 
-        _currentStrokePoints.Clear();
-        _currentPolyline = null;
+    private async void OnCanvasPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        try
+        {
+            if (!_isDrawing || _viewModel == null) return;
+            _isDrawing = false;
 
-        RedrawStrokes();
+            // Note: Pointer capture disabled on macOS as it can cause native crashes
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                e.Pointer.Capture(null);
+            }
+
+            if (_currentStrokePoints.Count >= 2)
+            {
+                var stroke = new DrawingStroke
+                {
+                    Id = _currentStrokeId, // Use the same ID from the live updates
+                    UserId = _viewModel.SharerId,
+                    Username = _viewModel.SharerUsername,
+                    Points = new List<PointF>(_currentStrokePoints),
+                    Color = _viewModel.CurrentColor,
+                    Thickness = 3.0f
+                };
+
+                await _viewModel.AddStrokeAsync(stroke);
+            }
+
+            _currentStrokePoints.Clear();
+            _currentPolyline = null;
+
+            RedrawStrokes();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"ScreenAnnotationWindow: ERROR in OnCanvasPointerReleased: {ex.Message}");
+            Console.WriteLine($"ScreenAnnotationWindow: Stack trace: {ex.StackTrace}");
+        }
     }
 
     #endregion
