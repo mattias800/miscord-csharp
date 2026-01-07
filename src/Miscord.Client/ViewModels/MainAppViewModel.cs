@@ -90,6 +90,13 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private System.Timers.Timer? _typingCleanupTimer;
     private ScreenAnnotationViewModel? _screenAnnotationViewModel;
 
+    // Mention autocomplete state
+    private bool _isMentionPopupOpen;
+    private string _mentionFilterText = string.Empty;
+    private int _mentionStartIndex = -1;
+    private int _selectedMentionIndex;
+    private ObservableCollection<CommunityMemberResponse> _mentionSuggestions = new();
+
     public MainAppViewModel(IApiClient apiClient, ISignalRService signalR, IWebRtcService webRtc, IScreenCaptureService screenCaptureService, string baseUrl, AuthResponse auth, Action onLogout, Action? onSwitchServer = null, Action? onOpenDMs = null, Action<Guid?, string?>? onOpenDMsWithUser = null, Action? onOpenSettings = null)
     {
         _apiClient = apiClient;
@@ -650,7 +657,12 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         get => _messageInput;
         set
         {
+            var oldValue = _messageInput;
             this.RaiseAndSetIfChanged(ref _messageInput, value);
+
+            // Handle mention autocomplete
+            HandleMentionAutocomplete(oldValue, value);
+
             // Send typing indicator (throttled)
             if (!string.IsNullOrEmpty(value) && SelectedChannel is not null)
             {
@@ -687,6 +699,25 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             if (_dmTypingUsers.Count == 0) return string.Empty;
             return $"{_dmTypingUsers[0].Username} is typing...";
         }
+    }
+
+    // Mention autocomplete properties
+    public bool IsMentionPopupOpen
+    {
+        get => _isMentionPopupOpen;
+        set => this.RaiseAndSetIfChanged(ref _isMentionPopupOpen, value);
+    }
+
+    public ObservableCollection<CommunityMemberResponse> MentionSuggestions
+    {
+        get => _mentionSuggestions;
+        set => this.RaiseAndSetIfChanged(ref _mentionSuggestions, value);
+    }
+
+    public int SelectedMentionIndex
+    {
+        get => _selectedMentionIndex;
+        set => this.RaiseAndSetIfChanged(ref _selectedMentionIndex, value);
     }
 
     public bool IsLoading
@@ -2128,6 +2159,137 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     {
         // User closed the toolbar - stop screen sharing
         _ = StopScreenShareAsync();
+    }
+
+    // Mention autocomplete methods
+    private void HandleMentionAutocomplete(string oldValue, string newValue)
+    {
+        if (string.IsNullOrEmpty(newValue))
+        {
+            CloseMentionPopup();
+            return;
+        }
+
+        // Find the last @ symbol that's either at start or preceded by whitespace
+        var lastAtIndex = -1;
+        for (int i = newValue.Length - 1; i >= 0; i--)
+        {
+            if (newValue[i] == '@')
+            {
+                // Check if @ is at start or preceded by whitespace
+                if (i == 0 || char.IsWhiteSpace(newValue[i - 1]))
+                {
+                    lastAtIndex = i;
+                    break;
+                }
+            }
+            // Stop searching if we hit whitespace without finding @
+            else if (char.IsWhiteSpace(newValue[i]))
+            {
+                break;
+            }
+        }
+
+        if (lastAtIndex >= 0)
+        {
+            // Extract the filter text after @
+            var filterText = newValue.Substring(lastAtIndex + 1);
+
+            // Check if there's a space in the filter (means mention is complete)
+            if (filterText.Contains(' '))
+            {
+                CloseMentionPopup();
+                return;
+            }
+
+            _mentionStartIndex = lastAtIndex;
+            _mentionFilterText = filterText.ToLowerInvariant();
+
+            // Filter members based on the filter text
+            UpdateMentionSuggestions();
+        }
+        else
+        {
+            CloseMentionPopup();
+        }
+    }
+
+    private void UpdateMentionSuggestions()
+    {
+        var filtered = Members
+            .Where(m => m.UserId != _auth.UserId) // Exclude self
+            .Where(m => string.IsNullOrEmpty(_mentionFilterText) ||
+                        m.Username.ToLowerInvariant().Contains(_mentionFilterText))
+            .Take(5) // Limit to 5 suggestions
+            .ToList();
+
+        MentionSuggestions.Clear();
+        foreach (var member in filtered)
+        {
+            MentionSuggestions.Add(member);
+        }
+
+        IsMentionPopupOpen = MentionSuggestions.Count > 0;
+        SelectedMentionIndex = 0;
+    }
+
+    public void CloseMentionPopup()
+    {
+        IsMentionPopupOpen = false;
+        _mentionStartIndex = -1;
+        _mentionFilterText = string.Empty;
+        MentionSuggestions.Clear();
+        SelectedMentionIndex = 0;
+    }
+
+    /// <summary>
+    /// Selects a mention and returns the cursor position where the caret should be placed.
+    /// Returns -1 if no mention was inserted.
+    /// </summary>
+    public int SelectMention(CommunityMemberResponse member)
+    {
+        if (_mentionStartIndex < 0 || string.IsNullOrEmpty(MessageInput))
+        {
+            CloseMentionPopup();
+            return -1;
+        }
+
+        // Replace @filterText with @username
+        var beforeMention = MessageInput.Substring(0, _mentionStartIndex);
+        var afterMention = MessageInput.Substring(_mentionStartIndex + 1 + _mentionFilterText.Length);
+
+        MessageInput = $"{beforeMention}@{member.Username} {afterMention}";
+
+        // Calculate cursor position: before + @ + username + space
+        var cursorPosition = beforeMention.Length + 1 + member.Username.Length + 1;
+
+        CloseMentionPopup();
+        return cursorPosition;
+    }
+
+    /// <summary>
+    /// Selects the currently highlighted mention and returns the cursor position.
+    /// Returns -1 if no mention was selected.
+    /// </summary>
+    public int SelectCurrentMention()
+    {
+        if (MentionSuggestions.Count > 0 && SelectedMentionIndex >= 0 && SelectedMentionIndex < MentionSuggestions.Count)
+        {
+            return SelectMention(MentionSuggestions[SelectedMentionIndex]);
+        }
+        return -1;
+    }
+
+    public void NavigateMentionUp()
+    {
+        if (MentionSuggestions.Count == 0) return;
+        SelectedMentionIndex = (SelectedMentionIndex - 1 + MentionSuggestions.Count) % MentionSuggestions.Count;
+    }
+
+    public void NavigateMentionDown()
+    {
+        if (MentionSuggestions.Count == 0) return;
+        SelectedMentionIndex = (SelectedMentionIndex + 1) % MentionSuggestions.Count;
     }
 
     public void Dispose()

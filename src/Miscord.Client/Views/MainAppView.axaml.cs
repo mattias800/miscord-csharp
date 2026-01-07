@@ -147,6 +147,36 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
     // Enter sends message, Shift+Enter inserts newline
     private void OnMessageKeyDown(object? sender, KeyEventArgs e)
     {
+        // Handle mention popup navigation
+        if (ViewModel?.IsMentionPopupOpen == true)
+        {
+            switch (e.Key)
+            {
+                case Key.Up:
+                    ViewModel.NavigateMentionUp();
+                    e.Handled = true;
+                    return;
+                case Key.Down:
+                    ViewModel.NavigateMentionDown();
+                    e.Handled = true;
+                    return;
+                case Key.Enter:
+                case Key.Tab:
+                    var cursorPos = ViewModel.SelectCurrentMention();
+                    if (cursorPos >= 0 && MessageInputBox != null)
+                    {
+                        MessageInputBox.SelectionStart = cursorPos;
+                        MessageInputBox.SelectionEnd = cursorPos;
+                    }
+                    e.Handled = true;
+                    return;
+                case Key.Escape:
+                    ViewModel.CloseMentionPopup();
+                    e.Handled = true;
+                    return;
+            }
+        }
+
         if (e.Key == Key.Enter && !e.KeyModifiers.HasFlag(KeyModifiers.Shift))
         {
             // Enter only = send message (mark handled to prevent newline)
@@ -234,6 +264,25 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         if (sender is Border border && border.Tag is Services.CommunityMemberResponse member)
         {
             ViewModel?.StartDMCommand.Execute(member).Subscribe();
+        }
+    }
+
+    // Called when clicking a mention suggestion
+    private void MentionSuggestion_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is Border border && border.DataContext is Services.CommunityMemberResponse member && ViewModel != null)
+        {
+            var cursorPos = ViewModel.SelectMention(member);
+            // Keep focus on the message input and set cursor position
+            if (MessageInputBox != null)
+            {
+                MessageInputBox.Focus();
+                if (cursorPos >= 0)
+                {
+                    MessageInputBox.SelectionStart = cursorPos;
+                    MessageInputBox.SelectionEnd = cursorPos;
+                }
+            }
         }
     }
 

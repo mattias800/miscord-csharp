@@ -80,8 +80,8 @@ These features significantly improve the core messaging experience:
 - [x] Support YouTube embeds (via oEmbed API)
 
 #### 2.5 User Mentions (@username) ✅
-- [ ] Autocomplete dropdown when typing `@`
-- [ ] Filter by partial username match
+- [x] Autocomplete dropdown when typing `@`
+- [x] Filter by partial username match
 - [x] Highlight mentions in rendered message
 - [ ] Notification/ping when user is mentioned
 - [ ] `@everyone` and `@here` for channels (admin only)
@@ -213,7 +213,7 @@ Another agent is currently working on server, community, and user account manage
   - [x] Unread indicators for text channels (badge on channel list)
   - [x] Message replies/threading (reply button, preview in messages)
   - [x] Link previews (OpenGraph metadata, YouTube embeds)
-  - [x] User mentions (highlight @username in messages)
+  - [x] User mentions (autocomplete dropdown, partial match filter, highlight in messages)
   - [x] Smart auto-scroll (preserve position when reading old messages)
 
 ### In Progress

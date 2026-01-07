@@ -1073,6 +1073,61 @@
                                    FontStyle="Italic"
                                    Margin="0,0,0,4"/>
 
+                        <!-- Mention Autocomplete Popup -->
+                        <Border Background="#2f3136"
+                                CornerRadius="4"
+                                Padding="4"
+                                Margin="0,0,0,8"
+                                IsVisible="{Binding IsMentionPopupOpen}">
+                            <ItemsControl x:Name="MentionSuggestionsList" ItemsSource="{Binding MentionSuggestions}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border x:Name="MentionItemBorder"
+                                                Classes="member-item"
+                                                Padding="8,6"
+                                                CornerRadius="4"
+                                                Cursor="Hand"
+                                                PointerPressed="MentionSuggestion_PointerPressed">
+                                            <Border.Background>
+                                                <MultiBinding Converter="{x:Static conv:MentionSelectedBackgroundConverter.Instance}">
+                                                    <Binding />
+                                                    <Binding Path="DataContext.MentionSuggestions" ElementName="MentionSuggestionsList" />
+                                                    <Binding Path="DataContext.SelectedMentionIndex" ElementName="MentionSuggestionsList" />
+                                                </MultiBinding>
+                                            </Border.Background>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Avatar -->
+                                                <Border Grid.Column="0"
+                                                        Width="28" Height="28"
+                                                        CornerRadius="14"
+                                                        Background="#5865f2"
+                                                        Margin="0,0,8,0">
+                                                    <TextBlock Text="{Binding Username[0]}"
+                                                               Foreground="White"
+                                                               FontSize="12"
+                                                               FontWeight="Bold"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"/>
+                                                </Border>
+
+                                                <!-- Username -->
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding Username}"
+                                                           Foreground="#dcddde"
+                                                           FontSize="14"
+                                                           VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Border>
+
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
