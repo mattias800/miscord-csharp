@@ -1191,13 +1191,16 @@
 
                 <!-- Messages List -->
                 <ScrollViewer x:Name="MessagesScrollViewer" Margin="0,8" HorizontalScrollBarVisibility="Disabled">
-                    <ItemsControl x:Name="MessagesList" ItemsSource="{Binding Messages}" Margin="16,0">
-                        <ItemsControl.ItemContainerTheme>
-                            <ControlTheme TargetType="ContentPresenter">
-                                <Setter Property="HorizontalAlignment" Value="Stretch"/>
-                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                            </ControlTheme>
-                        </ItemsControl.ItemContainerTheme>
+                    <ItemsControl x:Name="MessagesList"
+                                  ItemsSource="{Binding Messages}"
+                                  Margin="16,0"
+                                  HorizontalAlignment="Stretch"
+                                  Width="{Binding $parent[ScrollViewer].Viewport.Width}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel>
