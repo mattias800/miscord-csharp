@@ -1,6 +1,9 @@
+using System.Text.RegularExpressions;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Miscord.Client.Services;
 using Miscord.Shared.Models;
@@ -10,13 +13,20 @@ namespace Miscord.Client.Controls;
 /// <summary>
 /// A control that renders message content with markdown formatting and link preview cards.
 /// Combines MarkdownTextBlock with LinkPreviewCard for URLs found in the content.
+/// Also handles inline GIF display for Tenor URLs.
 /// </summary>
 public class MessageContentBlock : StackPanel
 {
     private static IApiClient? _apiClient;
     private static readonly Dictionary<string, LinkPreview?> _previewCache = new();
+    private static readonly Dictionary<string, Bitmap?> _gifCache = new();
     private static readonly HashSet<string> _pendingRequests = new();
     private static readonly object _cacheLock = new();
+
+    // Regex to detect Tenor GIF URLs
+    private static readonly Regex TenorGifRegex = new(
+        @"^https?://(?:media\.)?tenor\.com/[^\s]+$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public static readonly StyledProperty<string?> ContentProperty =
         AvaloniaProperty.Register<MessageContentBlock, string?>(nameof(Content));
@@ -65,6 +75,16 @@ public class MessageContentBlock : StackPanel
         if (string.IsNullOrEmpty(Content))
             return;
 
+        var trimmedContent = Content.Trim();
+
+        // Check if the entire message is a Tenor GIF URL
+        if (TenorGifRegex.IsMatch(trimmedContent))
+        {
+            // Display the GIF inline
+            DisplayInlineGif(trimmedContent);
+            return;
+        }
+
         // Add the markdown text block
         var markdownBlock = new MarkdownTextBlock
         {
@@ -80,6 +100,91 @@ public class MessageContentBlock : StackPanel
         if (urls.Count > 0)
         {
             FetchAndDisplayPreview(urls[0]);
+        }
+    }
+
+    private void DisplayInlineGif(string url)
+    {
+        // Create a container for the GIF
+        var container = new Border
+        {
+            CornerRadius = new CornerRadius(4),
+            ClipToBounds = true,
+            MaxWidth = 300,
+            MaxHeight = 300,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Background = new SolidColorBrush(Color.Parse("#2f3136"))
+        };
+
+        var image = new Image
+        {
+            Stretch = Stretch.Uniform,
+            MaxWidth = 300,
+            MaxHeight = 300
+        };
+
+        container.Child = image;
+        Children.Add(container);
+
+        // Load the GIF
+        LoadGifAsync(url, image, container);
+    }
+
+    private async void LoadGifAsync(string url, Image imageControl, Border container)
+    {
+        // Check cache first
+        lock (_cacheLock)
+        {
+            if (_gifCache.TryGetValue(url, out var cachedBitmap))
+            {
+                if (cachedBitmap != null)
+                {
+                    imageControl.Source = cachedBitmap;
+                    container.Background = null;
+                }
+                return;
+            }
+        }
+
+        try
+        {
+            using var client = new HttpClient();
+            client.Timeout = TimeSpan.FromSeconds(30);
+            var bytes = await client.GetByteArrayAsync(url);
+            using var stream = new MemoryStream(bytes);
+
+            var bitmap = new Bitmap(stream);
+
+            // Cache the bitmap
+            lock (_cacheLock)
+            {
+                // Limit cache size
+                if (_gifCache.Count > 100)
+                {
+                    var keysToRemove = _gifCache.Keys.Take(50).ToList();
+                    foreach (var key in keysToRemove)
+                    {
+                        _gifCache.Remove(key);
+                    }
+                }
+                _gifCache[url] = bitmap;
+            }
+
+            // Update UI on main thread
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                imageControl.Source = bitmap;
+                container.Background = null;
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to load GIF: {ex.Message}");
+
+            lock (_cacheLock)
+            {
+                _gifCache[url] = null;
+            }
         }
     }
 

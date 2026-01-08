@@ -993,6 +993,112 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         LightboxImage = null;
     }
 
+    // GIF picker properties
+    private ObservableCollection<GifResult> _gifResults = new();
+    private string _gifSearchQuery = string.Empty;
+    private bool _isLoadingGifs;
+    private string? _gifNextPos;
+
+    public ObservableCollection<GifResult> GifResults => _gifResults;
+
+    public string GifSearchQuery
+    {
+        get => _gifSearchQuery;
+        set => this.RaiseAndSetIfChanged(ref _gifSearchQuery, value);
+    }
+
+    public bool IsLoadingGifs
+    {
+        get => _isLoadingGifs;
+        set => this.RaiseAndSetIfChanged(ref _isLoadingGifs, value);
+    }
+
+    public async Task LoadTrendingGifsAsync()
+    {
+        if (IsLoadingGifs) return;
+
+        IsLoadingGifs = true;
+        _gifResults.Clear();
+        _gifNextPos = null;
+
+        try
+        {
+            var result = await _apiClient.GetTrendingGifsAsync(24);
+            if (result.Success && result.Data != null)
+            {
+                foreach (var gif in result.Data.Results)
+                {
+                    _gifResults.Add(gif);
+                }
+                _gifNextPos = result.Data.NextPos;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to load trending GIFs: {ex.Message}");
+        }
+        finally
+        {
+            IsLoadingGifs = false;
+        }
+    }
+
+    public async Task SearchGifsAsync()
+    {
+        if (IsLoadingGifs || string.IsNullOrWhiteSpace(GifSearchQuery)) return;
+
+        IsLoadingGifs = true;
+        _gifResults.Clear();
+        _gifNextPos = null;
+
+        try
+        {
+            var result = await _apiClient.SearchGifsAsync(GifSearchQuery.Trim(), 24);
+            if (result.Success && result.Data != null)
+            {
+                foreach (var gif in result.Data.Results)
+                {
+                    _gifResults.Add(gif);
+                }
+                _gifNextPos = result.Data.NextPos;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to search GIFs: {ex.Message}");
+        }
+        finally
+        {
+            IsLoadingGifs = false;
+        }
+    }
+
+    public async Task SendGifMessageAsync(GifResult gif)
+    {
+        if (SelectedChannel is null) return;
+
+        try
+        {
+            // Send the GIF URL as the message content
+            var result = await _apiClient.SendMessageAsync(SelectedChannel.Id, gif.Url, ReplyingToMessage?.Id);
+            if (result.Success)
+            {
+                CancelReply();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to send GIF: {ex.Message}");
+        }
+    }
+
+    public void ClearGifResults()
+    {
+        _gifResults.Clear();
+        GifSearchQuery = string.Empty;
+        _gifNextPos = null;
+    }
+
     // Voice channel properties
     public ChannelResponse? CurrentVoiceChannel
     {

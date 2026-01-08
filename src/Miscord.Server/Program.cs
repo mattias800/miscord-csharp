@@ -85,6 +85,11 @@ builder.Services.AddScoped<IReactionService, ReactionService>();
 // Add link preview service with HttpClient
 builder.Services.AddHttpClient<ILinkPreviewService, LinkPreviewService>();
 
+// Add Tenor GIF service
+builder.Services.Configure<TenorSettings>(
+    builder.Configuration.GetSection(TenorSettings.SectionName));
+builder.Services.AddHttpClient<ITenorService, TenorService>();
+
 // Add SFU service (Singleton to maintain WebRTC connections across requests)
 builder.Services.AddSingleton<ISfuService, SfuService>();
 

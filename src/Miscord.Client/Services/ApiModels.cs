@@ -296,3 +296,18 @@ public record SfuIceCandidateEvent(string Candidate, string? SdpMid, int? SdpMLi
 // Video Stream Signaling Events
 public record VideoStreamStartedEvent(Guid ChannelId, Guid UserId, string Username, VideoStreamType StreamType);
 public record VideoStreamStoppedEvent(Guid ChannelId, Guid UserId, VideoStreamType StreamType);
+
+// GIF Search Models
+public record GifSearchResponse(
+    List<GifResult> Results,
+    string? NextPos
+);
+
+public record GifResult(
+    string Id,
+    string Title,
+    string PreviewUrl,
+    string Url,
+    int Width,
+    int Height
+);

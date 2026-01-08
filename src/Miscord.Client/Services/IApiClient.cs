@@ -79,6 +79,10 @@ public interface IApiClient
 
     // Link Previews
     Task<ApiResult<LinkPreview>> GetLinkPreviewAsync(string url);
+
+    // GIF Search
+    Task<ApiResult<GifSearchResponse>> SearchGifsAsync(string query, int limit = 20, string? pos = null);
+    Task<ApiResult<GifSearchResponse>> GetTrendingGifsAsync(int limit = 20, string? pos = null);
 }
 
 public record ApiResult<T>

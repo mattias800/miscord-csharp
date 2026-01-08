@@ -509,6 +509,27 @@ public class ApiClient : IApiClient
         return await GetAsync<LinkPreview>($"/api/linkpreview?url={Uri.EscapeDataString(url)}");
     }
 
+    // GIF Search methods
+    public async Task<ApiResult<GifSearchResponse>> SearchGifsAsync(string query, int limit = 20, string? pos = null)
+    {
+        var url = $"/api/gifs/search?q={Uri.EscapeDataString(query)}&limit={limit}";
+        if (!string.IsNullOrEmpty(pos))
+        {
+            url += $"&pos={Uri.EscapeDataString(pos)}";
+        }
+        return await GetAsync<GifSearchResponse>(url);
+    }
+
+    public async Task<ApiResult<GifSearchResponse>> GetTrendingGifsAsync(int limit = 20, string? pos = null)
+    {
+        var url = $"/api/gifs/trending?limit={limit}";
+        if (!string.IsNullOrEmpty(pos))
+        {
+            url += $"&pos={Uri.EscapeDataString(pos)}";
+        }
+        return await GetAsync<GifSearchResponse>(url);
+    }
+
     // Generic HTTP helpers
     private async Task<ApiResult<T>> GetAsync<T>(string path)
     {

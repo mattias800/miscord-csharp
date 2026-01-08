@@ -419,6 +419,55 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         }
     }
 
+    // GIF Picker handlers
+    private async void OnGifButtonClick(object? sender, RoutedEventArgs e)
+    {
+        if (ViewModel == null) return;
+
+        var popup = this.FindControl<Popup>("GifPickerPopup");
+        var gifButton = this.FindControl<Button>("GifButton");
+
+        if (popup != null && gifButton != null)
+        {
+            popup.PlacementTarget = gifButton;
+            popup.IsOpen = true;
+
+            // Load trending GIFs when opening
+            await ViewModel.LoadTrendingGifsAsync();
+
+            // Focus the search box
+            var searchBox = this.FindControl<TextBox>("GifSearchBox");
+            searchBox?.Focus();
+        }
+    }
+
+    private async void GifSearchBox_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && ViewModel != null)
+        {
+            e.Handled = true;
+            await ViewModel.SearchGifsAsync();
+        }
+    }
+
+    private async void GifPreview_GifClicked(object? sender, Services.GifResult gif)
+    {
+        if (ViewModel == null) return;
+
+        // Send the GIF as a message
+        await ViewModel.SendGifMessageAsync(gif);
+
+        // Close the popup
+        var popup = this.FindControl<Popup>("GifPickerPopup");
+        if (popup != null)
+        {
+            popup.IsOpen = false;
+        }
+
+        // Clear GIF state
+        ViewModel.ClearGifResults();
+    }
+
     // Called for DM message input TextBox (tunneling event)
     // Enter sends message, Shift+Enter inserts newline
     private void OnDMMessageKeyDown(object? sender, KeyEventArgs e)

@@ -1209,6 +1209,7 @@
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
@@ -1225,8 +1226,21 @@
                                 <TextBlock Text="📎" FontSize="18" Foreground="#b9bbbe"/>
                             </Button>
 
+                            <!-- GIF Button -->
+                            <Button x:Name="GifButton"
+                                    Grid.Column="1"
+                                    Background="Transparent"
+                                    Padding="8,10"
+                                    Margin="0,0,4,0"
+                                    CornerRadius="4"
+                                    Cursor="Hand"
+                                    ToolTip.Tip="Send a GIF"
+                                    Click="OnGifButtonClick">
+                                <TextBlock Text="GIF" FontSize="11" FontWeight="Bold" Foreground="#b9bbbe"/>
+                            </Button>
+
                             <TextBox x:Name="MessageInputBox"
-                                     Grid.Column="1"
+                                     Grid.Column="2"
                                      Text="{Binding MessageInput}"
                                      Watermark="{Binding SelectedChannel.Name, StringFormat='Message #{0}'}"
                                      Background="#40444b"
@@ -1239,7 +1253,7 @@
                                      MaxHeight="200"
                                      DragDrop.AllowDrop="True"/>
 
-                            <Button Grid.Column="2"
+                            <Button Grid.Column="3"
                                     Command="{Binding SendMessageCommand}"
                                     Background="#5865f2"
                                     Foreground="White"
@@ -1922,6 +1936,68 @@
                         </Button>
                     </WrapPanel>
                 </StackPanel>
+            </Border>
+        </Popup>
+
+        <!-- GIF Picker Popup -->
+        <Popup x:Name="GifPickerPopup"
+               IsLightDismissEnabled="True"
+               Placement="Top"
+               PlacementGravity="Top">
+            <Border Background="#2f3136"
+                    CornerRadius="8"
+                    Padding="12"
+                    BorderBrush="#202225"
+                    BorderThickness="1"
+                    Width="420"
+                    Height="400">
+                <DockPanel>
+                    <!-- Search Box -->
+                    <TextBox x:Name="GifSearchBox"
+                             DockPanel.Dock="Top"
+                             Text="{Binding GifSearchQuery}"
+                             Watermark="Search Tenor"
+                             Background="#202225"
+                             Foreground="White"
+                             BorderThickness="0"
+                             CornerRadius="4"
+                             Padding="12,8"
+                             Margin="0,0,0,8"
+                             KeyDown="GifSearchBox_KeyDown"/>
+
+                    <!-- Loading Indicator -->
+                    <TextBlock DockPanel.Dock="Top"
+                               Text="Loading..."
+                               Foreground="#72767d"
+                               FontSize="12"
+                               Margin="4,4,0,8"
+                               IsVisible="{Binding IsLoadingGifs}"/>
+
+                    <!-- Powered by Tenor -->
+                    <TextBlock DockPanel.Dock="Bottom"
+                               Text="Powered by Tenor"
+                               Foreground="#72767d"
+                               FontSize="10"
+                               HorizontalAlignment="Right"
+                               Margin="0,8,0,0"/>
+
+                    <!-- GIF Grid -->
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="GifResultsControl" ItemsSource="{Binding GifResults}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <controls:GifPreview Gif="{Binding}" GifClicked="GifPreview_GifClicked"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
             </Border>
         </Popup>
 

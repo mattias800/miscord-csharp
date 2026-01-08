@@ -146,11 +146,13 @@ Lower priority enhancements:
 - [ ] Particularly useful for DMs
 - [ ] Server acknowledgment on receive
 
-#### 4.2 GIF/Sticker Support
-- [ ] Integration with Giphy or Tenor API
-- [ ] Picker UI in message composer
-- [ ] Inline GIF display
-- [ ] Sticker packs (custom per community?)
+#### 4.2 GIF Support ✅
+- [x] Integration with Tenor API (server-side proxy to hide API key)
+- [x] Picker UI in message composer (popup with search and trending GIFs)
+- [x] GIF search and trending endpoints
+- [x] Inline GIF display (detects Tenor URLs, renders inline)
+- [x] Image caching for performance
+- [ ] Sticker packs (future enhancement)
 
 #### 4.3 Voice/Video Calls in DMs
 - [ ] Add call button in DM conversation header
@@ -232,3 +234,4 @@ Another agent is currently working on server, community, and user account manage
 
 ### Not Started
 - [ ] Phase 4: Nice to Have
+  - [x] GIF support (Tenor API integration, picker UI, inline display)
