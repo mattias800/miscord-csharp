@@ -58,16 +58,42 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
             // Subscribe to collection changes for auto-scrolling
             ViewModel.Messages.CollectionChanged += OnMessagesCollectionChanged;
             ViewModel.DMMessages.CollectionChanged += OnDMMessagesCollectionChanged;
+
+            // Scroll to bottom if messages are already loaded (we missed the events)
+            // Also scroll after a short delay to handle async loading
+            ScrollToBottomAfterDelay();
         }
     }
 
+    // Scroll to bottom after a delay to ensure content is loaded and laid out
+    private async void ScrollToBottomAfterDelay()
+    {
+        // Wait for messages to load and layout to complete
+        await Task.Delay(100);
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            MessagesScrollViewer?.ScrollToEnd();
+        });
+    }
+
     // Track if user is scrolled to the bottom of messages
+    private double _lastMessagesExtentHeight;
+    private double _lastDMMessagesExtentHeight;
+
     private void OnMessagesScrollChanged(object? sender, ScrollChangedEventArgs e)
     {
         var scrollViewer = MessagesScrollViewer;
         if (scrollViewer == null) return;
 
         var distanceFromBottom = scrollViewer.Extent.Height - scrollViewer.Offset.Y - scrollViewer.Viewport.Height;
+
+        // If content grew (e.g., link preview loaded) and we were at bottom, scroll to bottom again
+        if (_isMessagesAtBottom && scrollViewer.Extent.Height > _lastMessagesExtentHeight && _lastMessagesExtentHeight > 0)
+        {
+            Dispatcher.UIThread.Post(() => scrollViewer.ScrollToEnd(), DispatcherPriority.Background);
+        }
+
+        _lastMessagesExtentHeight = scrollViewer.Extent.Height;
         _isMessagesAtBottom = distanceFromBottom <= ScrollBottomThreshold;
     }
 
@@ -78,6 +104,14 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         if (scrollViewer == null) return;
 
         var distanceFromBottom = scrollViewer.Extent.Height - scrollViewer.Offset.Y - scrollViewer.Viewport.Height;
+
+        // If content grew (e.g., link preview loaded) and we were at bottom, scroll to bottom again
+        if (_isDMMessagesAtBottom && scrollViewer.Extent.Height > _lastDMMessagesExtentHeight && _lastDMMessagesExtentHeight > 0)
+        {
+            Dispatcher.UIThread.Post(() => scrollViewer.ScrollToEnd(), DispatcherPriority.Background);
+        }
+
+        _lastDMMessagesExtentHeight = scrollViewer.Extent.Height;
         _isDMMessagesAtBottom = distanceFromBottom <= ScrollBottomThreshold;
     }
 
@@ -88,6 +122,11 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Reset)
         {
             _isMessagesAtBottom = true;
+            // Scroll to bottom after messages are loaded (delay to allow layout)
+            Dispatcher.UIThread.Post(() =>
+            {
+                MessagesScrollViewer?.ScrollToEnd();
+            }, DispatcherPriority.Background);
             return;
         }
 
@@ -108,6 +147,11 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Reset)
         {
             _isDMMessagesAtBottom = true;
+            // Scroll to bottom after messages are loaded (delay to allow layout)
+            Dispatcher.UIThread.Post(() =>
+            {
+                DMMessagesScrollViewer?.ScrollToEnd();
+            }, DispatcherPriority.Background);
             return;
         }
 
@@ -131,6 +175,17 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
 
             // Redraw annotations when strokes change (from host or other guests)
             RedrawAnnotations();
+        }
+        else if (e.PropertyName == nameof(MainAppViewModel.IsLoading))
+        {
+            // Scroll to bottom when loading completes
+            if (ViewModel?.IsLoading == false && _isMessagesAtBottom)
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    MessagesScrollViewer?.ScrollToEnd();
+                }, DispatcherPriority.Background);
+            }
         }
     }
 

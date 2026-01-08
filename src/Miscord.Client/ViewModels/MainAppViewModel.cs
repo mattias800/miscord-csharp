@@ -313,6 +313,15 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
         _signalR.MessageReceived += message => Dispatcher.UIThread.Post(() =>
         {
+            // Clear typing indicator for this user since they sent a message
+            var typingUser = _typingUsers.FirstOrDefault(t => t.UserId == message.AuthorId);
+            if (typingUser != null)
+            {
+                _typingUsers.Remove(typingUser);
+                this.RaisePropertyChanged(nameof(TypingIndicatorText));
+                this.RaisePropertyChanged(nameof(IsAnyoneTyping));
+            }
+
             if (SelectedChannel is not null && message.ChannelId == SelectedChannel.Id)
             {
                 // Don't add if it's our own message (we already added it optimistically)
@@ -614,6 +623,15 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // DM SignalR handlers
         _signalR.DirectMessageReceived += message => Dispatcher.UIThread.Post(() =>
         {
+            // Clear typing indicator for this user since they sent a message
+            var typingUser = _dmTypingUsers.FirstOrDefault(t => t.UserId == message.SenderId);
+            if (typingUser != null)
+            {
+                _dmTypingUsers.Remove(typingUser);
+                this.RaisePropertyChanged(nameof(DMTypingIndicatorText));
+                this.RaisePropertyChanged(nameof(IsDMTyping));
+            }
+
             // If this message is from/to the current DM recipient
             if (DMRecipientId.HasValue &&
                 (message.SenderId == DMRecipientId.Value || message.RecipientId == DMRecipientId.Value))

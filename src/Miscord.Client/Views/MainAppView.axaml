@@ -1198,7 +1198,7 @@
                                   Width="{Binding $parent[ScrollViewer].Viewport.Width}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <VirtualizingStackPanel/>
+                                <StackPanel/>
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>

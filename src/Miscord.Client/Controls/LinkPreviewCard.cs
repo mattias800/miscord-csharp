@@ -22,6 +22,11 @@ public class LinkPreviewCard : Border
     private static readonly IBrush DescriptionBrush = new SolidColorBrush(Color.Parse("#b9bbbe"));
     private static readonly IBrush SiteNameBrush = new SolidColorBrush(Color.Parse("#72767d"));
 
+    // Cache for loaded images to prevent reloading during scroll
+    private static readonly Dictionary<string, Bitmap> ImageCache = new();
+    private static readonly HashSet<string> LoadingImages = new();
+    private static readonly object CacheLock = new();
+
     public static readonly StyledProperty<LinkPreview?> PreviewProperty =
         AvaloniaProperty.Register<LinkPreviewCard, LinkPreview?>(nameof(Preview));
 
@@ -171,7 +176,41 @@ public class LinkPreviewCard : Border
         return description[..(maxLength - 3)] + "...";
     }
 
-    private static async void LoadImageAsync(string imageUrl, Border container)
+    private static void LoadImageAsync(string imageUrl, Border container)
+    {
+        // Check cache first - if cached, display immediately without async
+        lock (CacheLock)
+        {
+            if (ImageCache.TryGetValue(imageUrl, out var cachedBitmap))
+            {
+                // Use cached image immediately (synchronously)
+                container.Child = new Image
+                {
+                    Source = cachedBitmap,
+                    Stretch = Stretch.Uniform,
+                    MaxWidth = 350,
+                    MaxHeight = 200
+                };
+                return;
+            }
+
+            // Check if already loading
+            if (LoadingImages.Contains(imageUrl))
+            {
+                // Wait for the other load to complete, then use cache
+                _ = WaitForCacheAndDisplayAsync(imageUrl, container);
+                return;
+            }
+
+            // Mark as loading
+            LoadingImages.Add(imageUrl);
+        }
+
+        // Start async load
+        _ = LoadImageFromNetworkAsync(imageUrl, container);
+    }
+
+    private static async Task LoadImageFromNetworkAsync(string imageUrl, Border container)
     {
         try
         {
@@ -183,6 +222,13 @@ public class LinkPreviewCard : Border
             using var stream = new MemoryStream(imageData);
 
             var bitmap = new Bitmap(stream);
+
+            // Cache the bitmap
+            lock (CacheLock)
+            {
+                ImageCache[imageUrl] = bitmap;
+                LoadingImages.Remove(imageUrl);
+            }
 
             // Create the image on the UI thread
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
@@ -199,7 +245,41 @@ public class LinkPreviewCard : Border
         catch (Exception ex)
         {
             Console.WriteLine($"Failed to load preview image: {ex.Message}");
-            // Don't show anything if image fails to load
+            lock (CacheLock)
+            {
+                LoadingImages.Remove(imageUrl);
+            }
+        }
+    }
+
+    private static async Task WaitForCacheAndDisplayAsync(string imageUrl, Border container)
+    {
+        // Wait up to 10 seconds for the image to be cached
+        for (int i = 0; i < 100; i++)
+        {
+            await Task.Delay(100);
+
+            lock (CacheLock)
+            {
+                if (ImageCache.TryGetValue(imageUrl, out var bitmap))
+                {
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                    {
+                        container.Child = new Image
+                        {
+                            Source = bitmap,
+                            Stretch = Stretch.Uniform,
+                            MaxWidth = 350,
+                            MaxHeight = 200
+                        };
+                    });
+                    return;
+                }
+
+                // If no longer loading and not in cache, give up
+                if (!LoadingImages.Contains(imageUrl))
+                    return;
+            }
         }
     }
 }
