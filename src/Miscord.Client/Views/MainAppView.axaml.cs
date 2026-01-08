@@ -95,6 +95,9 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
 
         _lastMessagesExtentHeight = scrollViewer.Extent.Height;
         _isMessagesAtBottom = distanceFromBottom <= ScrollBottomThreshold;
+        scrollViewer.VerticalScrollBarVisibility = _isMessagesAtBottom
+            ? Avalonia.Controls.Primitives.ScrollBarVisibility.Hidden
+            : Avalonia.Controls.Primitives.ScrollBarVisibility.Auto;
     }
 
     // Track if user is scrolled to the bottom of DM messages
@@ -113,6 +116,9 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
 
         _lastDMMessagesExtentHeight = scrollViewer.Extent.Height;
         _isDMMessagesAtBottom = distanceFromBottom <= ScrollBottomThreshold;
+        scrollViewer.VerticalScrollBarVisibility = _isDMMessagesAtBottom
+            ? Avalonia.Controls.Primitives.ScrollBarVisibility.Hidden
+            : Avalonia.Controls.Primitives.ScrollBarVisibility.Auto;
     }
 
     // Auto-scroll to bottom when new messages arrive (if already at bottom)
