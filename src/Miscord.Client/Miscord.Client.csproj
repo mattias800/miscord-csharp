@@ -29,10 +29,10 @@
     <PackageReference Include="Emgu.CV" Version="4.11.0.5746" />
   </ItemGroup>
 
-  <!-- Platform-specific runtimes (Emgu CV and LibVLC) -->
+  <!-- Platform-specific runtimes -->
+  <!-- Note: LibVLC native libraries are loaded from system-installed VLC on macOS (arm64 not available in NuGet) -->
   <ItemGroup Condition="$([MSBuild]::IsOSPlatform('OSX'))">
     <PackageReference Include="Emgu.CV.runtime.mini.macos" Version="4.11.0.5746" />
-    <PackageReference Include="VideoLAN.LibVLC.Mac" Version="3.1.2" />
   </ItemGroup>
   <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
     <PackageReference Include="Emgu.CV.runtime.ubuntu-x64" Version="4.11.0.5746" />

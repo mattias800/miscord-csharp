@@ -3,6 +3,12 @@
 # Development startup script - starts server and two clients with different test accounts
 # Usage: ./dev-start.sh
 
+# Set VLC environment variables for audio playback on macOS
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    export VLC_PLUGIN_PATH="/Applications/VLC.app/Contents/MacOS/plugins"
+    export DYLD_LIBRARY_PATH="/Applications/VLC.app/Contents/MacOS/lib:$DYLD_LIBRARY_PATH"
+fi
+
 SERVER_URL="http://localhost:5117"
 CLIENT_PROJECT="src/Miscord.Client/Miscord.Client.csproj"
 SERVER_PROJECT="src/Miscord.Server/Miscord.Server.csproj"

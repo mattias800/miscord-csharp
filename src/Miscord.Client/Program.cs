@@ -15,6 +15,16 @@ public sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        // Set VLC environment variables FIRST, before anything else loads
+        SetupVlcEnvironment();
+
+        // Check for audio test mode
+        if (args.Contains("--audio-test"))
+        {
+            AudioTest.Run();
+            return;
+        }
+
         // Parse dev mode arguments: --server URL --email EMAIL --password PASSWORD --title TITLE --profile NAME
         for (int i = 0; i < args.Length - 1; i++)
         {
@@ -53,4 +63,43 @@ public sealed class Program
         .WithInterFont()
         .LogToTrace()
         .UseReactiveUI();
+
+    /// <summary>
+    /// Sets up VLC environment variables for LibVLCSharp.
+    /// This must be called BEFORE any LibVLC code is loaded.
+    /// </summary>
+    private static void SetupVlcEnvironment()
+    {
+        if (OperatingSystem.IsMacOS())
+        {
+            // VLC.app installed via Homebrew or DMG
+            var vlcPluginPath = "/Applications/VLC.app/Contents/MacOS/plugins";
+            var vlcLibPath = "/Applications/VLC.app/Contents/MacOS/lib";
+
+            if (Directory.Exists(vlcPluginPath))
+            {
+                Environment.SetEnvironmentVariable("VLC_PLUGIN_PATH", vlcPluginPath);
+            }
+            if (Directory.Exists(vlcLibPath))
+            {
+                // Prepend to existing DYLD_LIBRARY_PATH if present
+                var existing = Environment.GetEnvironmentVariable("DYLD_LIBRARY_PATH");
+                var newPath = string.IsNullOrEmpty(existing) ? vlcLibPath : $"{vlcLibPath}:{existing}";
+                Environment.SetEnvironmentVariable("DYLD_LIBRARY_PATH", newPath);
+            }
+        }
+        else if (OperatingSystem.IsWindows())
+        {
+            // VLC installed in Program Files
+            var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+            var vlcPath = Path.Combine(programFiles, "VideoLAN", "VLC");
+            var vlcPluginPath = Path.Combine(vlcPath, "plugins");
+
+            if (Directory.Exists(vlcPluginPath))
+            {
+                Environment.SetEnvironmentVariable("VLC_PLUGIN_PATH", vlcPluginPath);
+            }
+        }
+        // Linux typically has VLC plugins in standard locations that libvlc finds automatically
+    }
 }
