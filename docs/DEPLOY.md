@@ -150,6 +150,10 @@ Create `appsettings.Production.json`:
     "Name": "Your Server Name",
     "Description": "Your server description",
     "AllowRegistration": true
+  },
+  "Tenor": {
+    "ApiKey": "YOUR_TENOR_API_KEY",
+    "ClientKey": "miscord"
   }
 }
 ```
@@ -158,6 +162,9 @@ Create `appsettings.Production.json`:
 - Change the `Jwt:SecretKey` to a strong, unique secret (minimum 32 characters)
 - Use environment variables for sensitive values in production
 - Set `AllowRegistration` to `false` if you don't want open registration
+
+**Optional Features:**
+- **GIF Picker:** To enable the GIF search/picker feature, add a Tenor API key. Get a free key at https://developers.google.com/tenor/guides/quickstart
 
 #### 2. Build for Production
 
@@ -320,6 +327,7 @@ This starts both the Miscord server and a PostgreSQL database container.
 | `ALLOW_REGISTRATION` | Allow new user signups | true |
 | `USE_SQLITE` | Use SQLite instead of PostgreSQL | true |
 | `POSTGRES_PASSWORD` | PostgreSQL password | miscord |
+| `TENOR_API_KEY` | Tenor GIF API key (optional) | *(empty)* |
 
 #### Manual Docker Build
 

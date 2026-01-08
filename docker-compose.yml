@@ -23,6 +23,9 @@ services:
       - ServerInfo__Name=${SERVER_NAME:-Miscord Server}
       - ServerInfo__Description=${SERVER_DESCRIPTION:-A self-hosted Discord alternative}
       - ServerInfo__AllowRegistration=${ALLOW_REGISTRATION:-true}
+      # Tenor GIF API (optional - enables GIF picker)
+      - Tenor__ApiKey=${TENOR_API_KEY:-}
+      - Tenor__ClientKey=miscord
       # Logging
       - Logging__LogLevel__Default=Information
       - Logging__LogLevel__Microsoft.AspNetCore=Warning
