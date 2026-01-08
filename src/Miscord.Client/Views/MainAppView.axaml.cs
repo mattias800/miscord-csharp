@@ -287,17 +287,19 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         }
     }
 
-    // Called when clicking a reaction to toggle it
-    private void Reaction_PointerPressed(object? sender, PointerPressedEventArgs e)
+    // Called when clicking a reaction chip to toggle it
+    private void ReactionChip_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (sender is Button button &&
-            button.DataContext is Services.ReactionSummary reaction &&
+        if (sender is Border border &&
+            border.Tag is Services.ReactionSummary reaction &&
             ViewModel != null)
         {
             // Find the parent message - need to traverse up the visual tree
-            var parent = button.Parent;
-            while (parent != null && parent is not Border border || (parent as Border)?.DataContext is not Services.MessageResponse)
+            var parent = border.Parent;
+            while (parent != null)
             {
+                if (parent is Border b && b.DataContext is Services.MessageResponse)
+                    break;
                 parent = (parent as Control)?.Parent;
             }
 
@@ -312,33 +314,25 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
     private Services.MessageResponse? _emojiPickerMessage;
 
     // Called when clicking the add reaction button
-    private void AddReaction_PointerPressed(object? sender, PointerPressedEventArgs e)
+    private void AddReactionButton_Click(object? sender, RoutedEventArgs e)
     {
-        if (sender is Button button && ViewModel != null)
+        if (sender is Button button &&
+            button.Tag is Services.MessageResponse message &&
+            ViewModel != null)
         {
-            // Find the parent message
-            var parent = button.Parent;
-            while (parent != null && !(parent is Border border && border.DataContext is Services.MessageResponse))
+            _emojiPickerMessage = message;
+            // Show emoji picker popup
+            var popup = this.FindControl<Popup>("EmojiPickerPopup");
+            if (popup != null)
             {
-                parent = (parent as Control)?.Parent;
-            }
-
-            if (parent is Border messageBorder && messageBorder.DataContext is Services.MessageResponse message)
-            {
-                _emojiPickerMessage = message;
-                // Show emoji picker popup
-                var popup = this.FindControl<Popup>("EmojiPickerPopup");
-                if (popup != null)
-                {
-                    popup.PlacementTarget = button;
-                    popup.IsOpen = true;
-                }
+                popup.PlacementTarget = button;
+                popup.IsOpen = true;
             }
         }
     }
 
     // Called when an emoji is selected from the picker
-    private void EmojiPicker_EmojiSelected(object? sender, PointerPressedEventArgs e)
+    private void EmojiPicker_EmojiSelected(object? sender, RoutedEventArgs e)
     {
         if (sender is Button button &&
             button.Tag is string emoji &&
