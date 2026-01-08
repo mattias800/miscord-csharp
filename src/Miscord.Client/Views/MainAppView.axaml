@@ -1214,8 +1214,8 @@
                                         </Grid>
                                     </Border>
 
-                                <Border Margin="0,8" Padding="0" x:Name="MessageBorder">
-                                    <Grid>
+                                <Border Margin="0,8" Padding="0" x:Name="MessageBorder" HorizontalAlignment="Stretch">
+                                    <Grid HorizontalAlignment="Stretch">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
