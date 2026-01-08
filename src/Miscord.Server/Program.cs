@@ -173,11 +173,48 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
+
+// Serve static files (setup wizard, etc.)
+app.UseStaticFiles();
+
+// Setup wizard middleware - redirect to /setup if server has no users
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path.Value ?? "";
+
+    // Skip middleware for API endpoints, setup wizard, and static files
+    if (path.StartsWith("/api") ||
+        path.StartsWith("/setup") ||
+        path.StartsWith("/hubs") ||
+        path.Contains('.'))
+    {
+        await next();
+        return;
+    }
+
+    // Check if server needs setup (no users exist)
+    using var scope = context.RequestServices.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<MiscordDbContext>();
+    var hasUsers = await db.Users.AnyAsync();
+
+    if (!hasUsers && path == "/")
+    {
+        // Redirect to setup wizard
+        context.Response.Redirect("/setup/");
+        return;
+    }
+
+    await next();
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<MiscordHub>("/hubs/miscord");
+
+// Serve setup wizard SPA for /setup routes (fallback for client-side routing)
+app.MapFallbackToFile("/setup/{**slug}", "setup/index.html");
 
 app.Run();
 
