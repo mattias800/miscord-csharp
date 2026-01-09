@@ -108,7 +108,9 @@ public partial class MembersListView : UserControl
 
     private void Member_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (sender is Border border && border.Tag is CommunityMemberResponse member)
+        // Only trigger MemberClicked on left-click, not right-click (context menu)
+        if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed &&
+            sender is Border border && border.Tag is CommunityMemberResponse member)
         {
             MemberClicked?.Invoke(this, member);
         }
