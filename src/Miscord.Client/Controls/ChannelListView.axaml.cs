@@ -325,8 +325,13 @@ public partial class ChannelListView : UserControl
             }
 
             _voiceClickChannel = null;
-            // Note: Don't reset drag state here - it's handled in OnPointerReleased
-            // which gets called after this due to pointer capture
+
+            // Clear drag state if we didn't actually start dragging
+            // (OnPointerReleased only fires when we have pointer capture from actual drag)
+            if (!_isVoiceDragging)
+            {
+                _draggedVoiceChannel = null;
+            }
         }
     }
 
