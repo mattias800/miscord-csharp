@@ -267,6 +267,7 @@ public record ApiError(string Error);
 
 // SignalR Event DTOs - must match server-side records
 public record ChannelDeletedEvent(Guid ChannelId);
+public record ChannelsReorderedEvent(Guid CommunityId, List<ChannelResponse> Channels);
 public record MessageDeletedEvent(Guid ChannelId, Guid MessageId);
 public record UserPresenceEvent(Guid UserId, string Username, bool IsOnline);
 public record DirectMessageDeletedEvent(Guid MessageId);

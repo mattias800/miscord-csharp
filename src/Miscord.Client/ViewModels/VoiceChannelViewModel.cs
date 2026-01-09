@@ -123,6 +123,10 @@ public class VoiceChannelViewModel : ReactiveObject
     private readonly Guid _currentUserId;
     private readonly Action<Guid, float>? _onVolumeChanged;
     private readonly Func<Guid, float>? _getInitialVolume;
+    private int _position;
+    private bool _showGapAbove;
+    private bool _showGapBelow;
+    private bool _isDragSource;
 
     public VoiceChannelViewModel(ChannelResponse channel, Guid currentUserId = default, Action<Guid, float>? onVolumeChanged = null, Func<Guid, float>? getInitialVolume = null)
     {
@@ -130,12 +134,38 @@ public class VoiceChannelViewModel : ReactiveObject
         _currentUserId = currentUserId;
         _onVolumeChanged = onVolumeChanged;
         _getInitialVolume = getInitialVolume;
+        _position = channel.Position;
         Participants = new ObservableCollection<VoiceParticipantViewModel>();
     }
 
     public Guid Id => _channel.Id;
     public string Name => _channel.Name;
     public ChannelResponse Channel => _channel;
+
+    public int Position
+    {
+        get => _position;
+        set => this.RaiseAndSetIfChanged(ref _position, value);
+    }
+
+    // Drag preview state
+    public bool ShowGapAbove
+    {
+        get => _showGapAbove;
+        set => this.RaiseAndSetIfChanged(ref _showGapAbove, value);
+    }
+
+    public bool ShowGapBelow
+    {
+        get => _showGapBelow;
+        set => this.RaiseAndSetIfChanged(ref _showGapBelow, value);
+    }
+
+    public bool IsDragSource
+    {
+        get => _isDragSource;
+        set => this.RaiseAndSetIfChanged(ref _isDragSource, value);
+    }
 
     public ObservableCollection<VoiceParticipantViewModel> Participants { get; }
 

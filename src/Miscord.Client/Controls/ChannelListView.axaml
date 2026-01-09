@@ -10,7 +10,113 @@
              x:Class="Miscord.Client.Controls.ChannelListView"
              x:DataType="controls:ChannelListView">
 
-    <ScrollViewer>
+    <UserControl.Styles>
+        <!-- Drop indicator style -->
+        <Style Selector="Border.drop-indicator">
+            <Setter Property="Height" Value="2"/>
+            <Setter Property="Background" Value="#5865f2"/>
+            <Setter Property="CornerRadius" Value="1"/>
+            <Setter Property="Margin" Value="8,0"/>
+            <Setter Property="IsVisible" Value="False"/>
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.15"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.drop-indicator.active">
+            <Setter Property="IsVisible" Value="True"/>
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+
+        <!-- Channel item hover effect during drag -->
+        <Style Selector="Button.channel-btn.drag-over">
+            <Setter Property="Background" Value="#3f4248"/>
+        </Style>
+        <Style Selector="Border.voice-channel-item.drag-over">
+            <Setter Property="Background" Value="#3f4248"/>
+        </Style>
+
+        <!-- Channel item transition for smooth reordering -->
+        <Style Selector="Button.channel-btn">
+            <Setter Property="RenderTransform" Value="none"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.2" Easing="CubicEaseOut"/>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.15"/>
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <Style Selector="Border.voice-channel-item">
+            <Setter Property="RenderTransform" Value="none"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.2" Easing="CubicEaseOut"/>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.15"/>
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <!-- Dragging state - hide the original item -->
+        <Style Selector="Button.channel-btn.dragging">
+            <Setter Property="Opacity" Value="0.3"/>
+            <Setter Property="RenderTransform" Value="scale(0.98)"/>
+        </Style>
+        <Style Selector="Border.voice-channel-item.dragging">
+            <Setter Property="Opacity" Value="0.3"/>
+            <Setter Property="RenderTransform" Value="scale(0.98)"/>
+        </Style>
+
+        <!-- Placeholder gap style -->
+        <Style Selector="Border.drop-placeholder">
+            <Setter Property="Height" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Height" Duration="0:0:0.15" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.drop-placeholder.active">
+            <Setter Property="Height" Value="32"/>
+        </Style>
+
+        <!-- Drag ghost style -->
+        <Style Selector="Border.drag-ghost">
+            <Setter Property="Background" Value="#36393f"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="Opacity" Value="0.9"/>
+            <Setter Property="BoxShadow" Value="0 4 12 2 #40000000"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Panel>
+        <!-- Drag ghost overlay - positioned absolutely -->
+        <Border x:Name="DragGhost"
+                Classes="drag-ghost"
+                IsVisible="False"
+                IsHitTestVisible="False"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                ZIndex="1000">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock x:Name="DragGhostIcon"
+                           Text="🔊"
+                           Foreground="#72767d"
+                           FontSize="14"
+                           VerticalAlignment="Center"/>
+                <TextBlock x:Name="DragGhostName"
+                           Text=""
+                           Foreground="#dcddde"
+                           FontSize="15"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+        <ScrollViewer>
         <StackPanel>
             <!-- Loading indicator -->
             <TextBlock Text="Loading channels..."
@@ -46,11 +152,16 @@
                 </Button>
             </Grid>
 
+            <!-- Drop indicator for top of text channels list -->
+            <Border x:Name="TextChannelsTopDropIndicator" Classes="drop-indicator"/>
+
             <ItemsControl x:Name="TextChannelsList"
                           ItemsSource="{Binding TextChannels, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="services:ChannelResponse">
-                        <Grid>
+                        <StackPanel>
+                            <!-- Drop indicator above this channel -->
+                            <Border Classes="drop-indicator" Tag="{Binding}"/>
                             <Button Classes="channel-btn"
                                     Command="{Binding SelectChannelCommand, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}"
                                     CommandParameter="{Binding}"
@@ -60,23 +171,29 @@
                                     Margin="0,1"
                                     Cursor="Hand"
                                     DoubleTapped="OnChannelDoubleTapped"
-                                    Tag="{Binding}">
+                                    Tag="{Binding}"
+                                    PointerPressed="OnTextChannelPointerPressed"
+                                    PointerMoved="OnTextChannelPointerMoved"
+                                    PointerReleased="OnTextChannelPointerReleased"
+                                    DragDrop.AllowDrop="True"
+                                    DragDrop.DragOver="OnTextChannelDragOver"
+                                    DragDrop.Drop="OnTextChannelDrop">
                                 <!-- Context menu for text channels -->
                                 <Button.ContextMenu>
-                                    <ContextMenu>
+                                    <ContextMenu Opened="OnTextChannelContextMenuOpened">
                                         <MenuItem Header="Rename Channel"
-                                                  Command="{Binding StartEditChannelCommand, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}"
-                                                  CommandParameter="{Binding}"
-                                                  IsVisible="{Binding CanManageChannels, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}">
+                                                  x:Name="RenameTextChannelItem"
+                                                  Click="OnRenameChannelClick"
+                                                  Tag="{Binding}">
                                             <MenuItem.Icon>
                                                 <TextBlock Text="✎" FontSize="12"/>
                                             </MenuItem.Icon>
                                         </MenuItem>
-                                        <Separator IsVisible="{Binding CanManageChannels, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}"/>
+                                        <Separator x:Name="TextChannelSeparator"/>
                                         <MenuItem Header="Delete Channel"
-                                                  Command="{Binding DeleteChannelCommand, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}"
-                                                  CommandParameter="{Binding}"
-                                                  IsVisible="{Binding CanManageChannels, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}"
+                                                  x:Name="DeleteTextChannelItem"
+                                                  Click="OnDeleteChannelClick"
+                                                  Tag="{Binding}"
                                                   Foreground="#ed4245">
                                             <MenuItem.Icon>
                                                 <TextBlock Text="🗑" FontSize="12"/>
@@ -127,10 +244,13 @@
                                     </Button>
                                 </Grid>
                             </Button>
-                        </Grid>
+                        </StackPanel>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+
+            <!-- Drop indicator at bottom of text channels -->
+            <Border x:Name="TextChannelsBottomDropIndicator" Classes="drop-indicator"/>
 
             <!-- Voice Channels Section -->
             <Grid Margin="8,16,8,4">
@@ -159,35 +279,43 @@
                 </Button>
             </Grid>
 
+            <!-- Drop indicator for top of voice channels list -->
+            <Border x:Name="VoiceChannelsTopDropIndicator" Classes="drop-indicator"/>
+
             <!-- Voice Channels with participant tracking -->
             <ItemsControl x:Name="VoiceChannelsList"
                           ItemsSource="{Binding VoiceChannels, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:VoiceChannelViewModel">
                         <StackPanel>
+                            <!-- Gap above this voice channel (shown during drag) -->
+                            <Border Classes="drop-placeholder"
+                                    Classes.active="{Binding ShowGapAbove}"/>
                             <Border Classes="voice-channel-item"
                                     Padding="8,6"
                                     Margin="0,1"
                                     Cursor="Hand"
+                                    Opacity="{Binding IsDragSource, Converter={x:Static conv:BoolToOpacityConverter.Instance}}"
                                     PointerPressed="VoiceChannel_PointerPressed"
+                                    PointerMoved="VoiceChannel_PointerMoved"
                                     PointerReleased="VoiceChannel_PointerReleased"
                                     Tag="{Binding Channel}">
                                 <!-- Context menu for voice channels -->
                                 <Border.ContextMenu>
-                                    <ContextMenu>
+                                    <ContextMenu Opened="OnVoiceChannelContextMenuOpened">
                                         <MenuItem Header="Rename Channel"
-                                                  Command="{Binding StartEditChannelCommand, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}"
-                                                  CommandParameter="{Binding Channel}"
-                                                  IsVisible="{Binding CanManageChannels, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}">
+                                                  x:Name="RenameVoiceChannelItem"
+                                                  Click="OnRenameChannelClick"
+                                                  Tag="{Binding Channel}">
                                             <MenuItem.Icon>
                                                 <TextBlock Text="✎" FontSize="12"/>
                                             </MenuItem.Icon>
                                         </MenuItem>
-                                        <Separator IsVisible="{Binding CanManageChannels, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}"/>
+                                        <Separator x:Name="VoiceChannelSeparator"/>
                                         <MenuItem Header="Delete Channel"
-                                                  Command="{Binding DeleteChannelCommand, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}"
-                                                  CommandParameter="{Binding Channel}"
-                                                  IsVisible="{Binding CanManageChannels, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}"
+                                                  x:Name="DeleteVoiceChannelItem"
+                                                  Click="OnDeleteChannelClick"
+                                                  Tag="{Binding Channel}"
                                                   Foreground="#ed4245">
                                             <MenuItem.Icon>
                                                 <TextBlock Text="🗑" FontSize="12"/>
@@ -325,10 +453,20 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+                            <!-- Gap below this voice channel (shown during drag) -->
+                            <Border Classes="drop-placeholder"
+                                    Classes.active="{Binding ShowGapBelow}"/>
                         </StackPanel>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+
+            <!-- Drop zone at bottom of voice channels -->
+            <Border x:Name="VoiceChannelsBottomDropIndicator"
+                    Height="20"
+                    Background="Transparent">
+                <Border Classes="drop-indicator" HorizontalAlignment="Stretch"/>
+            </Border>
 
             <!-- Channel Rename Editor -->
             <Border Background="#202225"
@@ -418,4 +556,5 @@
             </Border>
         </StackPanel>
     </ScrollViewer>
+    </Panel>
 </UserControl>

@@ -48,6 +48,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private VoiceConnectionStatus _voiceConnectionStatus = VoiceConnectionStatus.Disconnected;
     private ObservableCollection<VoiceParticipantResponse> _voiceParticipants = new();
 
+    // Drag preview state
+    private List<VoiceChannelViewModel>? _originalVoiceChannelOrder;
+    private Guid? _currentPreviewDraggedId;
+
     // Voice channels with participant tracking (robust reactive approach)
     private ObservableCollection<VoiceChannelViewModel> _voiceChannelViewModels = new();
 
@@ -220,6 +224,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         DeleteChannelCommand = ReactiveCommand.Create<ChannelResponse>(RequestDeleteChannel);
         ConfirmDeleteChannelCommand = ReactiveCommand.CreateFromTask(ConfirmDeleteChannelAsync);
         CancelDeleteChannelCommand = ReactiveCommand.Create(CancelDeleteChannel);
+        ReorderChannelsCommand = ReactiveCommand.CreateFromTask<List<Guid>>(ReorderChannelsAsync);
+        PreviewReorderCommand = ReactiveCommand.Create<(Guid DraggedId, Guid TargetId, bool DropBefore)>(PreviewReorder);
+        CancelPreviewCommand = ReactiveCommand.Create(CancelPreview);
 
         // Message commands
         StartEditMessageCommand = ReactiveCommand.Create<MessageResponse>(StartEditMessage);
@@ -360,6 +367,42 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 if (SelectedChannel?.Id == e.ChannelId && Channels.Count > 0)
                     SelectedChannel = Channels[0];
             }
+        });
+
+        _signalR.ChannelsReordered += e => Dispatcher.UIThread.Post(() =>
+        {
+            // Only update if it's for the current community
+            if (SelectedCommunity?.Id != e.CommunityId) return;
+
+            Console.WriteLine($"SignalR ChannelsReordered: Received {e.Channels.Count} channels for community {e.CommunityId}");
+
+            // Update channel list with new order
+            Channels.Clear();
+            foreach (var channel in e.Channels)
+            {
+                Channels.Add(channel);
+            }
+
+            // Update VoiceChannelViewModels positions and re-sort
+            foreach (var voiceVm in VoiceChannelViewModels)
+            {
+                var updatedChannel = e.Channels.FirstOrDefault(c => c.Id == voiceVm.Id);
+                if (updatedChannel is not null)
+                {
+                    voiceVm.Position = updatedChannel.Position;
+                }
+            }
+
+            // Re-sort VoiceChannelViewModels by Position
+            var sortedVoiceChannels = VoiceChannelViewModels.OrderBy(v => v.Position).ToList();
+            VoiceChannelViewModels.Clear();
+            foreach (var vm in sortedVoiceChannels)
+            {
+                VoiceChannelViewModels.Add(vm);
+            }
+
+            this.RaisePropertyChanged(nameof(TextChannels));
+            this.RaisePropertyChanged(nameof(VoiceChannelViewModels));
         });
 
         _signalR.MessageReceived += message => Dispatcher.UIThread.Post(() =>
@@ -1746,6 +1789,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<ChannelResponse, Unit> DeleteChannelCommand { get; }
     public ReactiveCommand<Unit, Unit> ConfirmDeleteChannelCommand { get; }
     public ReactiveCommand<Unit, Unit> CancelDeleteChannelCommand { get; }
+    public ReactiveCommand<List<Guid>, Unit> ReorderChannelsCommand { get; }
+    public ReactiveCommand<(Guid DraggedId, Guid TargetId, bool DropBefore), Unit> PreviewReorderCommand { get; }
+    public ReactiveCommand<Unit, Unit> CancelPreviewCommand { get; }
     public ReactiveCommand<Unit, Unit> SendMessageCommand { get; }
     public ReactiveCommand<MessageResponse, Unit> StartEditMessageCommand { get; }
     public ReactiveCommand<Unit, Unit> SaveMessageEditCommand { get; }
@@ -2134,6 +2180,129 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         {
             IsLoading = false;
         }
+    }
+
+    private async Task ReorderChannelsAsync(List<Guid> channelIds)
+    {
+        if (SelectedCommunity is null) return;
+
+        Console.WriteLine($"Reordering {channelIds.Count} channels");
+
+        try
+        {
+            var result = await _apiClient.ReorderChannelsAsync(SelectedCommunity.Id, channelIds);
+            if (result.Success && result.Data is not null)
+            {
+                Console.WriteLine($"Successfully reordered channels");
+
+                // Update local channels with new order
+                Channels.Clear();
+                foreach (var channel in result.Data)
+                {
+                    Channels.Add(channel);
+                }
+
+                // Update VoiceChannelViewModels positions
+                foreach (var voiceVm in VoiceChannelViewModels)
+                {
+                    var updatedChannel = result.Data.FirstOrDefault(c => c.Id == voiceVm.Id);
+                    if (updatedChannel is not null)
+                    {
+                        voiceVm.Position = updatedChannel.Position;
+                    }
+                }
+
+                // Re-sort VoiceChannelViewModels by Position (ObservableCollection doesn't auto-sort)
+                var sortedVoiceChannels = VoiceChannelViewModels.OrderBy(v => v.Position).ToList();
+                VoiceChannelViewModels.Clear();
+                foreach (var vm in sortedVoiceChannels)
+                {
+                    VoiceChannelViewModels.Add(vm);
+                }
+
+                // Clear preview state since we've committed the real order
+                ClearPreviewState();
+
+                this.RaisePropertyChanged(nameof(TextChannels));
+                this.RaisePropertyChanged(nameof(VoiceChannelViewModels));
+            }
+            else
+            {
+                ErrorMessage = result.Error ?? "Failed to reorder channels";
+                Console.WriteLine($"Error reordering channels: {result.Error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error reordering channels: {ex.Message}";
+            Console.WriteLine($"Exception reordering channels: {ex}");
+        }
+    }
+
+    // Preview state for drag feedback - tracks gap position, not actual reorder
+    private Guid? _previewGapTargetId;
+    private bool _previewGapAbove;
+
+    private void PreviewReorder((Guid DraggedId, Guid TargetId, bool DropBefore) args)
+    {
+        // Store original order on first preview call for this drag
+        if (_originalVoiceChannelOrder is null || _currentPreviewDraggedId != args.DraggedId)
+        {
+            _originalVoiceChannelOrder = VoiceChannelViewModels.ToList();
+            _currentPreviewDraggedId = args.DraggedId;
+        }
+
+        // Just track where the gap should be - don't reorder yet
+        _previewGapTargetId = args.TargetId;
+        _previewGapAbove = args.DropBefore;
+
+        // Update gap visibility for all items
+        foreach (var vm in VoiceChannelViewModels)
+        {
+            if (vm.Id == args.TargetId)
+            {
+                vm.ShowGapAbove = args.DropBefore;
+                vm.ShowGapBelow = !args.DropBefore;
+            }
+            else
+            {
+                vm.ShowGapAbove = false;
+                vm.ShowGapBelow = false;
+            }
+
+            // Hide the dragged item
+            vm.IsDragSource = vm.Id == args.DraggedId;
+        }
+    }
+
+    private void CancelPreview()
+    {
+        // Clear gap visibility
+        foreach (var vm in VoiceChannelViewModels)
+        {
+            vm.ShowGapAbove = false;
+            vm.ShowGapBelow = false;
+            vm.IsDragSource = false;
+        }
+
+        _originalVoiceChannelOrder = null;
+        _currentPreviewDraggedId = null;
+        _previewGapTargetId = null;
+    }
+
+    // Call this after successful reorder to clear preview state
+    private void ClearPreviewState()
+    {
+        foreach (var vm in VoiceChannelViewModels)
+        {
+            vm.ShowGapAbove = false;
+            vm.ShowGapBelow = false;
+            vm.IsDragSource = false;
+        }
+
+        _originalVoiceChannelOrder = null;
+        _currentPreviewDraggedId = null;
+        _previewGapTargetId = null;
     }
 
     // Message edit/delete methods

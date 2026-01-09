@@ -134,8 +134,13 @@ public record UpdateNicknameRequest([StringLength(32)] string? Nickname);
 
 public record TransferOwnershipRequest([Required] Guid NewOwnerId);
 
+// Channel reordering
+public record ReorderChannelsRequest([Required] List<Guid> ChannelIds);
+
 // SignalR Event DTOs - used for type-safe event broadcasting
 public record ChannelDeletedEvent(Guid ChannelId);
+
+public record ChannelsReorderedEvent(Guid CommunityId, List<ChannelResponse> Channels);
 
 public record MessageDeletedEvent(Guid ChannelId, Guid MessageId);
 

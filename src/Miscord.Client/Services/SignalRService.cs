@@ -50,6 +50,7 @@ public interface ISignalRService : IAsyncDisposable
     event Action<ChannelResponse>? ChannelCreated;
     event Action<ChannelResponse>? ChannelUpdated;
     event Action<ChannelDeletedEvent>? ChannelDeleted;
+    event Action<ChannelsReorderedEvent>? ChannelsReordered;
     event Action<MessageResponse>? MessageReceived;
     event Action<MessageResponse>? MessageEdited;
     event Action<MessageDeletedEvent>? MessageDeleted;
@@ -122,6 +123,7 @@ public class SignalRService : ISignalRService
     public event Action<ChannelResponse>? ChannelCreated;
     public event Action<ChannelResponse>? ChannelUpdated;
     public event Action<ChannelDeletedEvent>? ChannelDeleted;
+    public event Action<ChannelsReorderedEvent>? ChannelsReordered;
     public event Action<MessageResponse>? MessageReceived;
     public event Action<MessageResponse>? MessageEdited;
     public event Action<MessageDeletedEvent>? MessageDeleted;
@@ -436,6 +438,12 @@ public class SignalRService : ISignalRService
         {
             Console.WriteLine($"SignalR: ChannelDeleted - {e.ChannelId}");
             ChannelDeleted?.Invoke(e);
+        });
+
+        _hubConnection.On<ChannelsReorderedEvent>("ChannelsReordered", e =>
+        {
+            Console.WriteLine($"SignalR: ChannelsReordered - {e.Channels.Count} channels");
+            ChannelsReordered?.Invoke(e);
         });
 
         _hubConnection.On<MessageResponse>("ReceiveChannelMessage", message =>

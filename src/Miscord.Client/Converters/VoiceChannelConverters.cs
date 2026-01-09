@@ -156,3 +156,22 @@ public class MuteIconColorConverter : IMultiValueConverter
         return isServerMuted ? ServerMutedBrush : SelfMutedBrush;
     }
 }
+
+/// <summary>
+/// Converts IsDragSource boolean to opacity.
+/// Returns 0.3 when true (being dragged), 1.0 when false.
+/// </summary>
+public class BoolToOpacityConverter : IValueConverter
+{
+    public static readonly BoolToOpacityConverter Instance = new();
+
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        return value is true ? 0.3 : 1.0;
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotSupportedException();
+    }
+}

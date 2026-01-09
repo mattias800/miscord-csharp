@@ -85,6 +85,9 @@
                                           ChannelPendingDelete="{Binding ChannelPendingDelete}"
                                           ServerMuteUserCommand="{Binding ServerMuteUserCommand}"
                                           ServerDeafenUserCommand="{Binding ServerDeafenUserCommand}"
+                                          ReorderChannelsCommand="{Binding ReorderChannelsCommand}"
+                                          PreviewReorderCommand="{Binding PreviewReorderCommand}"
+                                          CancelPreviewCommand="{Binding CancelPreviewCommand}"
                                           VoiceChannelClicked="OnVoiceChannelClicked"
                                           VoiceChannelViewRequested="OnVoiceChannelViewRequested"/>
             </DockPanel>

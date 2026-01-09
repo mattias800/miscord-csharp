@@ -99,6 +99,44 @@ public sealed class ChannelService : IChannelService
         await _db.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<IEnumerable<ChannelResponse>> ReorderChannelsAsync(Guid communityId, Guid userId, List<Guid> channelIds, CancellationToken cancellationToken = default)
+    {
+        await EnsureCanManageCommunityAsync(communityId, userId, cancellationToken);
+
+        // Get all channels for this community
+        var channels = await _db.Channels
+            .Where(c => c.CommunityId == communityId)
+            .ToListAsync(cancellationToken);
+
+        // Validate all channel IDs belong to this community
+        var channelDict = channels.ToDictionary(c => c.Id);
+        foreach (var channelId in channelIds)
+        {
+            if (!channelDict.ContainsKey(channelId))
+                throw new InvalidOperationException($"Channel {channelId} not found in community.");
+        }
+
+        // Update positions based on the order in channelIds
+        for (int i = 0; i < channelIds.Count; i++)
+        {
+            if (channelDict.TryGetValue(channelIds[i], out var channel))
+            {
+                channel.Position = i;
+            }
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        // Return updated channels with unread counts
+        var result = new List<ChannelResponse>();
+        foreach (var channel in channels.OrderBy(c => c.Position))
+        {
+            var unreadCount = await GetUnreadCountAsync(channel.Id, userId, cancellationToken);
+            result.Add(ToChannelResponse(channel, unreadCount));
+        }
+        return result;
+    }
+
     public async Task MarkChannelAsReadAsync(Guid channelId, Guid userId, CancellationToken cancellationToken = default)
     {
         var channel = await _db.Channels.FindAsync([channelId], cancellationToken)

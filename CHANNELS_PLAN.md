@@ -33,10 +33,10 @@ This document outlines planned improvements for the text and voice channel list 
 - [x] Server-side deletion endpoint
 
 #### 1.2 Drag & Drop Channel Reordering
-- [ ] Allow admins to drag channels to reorder them
-- [ ] Visual drop indicator during drag
-- [ ] Persist order to server via Position field
-- [ ] Smooth animation during reorder
+- [x] Allow admins to drag channels to reorder them
+- [x] Visual drop indicator during drag
+- [x] Persist order to server via Position field
+- [x] Smooth animation during reorder
 
 #### 1.3 Channel Categories/Folders
 - [ ] Collapsible category headers
@@ -167,16 +167,20 @@ This document outlines planned improvements for the text and voice channel list 
 - [x] Server mute/deafen (admin)
 - [x] Speaking state indicators
 - [x] Mute/deafen/camera icons
+- [x] Channel deletion with confirmation dialog (Phase 1.1)
+- [x] Double-click to edit channel name (Phase 5.2)
+- [x] Drag & drop channel reordering (Phase 1.2 - complete with visual polish)
 
 ### In Progress
 (None currently)
 
 ### Not Started
-- [ ] Phase 1: High Priority features
+- [ ] Phase 1.3: Channel Categories/Folders
+- [ ] Phase 1.4: Search/Filter Channels
 - [ ] Phase 2: Visual Enhancements
 - [ ] Phase 3: Channel Management
 - [ ] Phase 4: Voice Channel Enhancements
-- [ ] Phase 5: Quick Wins
+- [ ] Phase 5: Quick Wins (partial - double-click to edit done)
 
 ---
 

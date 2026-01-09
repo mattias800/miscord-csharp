@@ -144,6 +144,33 @@ public class ChannelsController : ControllerBase
         }
     }
 
+    [HttpPut("reorder")]
+    public async Task<ActionResult<IEnumerable<ChannelResponse>>> ReorderChannels(
+        Guid communityId,
+        [FromBody] ReorderChannelsRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        if (userId is null) return Unauthorized();
+
+        try
+        {
+            var channels = await _channelService.ReorderChannelsAsync(communityId, userId.Value, request.ChannelIds, cancellationToken);
+            var channelList = channels.ToList();
+            await _hubContext.Clients.Group($"community:{communityId}")
+                .SendAsync("ChannelsReordered", new ChannelsReorderedEvent(communityId, channelList), cancellationToken);
+            return Ok(channelList);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+    }
+
     [HttpPost("{channelId:guid}/read")]
     public async Task<IActionResult> MarkChannelAsRead(
         Guid communityId,

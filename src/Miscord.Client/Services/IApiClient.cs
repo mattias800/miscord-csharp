@@ -45,6 +45,7 @@ public interface IApiClient
     Task<ApiResult<ChannelResponse>> UpdateChannelAsync(Guid communityId, Guid channelId, string? name, string? topic);
     Task<ApiResult<bool>> DeleteChannelAsync(Guid channelId);
     Task<ApiResult<bool>> MarkChannelAsReadAsync(Guid communityId, Guid channelId);
+    Task<ApiResult<List<ChannelResponse>>> ReorderChannelsAsync(Guid communityId, List<Guid> channelIds);
 
     // Messages
     Task<ApiResult<List<MessageResponse>>> GetMessagesAsync(Guid channelId, int skip = 0, int take = 50);

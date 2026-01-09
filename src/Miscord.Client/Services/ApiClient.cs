@@ -333,6 +333,13 @@ public class ApiClient : IApiClient
         return await PostEmptyAsync($"/api/communities/{communityId}/channels/{channelId}/read");
     }
 
+    public async Task<ApiResult<List<ChannelResponse>>> ReorderChannelsAsync(Guid communityId, List<Guid> channelIds)
+    {
+        return await PutAsync<ReorderChannelsRequest, List<ChannelResponse>>($"/api/communities/{communityId}/channels/reorder", new ReorderChannelsRequest(channelIds));
+    }
+
+    private record ReorderChannelsRequest(List<Guid> ChannelIds);
+
     // Message methods
     public async Task<ApiResult<List<MessageResponse>>> GetMessagesAsync(Guid channelId, int skip = 0, int take = 50)
     {
