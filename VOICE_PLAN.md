@@ -22,10 +22,10 @@ This document outlines planned improvements for voice channels in Miscord.
 - [x] Move mute/deafen buttons to user panel (next to settings)
 - [x] Buttons visible even when not in a voice channel
 - [x] Allows pre-muting before joining a channel
-- [ ] Remember mute/deafen state between sessions
+- [x] Remember mute/deafen state between sessions (persisted to settings.json)
 
 #### 1.2 Visual Feedback Improvements
-- [ ] Show muted/deafened icon on user avatar in channel list
+- [x] Show muted icon on user avatar in sidebar
 - [ ] Pulse animation on avatar when speaking
 - [ ] Different icon for self-muted vs server-muted
 
@@ -87,9 +87,11 @@ This document outlines planned improvements for voice channels in Miscord.
 
 ### Completed
 - [x] Phase 1.1: Always-visible mute/deafen controls
+- [x] Remember mute/deafen state between sessions
+- [x] Show muted icon on user avatar
 
 ### In Progress
-- [ ] Phase 1.2: Visual feedback improvements
+- [ ] Phase 1.2: Visual feedback improvements (pulse animation, self-mute vs server-mute)
 
 ### Not Started
 - [ ] Phase 2: Audio Quality

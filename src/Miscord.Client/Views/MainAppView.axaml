@@ -324,14 +324,28 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0" Width="32" Height="32" CornerRadius="16" Background="#5865f2" Margin="0,0,8,0">
-                            <TextBlock Text="{Binding Username[0]}"
-                                       Foreground="White"
-                                       FontSize="14"
-                                       FontWeight="Bold"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"/>
-                        </Border>
+                        <Panel Grid.Column="0" Width="32" Height="32" Margin="0,0,8,0">
+                            <Border Width="32" Height="32" CornerRadius="16" Background="#5865f2">
+                                <TextBlock Text="{Binding Username[0]}"
+                                           Foreground="White"
+                                           FontSize="14"
+                                           FontWeight="Bold"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                            <!-- Muted/Deafened indicator on avatar -->
+                            <Border Width="14" Height="14"
+                                    CornerRadius="7"
+                                    Background="#ed4245"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Bottom"
+                                    Margin="0,0,-2,-2"
+                                    IsVisible="{Binding IsMuted}">
+                                <TextBlock Text="🔇" FontSize="8"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                        </Panel>
 
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                             <TextBlock Text="{Binding Username}"
@@ -873,6 +887,38 @@
                                        FontSize="16"
                                        VerticalAlignment="Center"/>
                         </StackPanel>
+                    </Border>
+
+                    <!-- Audio Device Warning Banner -->
+                    <Border DockPanel.Dock="Top"
+                            Background="#faa61a"
+                            Padding="16,12"
+                            IsVisible="{Binding ShowAudioDeviceWarning}">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <TextBlock Grid.Column="0"
+                                       Text="⚠️"
+                                       FontSize="18"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,12,0"/>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                <TextBlock Text="Audio devices not configured"
+                                           Foreground="#1a1a1a"
+                                           FontWeight="SemiBold"
+                                           FontSize="14"/>
+                                <TextBlock Text="Go to Settings to select your microphone and speakers."
+                                           Foreground="#333333"
+                                           FontSize="12"
+                                           TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <Button Grid.Column="2"
+                                    Content="Open Settings"
+                                    Background="#1a1a1a"
+                                    Foreground="White"
+                                    Padding="12,6"
+                                    CornerRadius="4"
+                                    VerticalAlignment="Center"
+                                    Command="{Binding OpenSettingsCommand}"/>
+                        </Grid>
                     </Border>
 
                     <!-- Voice Channel Video Streams Grid -->
