@@ -58,7 +58,9 @@
                                     HorizontalContentAlignment="Stretch"
                                     Padding="8,6"
                                     Margin="0,1"
-                                    Cursor="Hand">
+                                    Cursor="Hand"
+                                    DoubleTapped="OnChannelDoubleTapped"
+                                    Tag="{Binding}">
                                 <!-- Context menu for text channels -->
                                 <Button.ContextMenu>
                                     <ContextMenu>
@@ -170,6 +172,29 @@
                                     PointerPressed="VoiceChannel_PointerPressed"
                                     PointerReleased="VoiceChannel_PointerReleased"
                                     Tag="{Binding Channel}">
+                                <!-- Context menu for voice channels -->
+                                <Border.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Rename Channel"
+                                                  Command="{Binding StartEditChannelCommand, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}"
+                                                  CommandParameter="{Binding Channel}"
+                                                  IsVisible="{Binding CanManageChannels, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}">
+                                            <MenuItem.Icon>
+                                                <TextBlock Text="✎" FontSize="12"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <Separator IsVisible="{Binding CanManageChannels, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}"/>
+                                        <MenuItem Header="Delete Channel"
+                                                  Command="{Binding DeleteChannelCommand, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}"
+                                                  CommandParameter="{Binding Channel}"
+                                                  IsVisible="{Binding CanManageChannels, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}"
+                                                  Foreground="#ed4245">
+                                            <MenuItem.Icon>
+                                                <TextBlock Text="🗑" FontSize="12"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <TextBlock Text="🔊"
                                                Foreground="#72767d"

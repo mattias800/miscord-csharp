@@ -137,9 +137,9 @@ This document outlines planned improvements for the text and voice channel list 
 - [ ] Tab to switch between text/voice sections
 
 #### 5.2 Double-click to Edit
-- [ ] Double-click channel name to start rename (admin)
-- [ ] More intuitive than finding edit button
-- [ ] Escape to cancel, Enter to save
+- [x] Double-click channel name to start rename (admin)
+- [x] More intuitive than finding edit button
+- [x] Escape to cancel, Enter to save
 
 #### 5.3 Hover Actions
 - [ ] Show action buttons on hover (settings, invite, etc.)

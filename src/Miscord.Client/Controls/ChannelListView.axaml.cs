@@ -3,6 +3,7 @@ using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 using Miscord.Client.Services;
 using Miscord.Client.ViewModels;
@@ -261,6 +262,18 @@ public partial class ChannelListView : UserControl
         else if (e.Key == Key.Escape)
         {
             CancelEditChannelCommand?.Execute(null);
+            e.Handled = true;
+        }
+    }
+
+    private void OnChannelDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        // Only allow editing if user can manage channels
+        if (!CanManageChannels) return;
+
+        if (sender is Button button && button.Tag is ChannelResponse channel)
+        {
+            StartEditChannelCommand?.Execute(channel);
             e.Handled = true;
         }
     }
