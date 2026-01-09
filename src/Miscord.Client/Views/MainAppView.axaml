@@ -45,6 +45,20 @@
             <Setter Property="Background" Value="#3f4248"/>
         </Style>
 
+        <!-- Voice participant item style with hover/press highlights -->
+        <Style Selector="Border.voice-participant">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Border.voice-participant:pointerover">
+            <Setter Property="Background" Value="#35373c"/>
+        </Style>
+        <Style Selector="Border.voice-participant:pressed">
+            <Setter Property="Background" Value="#3f4248"/>
+        </Style>
+
         <!-- Message action button style (reply, react, edit, delete) -->
         <Style Selector="Button.msg-action-btn">
             <Setter Property="Background" Value="Transparent"/>
@@ -534,28 +548,58 @@
                                         <ItemsControl ItemsSource="{Binding Participants}" Margin="24,0,0,4">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="8,2">
-                                                        <Ellipse Width="24" Height="24" Fill="#40444b"/>
-                                                        <TextBlock Text="{Binding Username}"
-                                                                   Foreground="{Binding IsSpeaking, Converter={x:Static conv:SpeakingForegroundConverter.Instance}}"
-                                                                   FontSize="13"
-                                                                   VerticalAlignment="Center"/>
-                                                        <TextBlock Text="🔇"
-                                                                   FontSize="10"
-                                                                   Foreground="#ed4245"
-                                                                   VerticalAlignment="Center"
-                                                                   IsVisible="{Binding IsMuted}"/>
-                                                        <TextBlock Text="🔕"
-                                                                   FontSize="10"
-                                                                   Foreground="#ed4245"
-                                                                   VerticalAlignment="Center"
-                                                                   IsVisible="{Binding IsDeafened}"/>
-                                                        <TextBlock Text="📹"
-                                                                   FontSize="10"
-                                                                   Foreground="#3ba55c"
-                                                                   VerticalAlignment="Center"
-                                                                   IsVisible="{Binding IsCameraOn}"/>
-                                                    </StackPanel>
+                                                    <Border Classes="voice-participant" Margin="4,1">
+                                                        <!-- Context menu for user volume (only for other users) -->
+                                                        <Border.ContextMenu>
+                                                            <ContextMenu>
+                                                                <MenuItem Header="User Volume" IsEnabled="False"
+                                                                          IsVisible="{Binding !IsCurrentUser}">
+                                                                    <MenuItem.Icon>
+                                                                        <TextBlock Text="🔊" FontSize="12"/>
+                                                                    </MenuItem.Icon>
+                                                                </MenuItem>
+                                                                <MenuItem IsVisible="{Binding !IsCurrentUser}">
+                                                                    <MenuItem.Header>
+                                                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                            <Slider Width="120" Minimum="0" Maximum="200"
+                                                                                    Value="{Binding VolumePercent}"
+                                                                                    VerticalAlignment="Center"/>
+                                                                            <TextBlock Text="{Binding VolumePercent, StringFormat={}{0}%}"
+                                                                                       Foreground="#dcddde"
+                                                                                       FontSize="12"
+                                                                                       Width="40"
+                                                                                       VerticalAlignment="Center"/>
+                                                                        </StackPanel>
+                                                                    </MenuItem.Header>
+                                                                </MenuItem>
+                                                                <MenuItem Header="(You)" IsEnabled="False"
+                                                                          IsVisible="{Binding IsCurrentUser}"/>
+                                                            </ContextMenu>
+                                                        </Border.ContextMenu>
+                                                        <!-- Username and status icons -->
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <Ellipse Width="24" Height="24" Fill="#40444b"/>
+                                                            <TextBlock Text="{Binding Username}"
+                                                                       Foreground="{Binding IsSpeaking, Converter={x:Static conv:SpeakingForegroundConverter.Instance}}"
+                                                                       FontSize="13"
+                                                                       VerticalAlignment="Center"/>
+                                                            <TextBlock Text="🔇"
+                                                                       FontSize="10"
+                                                                       Foreground="#ed4245"
+                                                                       VerticalAlignment="Center"
+                                                                       IsVisible="{Binding IsMuted}"/>
+                                                            <TextBlock Text="🔕"
+                                                                       FontSize="10"
+                                                                       Foreground="#ed4245"
+                                                                       VerticalAlignment="Center"
+                                                                       IsVisible="{Binding IsDeafened}"/>
+                                                            <TextBlock Text="📹"
+                                                                       FontSize="10"
+                                                                       Foreground="#3ba55c"
+                                                                       VerticalAlignment="Center"
+                                                                       IsVisible="{Binding IsCameraOn}"/>
+                                                        </StackPanel>
+                                                    </Border>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>

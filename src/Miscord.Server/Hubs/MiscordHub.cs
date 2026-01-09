@@ -279,6 +279,27 @@ public class MiscordHub : Hub
             // Subscribe to ICE candidates from this session
             // Use captured hubContext since the hub instance may be disposed when this fires
             var hubContext = _hubContext;
+
+            // Subscribe to audio SSRC discovery for per-user volume control
+            session.OnAudioSsrcDiscovered += (sess, audioSsrc) =>
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        // Broadcast to all participants in the voice channel
+                        await hubContext.Clients.Group($"voice:{channelId}")
+                            .SendAsync("UserAudioSsrcMapped", new SsrcMappingEvent(channelId, sess.UserId, audioSsrc));
+                        _logger.LogDebug("Broadcast audio SSRC {Ssrc} for user {UserId} in channel {ChannelId}",
+                            audioSsrc, sess.UserId, channelId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to broadcast audio SSRC for user {UserId}", sess.UserId);
+                    }
+                });
+            };
+
             session.OnIceCandidate += candidate =>
             {
                 // Queue the ICE candidate to be sent asynchronously
@@ -317,6 +338,20 @@ public class MiscordHub : Hub
             // Send SFU offer to the client
             await Clients.Caller.SendAsync("SfuOffer", new { Sdp = sdpOffer, ChannelId = channelId });
             _logger.LogInformation("Sent SFU offer to user {UserId} for channel {ChannelId}", userId.Value, channelId);
+
+            // Send existing SSRC mappings to the newly joined user (for per-user volume control)
+            var existingMappings = _sfuService.GetAudioSsrcMappings(channelId, uid =>
+            {
+                // Look up username from cache or database
+                var existingParticipant = _voiceService.GetParticipantsAsync(channelId).GetAwaiter().GetResult()
+                    .FirstOrDefault(p => p.UserId == uid);
+                return existingParticipant?.Username ?? "Unknown";
+            });
+            if (existingMappings.Count > 0)
+            {
+                await Clients.Caller.SendAsync("SsrcMappingsBatch", new SsrcMappingBatchEvent(channelId, existingMappings));
+                _logger.LogDebug("Sent {Count} existing SSRC mappings to user {UserId}", existingMappings.Count, userId.Value);
+            }
 
             // Notify ALL users in the community (so everyone can see who's in voice)
             await Clients.OthersInGroup($"community:{channel.CommunityId}")

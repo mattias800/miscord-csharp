@@ -285,6 +285,19 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         await LoadCommunitiesAsync();
     }
 
+    /// <summary>
+    /// Creates a VoiceChannelViewModel with proper callbacks for per-user volume control.
+    /// </summary>
+    private VoiceChannelViewModel CreateVoiceChannelViewModel(ChannelResponse channel)
+    {
+        return new VoiceChannelViewModel(
+            channel,
+            _auth.UserId,
+            onVolumeChanged: (userId, volume) => _webRtc.SetUserVolume(userId, volume),
+            getInitialVolume: userId => _webRtc.GetUserVolume(userId)
+        );
+    }
+
     private void SetupSignalRHandlers()
     {
         _signalR.ChannelCreated += channel => Dispatcher.UIThread.Post(() =>
@@ -300,7 +313,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 // Add VoiceChannelViewModel for voice channels
                 if (channel.Type == ChannelType.Voice && !VoiceChannelViewModels.Any(v => v.Id == channel.Id))
                 {
-                    var vm = new VoiceChannelViewModel(channel);
+                    var vm = CreateVoiceChannelViewModel(channel);
                     VoiceChannelViewModels.Add(vm);
                     Console.WriteLine($"SignalR ChannelCreated: Added VoiceChannelViewModel for {channel.Name}");
                 }
@@ -2088,7 +2101,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 VoiceChannelViewModels.Clear();
                 foreach (var voiceChannel in voiceChannels)
                 {
-                    var vm = new VoiceChannelViewModel(voiceChannel);
+                    var vm = CreateVoiceChannelViewModel(voiceChannel);
 
                     // Load participants for this voice channel
                     Console.WriteLine($"LoadChannelsAsync: Loading participants for voice channel {voiceChannel.Name} ({voiceChannel.Id})");
@@ -2423,7 +2436,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 // Add to VoiceChannelViewModels
                 if (!VoiceChannelViewModels.Any(v => v.Id == result.Data.Id))
                 {
-                    var vm = new VoiceChannelViewModel(result.Data);
+                    var vm = CreateVoiceChannelViewModel(result.Data);
                     VoiceChannelViewModels.Add(vm);
                     Console.WriteLine($"CreateVoiceChannelAsync: Added VoiceChannelViewModel for {result.Data.Name}");
                 }

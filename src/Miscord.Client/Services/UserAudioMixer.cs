@@ -1,0 +1,335 @@
+using System.Collections.Concurrent;
+using SIPSorcery.Media;
+using SIPSorceryMedia.Abstractions;
+using SIPSorceryMedia.SDL2;
+
+namespace Miscord.Client.Services;
+
+/// <summary>
+/// Audio mixer that supports per-user volume control.
+/// Decodes incoming G.711 audio, applies per-user volume, and sends to audio output.
+/// </summary>
+public interface IUserAudioMixer : IAsyncDisposable
+{
+    /// <summary>
+    /// Processes an incoming audio RTP packet, applying per-user volume.
+    /// </summary>
+    void ProcessAudioPacket(uint ssrc, Guid? userId, ushort seqNum, uint timestamp,
+                            int payloadType, bool marker, byte[] payload);
+
+    /// <summary>
+    /// Sets the volume for a specific user (0.0 - 2.0, where 1.0 is normal).
+    /// </summary>
+    void SetUserVolume(Guid userId, float volume);
+
+    /// <summary>
+    /// Gets the volume for a specific user.
+    /// </summary>
+    float GetUserVolume(Guid userId);
+
+    /// <summary>
+    /// Sets the master output volume (0.0 - 2.0).
+    /// </summary>
+    void SetMasterVolume(float volume);
+
+    /// <summary>
+    /// Gets the master output volume.
+    /// </summary>
+    float GetMasterVolume();
+
+    /// <summary>
+    /// Starts the audio mixer with the specified output device.
+    /// </summary>
+    Task StartAsync(string? outputDevice = null);
+
+    /// <summary>
+    /// Stops the audio mixer.
+    /// </summary>
+    Task StopAsync();
+}
+
+public class UserAudioMixer : IUserAudioMixer
+{
+    private readonly ConcurrentDictionary<Guid, float> _userVolumes = new();
+    private readonly AudioEncoder _audioEncoder = new();
+    private SDL2AudioEndPoint? _audioOutput;
+    private float _masterVolume = 1.0f;
+    private const float DefaultVolume = 1.0f;
+    private const float MaxVolume = 2.0f; // 200%
+
+    // G.711 mu-law decode table (256 entries)
+    private static readonly short[] MuLawDecodeTable = GenerateMuLawDecodeTable();
+
+    // G.711 a-law decode table (256 entries)
+    private static readonly short[] ALawDecodeTable = GenerateALawDecodeTable();
+
+    public async Task StartAsync(string? outputDevice = null)
+    {
+        if (_audioOutput != null)
+        {
+            await StopAsync();
+        }
+
+        try
+        {
+            _audioOutput = new SDL2AudioEndPoint(outputDevice ?? string.Empty, _audioEncoder);
+            await _audioOutput.StartAudioSink();
+
+            // Set audio format (PCMU is most common)
+            var formats = new List<AudioFormat> { new AudioFormat(SDPWellKnownMediaFormatsEnum.PCMU) };
+            _audioOutput.SetAudioSinkFormat(formats.First());
+
+            Console.WriteLine($"UserAudioMixer: Started with output device '{outputDevice ?? "(default)"}'");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"UserAudioMixer: Failed to start - {ex.Message}");
+            throw;
+        }
+    }
+
+    public void ProcessAudioPacket(uint ssrc, Guid? userId, ushort seqNum, uint timestamp,
+                                   int payloadType, bool marker, byte[] payload)
+    {
+        if (_audioOutput == null) return;
+
+        // Determine volume to apply
+        float volume = _masterVolume;
+        if (userId.HasValue)
+        {
+            volume *= GetUserVolume(userId.Value);
+        }
+
+        // Fast path: if volume is 1.0, no processing needed
+        if (Math.Abs(volume - 1.0f) < 0.001f)
+        {
+            // Pass through directly (null endpoint is OK for audio playback)
+            _audioOutput.GotAudioRtp(null!, ssrc, seqNum, timestamp, payloadType, marker, payload);
+            return;
+        }
+
+        // Apply volume by decoding, scaling, and re-encoding
+        var processedPayload = ApplyVolumeToPayload(payload, payloadType, volume);
+        _audioOutput.GotAudioRtp(null!, ssrc, seqNum, timestamp, payloadType, marker, processedPayload);
+    }
+
+    private byte[] ApplyVolumeToPayload(byte[] payload, int payloadType, float volume)
+    {
+        var result = new byte[payload.Length];
+
+        // Payload type 0 = PCMU (mu-law), 8 = PCMA (a-law)
+        bool isMuLaw = payloadType == 0;
+        var decodeTable = isMuLaw ? MuLawDecodeTable : ALawDecodeTable;
+
+        for (int i = 0; i < payload.Length; i++)
+        {
+            // Decode to linear PCM
+            short sample = decodeTable[payload[i]];
+
+            // Apply volume with clamping
+            float scaled = sample * volume;
+            short clamped = (short)Math.Clamp(scaled, short.MinValue, short.MaxValue);
+
+            // Encode back
+            result[i] = isMuLaw ? MuLawEncode(clamped) : ALawEncode(clamped);
+        }
+
+        return result;
+    }
+
+    public void SetUserVolume(Guid userId, float volume)
+    {
+        var clamped = Math.Clamp(volume, 0f, MaxVolume);
+        _userVolumes[userId] = clamped;
+        Console.WriteLine($"UserAudioMixer: Set volume for user {userId} to {clamped:P0}");
+    }
+
+    public float GetUserVolume(Guid userId)
+    {
+        return _userVolumes.GetValueOrDefault(userId, DefaultVolume);
+    }
+
+    public void SetMasterVolume(float volume)
+    {
+        _masterVolume = Math.Clamp(volume, 0f, MaxVolume);
+        Console.WriteLine($"UserAudioMixer: Set master volume to {_masterVolume:P0}");
+    }
+
+    public float GetMasterVolume() => _masterVolume;
+
+    public async Task StopAsync()
+    {
+        if (_audioOutput != null)
+        {
+            try
+            {
+                await _audioOutput.CloseAudioSink();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"UserAudioMixer: Error stopping - {ex.Message}");
+            }
+            _audioOutput = null;
+            Console.WriteLine("UserAudioMixer: Stopped");
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await StopAsync();
+    }
+
+    #region G.711 Codec Implementation
+
+    /// <summary>
+    /// Generates the mu-law decode lookup table.
+    /// </summary>
+    private static short[] GenerateMuLawDecodeTable()
+    {
+        var table = new short[256];
+        for (int i = 0; i < 256; i++)
+        {
+            table[i] = MuLawDecodeValue((byte)i);
+        }
+        return table;
+    }
+
+    /// <summary>
+    /// Generates the a-law decode lookup table.
+    /// </summary>
+    private static short[] GenerateALawDecodeTable()
+    {
+        var table = new short[256];
+        for (int i = 0; i < 256; i++)
+        {
+            table[i] = ALawDecodeValue((byte)i);
+        }
+        return table;
+    }
+
+    /// <summary>
+    /// Decodes a single mu-law byte to linear PCM16.
+    /// </summary>
+    private static short MuLawDecodeValue(byte mulaw)
+    {
+        // Invert all bits
+        mulaw = (byte)~mulaw;
+
+        // Extract sign, exponent, and mantissa
+        int sign = (mulaw & 0x80) != 0 ? -1 : 1;
+        int exponent = (mulaw >> 4) & 0x07;
+        int mantissa = mulaw & 0x0F;
+
+        // Decode
+        int sample = ((mantissa << 3) + 0x84) << exponent;
+        sample -= 0x84;
+
+        return (short)(sign * sample);
+    }
+
+    /// <summary>
+    /// Encodes a linear PCM16 sample to mu-law.
+    /// </summary>
+    private static byte MuLawEncode(short sample)
+    {
+        const int BIAS = 0x84;
+        const int MAX = 0x7FFF;
+
+        // Get sign bit
+        int sign = (sample >> 8) & 0x80;
+        if (sign != 0)
+        {
+            sample = (short)-sample;
+        }
+
+        // Clip to max
+        if (sample > MAX)
+        {
+            sample = MAX;
+        }
+
+        // Add bias
+        sample += BIAS;
+
+        // Find segment (exponent)
+        int exponent = 7;
+        for (int expMask = 0x4000; (sample & expMask) == 0 && exponent > 0; exponent--, expMask >>= 1) { }
+
+        // Get mantissa
+        int mantissa = (sample >> (exponent + 3)) & 0x0F;
+
+        // Combine and invert
+        byte uval = (byte)(sign | (exponent << 4) | mantissa);
+        return (byte)~uval;
+    }
+
+    /// <summary>
+    /// Decodes a single a-law byte to linear PCM16.
+    /// </summary>
+    private static short ALawDecodeValue(byte alaw)
+    {
+        // Toggle every other bit
+        alaw ^= 0x55;
+
+        // Extract sign, exponent, and mantissa
+        int sign = (alaw & 0x80) != 0 ? -1 : 1;
+        int exponent = (alaw >> 4) & 0x07;
+        int mantissa = alaw & 0x0F;
+
+        int sample;
+        if (exponent == 0)
+        {
+            sample = (mantissa << 4) + 8;
+        }
+        else
+        {
+            sample = ((mantissa << 4) + 0x108) << (exponent - 1);
+        }
+
+        return (short)(sign * sample);
+    }
+
+    /// <summary>
+    /// Encodes a linear PCM16 sample to a-law.
+    /// </summary>
+    private static byte ALawEncode(short sample)
+    {
+        const int MAX = 0x7FFF;
+
+        // Get sign bit
+        int sign = 0;
+        if (sample < 0)
+        {
+            sign = 0x80;
+            sample = (short)-sample;
+        }
+
+        // Clip to max
+        if (sample > MAX)
+        {
+            sample = MAX;
+        }
+
+        int exponent = 7;
+        int expMask = 0x4000;
+
+        // Find segment
+        for (; (sample & expMask) == 0 && exponent > 0; exponent--, expMask >>= 1) { }
+
+        int mantissa;
+        if (exponent == 0)
+        {
+            mantissa = (sample >> 4) & 0x0F;
+        }
+        else
+        {
+            mantissa = (sample >> (exponent + 3)) & 0x0F;
+        }
+
+        // Combine and toggle bits
+        byte aval = (byte)(sign | (exponent << 4) | mantissa);
+        return (byte)(aval ^ 0x55);
+    }
+
+    #endregion
+}

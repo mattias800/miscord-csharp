@@ -29,6 +29,9 @@ public class UserSettings
 
     // Video settings
     public string? VideoDevice { get; set; }  // null = default/first camera
+
+    // Per-user volume settings (key: UserId as string, value: volume 0.0-2.0)
+    public Dictionary<string, float> UserVolumes { get; set; } = new();
 }
 
 public class SettingsStore : ISettingsStore

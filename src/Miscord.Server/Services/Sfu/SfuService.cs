@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Miscord.Shared.Models;
 using SIPSorcery.Net;
 
 namespace Miscord.Server.Services.Sfu;
@@ -114,6 +115,18 @@ public class SfuService : ISfuService, IDisposable
             return channelManager.IsWatchingScreenShare(streamerUserId, viewerUserId);
         }
         return false;
+    }
+
+    public List<UserSsrcMapping> GetAudioSsrcMappings(Guid channelId, Func<Guid, string> usernameResolver)
+    {
+        if (!_channelManagers.TryGetValue(channelId, out var channelManager))
+        {
+            return new List<UserSsrcMapping>();
+        }
+
+        return channelManager.GetAllSessions()
+            .Select(s => new UserSsrcMapping(s.UserId, usernameResolver(s.UserId), s.AudioSsrc))
+            .ToList();
     }
 
     private SfuChannelManager GetOrCreateChannelManager(Guid channelId)

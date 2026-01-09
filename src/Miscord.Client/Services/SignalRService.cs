@@ -89,6 +89,10 @@ public interface ISignalRService : IAsyncDisposable
     // Typing indicator events
     event Action<TypingEvent>? UserTyping;
     event Action<DMTypingEvent>? DMUserTyping;
+
+    // SSRC mapping events (for per-user volume control)
+    event Action<SsrcMappingEvent>? UserAudioSsrcMapped;
+    event Action<SsrcMappingBatchEvent>? SsrcMappingsBatchReceived;
 }
 
 // Typing indicator event DTOs
@@ -149,6 +153,10 @@ public class SignalRService : ISignalRService
     // Typing indicator events
     public event Action<TypingEvent>? UserTyping;
     public event Action<DMTypingEvent>? DMUserTyping;
+
+    // SSRC mapping events (for per-user volume control)
+    public event Action<SsrcMappingEvent>? UserAudioSsrcMapped;
+    public event Action<SsrcMappingBatchEvent>? SsrcMappingsBatchReceived;
 
     public async Task ConnectAsync(string baseUrl, string accessToken)
     {
@@ -547,6 +555,19 @@ public class SignalRService : ISignalRService
         _hubConnection.On<DMTypingEvent>("DMUserTyping", e =>
         {
             DMUserTyping?.Invoke(e);
+        });
+
+        // SSRC mapping events (for per-user volume control)
+        _hubConnection.On<SsrcMappingEvent>("UserAudioSsrcMapped", e =>
+        {
+            Console.WriteLine($"SignalR: UserAudioSsrcMapped - user {e.UserId} has SSRC {e.AudioSsrc} in channel {e.ChannelId}");
+            UserAudioSsrcMapped?.Invoke(e);
+        });
+
+        _hubConnection.On<SsrcMappingBatchEvent>("SsrcMappingsBatch", e =>
+        {
+            Console.WriteLine($"SignalR: SsrcMappingsBatch - {e.Mappings.Count} mappings for channel {e.ChannelId}");
+            SsrcMappingsBatchReceived?.Invoke(e);
         });
 
         _hubConnection.Reconnecting += error =>

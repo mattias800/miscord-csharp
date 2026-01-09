@@ -15,13 +15,19 @@ public class SfuSession : IDisposable
     private readonly RTCPeerConnection _peerConnection;
     private bool _disposed;
 
-    // SSRC tracking for dual video streams (for logging/debugging)
+    // SSRC tracking for audio and dual video streams
+    private uint? _audioSsrc;
     private uint? _cameraVideoSsrc;
     private uint? _screenVideoSsrc;
 
     public Guid UserId { get; }
     public Guid ChannelId { get; }
     public RTCPeerConnection PeerConnection => _peerConnection;
+
+    /// <summary>
+    /// The SSRC used by this client for audio.
+    /// </summary>
+    public uint? AudioSsrc => _audioSsrc;
 
     /// <summary>
     /// The SSRC used by this client for camera video.
@@ -68,6 +74,13 @@ public class SfuSession : IDisposable
     /// </summary>
     public event Action<RTCPeerConnectionState>? OnConnectionStateChanged;
 
+    /// <summary>
+    /// Fired when the audio SSRC is discovered for this client.
+    /// Used for per-user volume control on clients.
+    /// Args: (session, audioSsrc)
+    /// </summary>
+    public event Action<SfuSession, uint>? OnAudioSsrcDiscovered;
+
     public SfuSession(
         Guid userId,
         Guid channelId,
@@ -112,6 +125,14 @@ public class SfuSession : IDisposable
         {
             if (media == SDPMediaTypesEnum.audio)
             {
+                // Track audio SSRC for per-user volume control
+                var ssrc = rtpPkt.Header.SyncSource;
+                if (_audioSsrc != ssrc)
+                {
+                    _audioSsrc = ssrc;
+                    _logger.LogInformation("SFU session {UserId}: Detected audio SSRC={Ssrc}", UserId, ssrc);
+                    OnAudioSsrcDiscovered?.Invoke(this, ssrc);
+                }
                 OnAudioRtpReceived?.Invoke(this, rtpPkt);
             }
             else if (media == SDPMediaTypesEnum.video)

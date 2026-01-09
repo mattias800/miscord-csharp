@@ -1,3 +1,4 @@
+using Miscord.Shared.Models;
 using SIPSorcery.Net;
 
 namespace Miscord.Server.Services.Sfu;
@@ -69,6 +70,15 @@ public interface ISfuService
     /// <param name="viewerUserId">The user to check</param>
     /// <returns>True if the viewer is watching the screen share</returns>
     bool IsWatchingScreenShare(Guid channelId, Guid streamerUserId, Guid viewerUserId);
+
+    /// <summary>
+    /// Gets all audio SSRC mappings for a voice channel.
+    /// Used for per-user volume control on clients.
+    /// </summary>
+    /// <param name="channelId">The voice channel ID</param>
+    /// <param name="usernameResolver">Function to resolve usernames from user IDs</param>
+    /// <returns>List of SSRC mappings for all users in the channel</returns>
+    List<UserSsrcMapping> GetAudioSsrcMappings(Guid channelId, Func<Guid, string> usernameResolver);
 
     /// <summary>
     /// Fired when an ICE candidate needs to be sent to a client.

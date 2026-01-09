@@ -35,6 +35,16 @@ public interface IWebRtcService : IAsyncDisposable
     Task SetCameraAsync(bool enabled);
     Task SetScreenSharingAsync(bool enabled, ScreenShareSettings? settings = null);
 
+    /// <summary>
+    /// Sets the volume for a specific user (0.0 - 2.0, where 1.0 is 100%).
+    /// </summary>
+    void SetUserVolume(Guid userId, float volume);
+
+    /// <summary>
+    /// Gets the volume for a specific user.
+    /// </summary>
+    float GetUserVolume(Guid userId);
+
     event Action<Guid>? PeerConnected;
     event Action<Guid>? PeerDisconnected;
     event Action<VoiceConnectionStatus>? ConnectionStatusChanged;
@@ -83,8 +93,10 @@ public class WebRtcService : IWebRtcService
 
     // Shared audio source (microphone) for server connection
     private SDL2AudioSource? _audioSource;
-    // Single audio sink for receiving audio from server
-    private SDL2AudioEndPoint? _audioSink;
+    // Audio mixer with per-user volume control (replaces SDL2AudioEndPoint)
+    private IUserAudioMixer? _audioMixer;
+    // Audio SSRC to UserId mapping for per-user volume control
+    private readonly ConcurrentDictionary<uint, Guid> _audioSsrcToUserMap = new();
     // Legacy P2P: per-peer audio sinks
     private readonly ConcurrentDictionary<Guid, SDL2AudioEndPoint> _audioSinks = new();
     // Per-user video decoders (keyed by userId, server tells us which SSRC maps to which user)
@@ -172,6 +184,28 @@ public class WebRtcService : IWebRtcService
         // Subscribe to SFU signaling events
         _signalR.SfuOfferReceived += async e => await HandleSfuOfferAsync(e.ChannelId, e.Sdp);
         _signalR.SfuIceCandidateReceived += async e => await HandleSfuIceCandidateAsync(e.Candidate, e.SdpMid, e.SdpMLineIndex);
+
+        // Subscribe to SSRC mapping events for per-user volume control
+        _signalR.UserAudioSsrcMapped += e =>
+        {
+            if (_currentChannelId == e.ChannelId)
+            {
+                _audioSsrcToUserMap[e.AudioSsrc] = e.UserId;
+                Console.WriteLine($"WebRTC: Mapped audio SSRC {e.AudioSsrc} to user {e.UserId}");
+            }
+        };
+
+        _signalR.SsrcMappingsBatchReceived += e =>
+        {
+            if (_currentChannelId == e.ChannelId)
+            {
+                foreach (var mapping in e.Mappings.Where(m => m.AudioSsrc.HasValue))
+                {
+                    _audioSsrcToUserMap[mapping.AudioSsrc!.Value] = mapping.UserId;
+                }
+                Console.WriteLine($"WebRTC: Loaded {e.Mappings.Count(m => m.AudioSsrc.HasValue)} audio SSRC mappings");
+            }
+        };
 
         // Legacy P2P signaling events (kept for backward compatibility)
         _signalR.WebRtcOfferReceived += async e => await HandleOfferAsync(e.FromUserId, e.Sdp);
@@ -352,8 +386,8 @@ public class WebRtcService : IWebRtcService
         // Initialize microphone capture
         await InitializeAudioSourceAsync();
 
-        // Initialize audio sink for receiving audio from server
-        await InitializeAudioSinkAsync();
+        // Initialize audio mixer for receiving audio from server (with per-user volume control)
+        await InitializeAudioMixerAsync();
 
         // Prepare video decoders for existing participants
         foreach (var p in existingParticipants)
@@ -472,19 +506,22 @@ public class WebRtcService : IWebRtcService
             _audioSource = null;
         }
 
-        // Stop and dispose audio sink (speaker)
-        if (_audioSink != null)
+        // Stop and dispose audio mixer (speaker with per-user volume)
+        if (_audioMixer != null)
         {
             try
             {
-                await _audioSink.CloseAudioSink();
+                await _audioMixer.StopAsync();
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"WebRTC: Error closing audio sink: {ex.Message}");
+                Console.WriteLine($"WebRTC: Error closing audio mixer: {ex.Message}");
             }
-            _audioSink = null;
+            _audioMixer = null;
         }
+
+        // Clear audio SSRC mappings
+        _audioSsrcToUserMap.Clear();
 
         _currentChannelId = null;
         UpdateConnectionStatus(VoiceConnectionStatus.Disconnected);
@@ -492,23 +529,71 @@ public class WebRtcService : IWebRtcService
 
     // ==================== SFU Methods ====================
 
-    private async Task InitializeAudioSinkAsync()
+    private async Task InitializeAudioMixerAsync()
     {
-        if (_audioSink != null) return;
+        if (_audioMixer != null) return;
 
         try
         {
-            var audioEncoder = new AudioEncoder();
             var outputDevice = _settingsStore?.Settings.AudioOutputDevice ?? string.Empty;
-            _audioSink = new SDL2AudioEndPoint(outputDevice, audioEncoder);
-            await _audioSink.StartAudioSink();
-            Console.WriteLine("WebRTC: Audio sink initialized");
+            _audioMixer = new UserAudioMixer();
+            await _audioMixer.StartAsync(outputDevice);
+
+            // Load saved per-user volumes
+            LoadUserVolumes();
+
+            Console.WriteLine("WebRTC: Audio mixer initialized with per-user volume control");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"WebRTC: Failed to initialize audio sink: {ex.Message}");
-            _audioSink = null;
+            Console.WriteLine($"WebRTC: Failed to initialize audio mixer: {ex.Message}");
+            _audioMixer = null;
         }
+    }
+
+    /// <summary>
+    /// Loads saved per-user volumes from settings.
+    /// </summary>
+    private void LoadUserVolumes()
+    {
+        if (_settingsStore?.Settings.UserVolumes == null || _audioMixer == null) return;
+
+        foreach (var (userIdStr, volume) in _settingsStore.Settings.UserVolumes)
+        {
+            if (Guid.TryParse(userIdStr, out var userId))
+            {
+                _audioMixer.SetUserVolume(userId, volume);
+            }
+        }
+        Console.WriteLine($"WebRTC: Loaded {_settingsStore.Settings.UserVolumes.Count} saved user volumes");
+    }
+
+    /// <summary>
+    /// Sets the volume for a specific user (0.0 - 2.0, where 1.0 is normal).
+    /// </summary>
+    public void SetUserVolume(Guid userId, float volume)
+    {
+        _audioMixer?.SetUserVolume(userId, volume);
+
+        // Save to settings
+        if (_settingsStore != null)
+        {
+            _settingsStore.Settings.UserVolumes[userId.ToString()] = volume;
+            _settingsStore.Save();
+        }
+    }
+
+    /// <summary>
+    /// Gets the volume for a specific user.
+    /// </summary>
+    public float GetUserVolume(Guid userId)
+    {
+        // Try settings first (for users not currently in channel)
+        if (_settingsStore?.Settings.UserVolumes.TryGetValue(userId.ToString(), out var savedVolume) == true)
+        {
+            return savedVolume;
+        }
+        return _audioMixer?.GetUserVolume(userId) ?? 1.0f;
     }
 
     private void EnsureVideoDecoderForUser(Guid userId, VideoStreamType streamType)
@@ -639,11 +724,11 @@ public class WebRtcService : IWebRtcService
         _screenVideoTrack = new MediaStreamTrack(screenVideoFormats, MediaStreamStatusEnum.SendRecv);
         _serverConnection.addTrack(_screenVideoTrack);
 
-        // Handle audio format negotiation - only set sink format, not source (source is already running)
+        // Handle audio format negotiation - log only, mixer handles all formats
         _serverConnection.OnAudioFormatsNegotiated += formats =>
         {
             Console.WriteLine($"WebRTC SFU: Audio formats negotiated: {string.Join(", ", formats.Select(f => f.FormatName))}");
-            _audioSink?.SetAudioSinkFormat(formats.First());
+            // UserAudioMixer handles both PCMU and PCMA based on payload type
         };
 
         // Handle video format negotiation
@@ -657,11 +742,20 @@ public class WebRtcService : IWebRtcService
         // Track video RTP for stream type detection (PT 96 = camera, PT 97 = screen)
         _serverConnection.OnRtpPacketReceived += (rep, media, rtpPkt) =>
         {
-            if (media == SDPMediaTypesEnum.audio && !_isDeafened && _audioSink != null)
+            if (media == SDPMediaTypesEnum.audio && !_isDeafened && _audioMixer != null)
             {
-                _audioSink.GotAudioRtp(rep, rtpPkt.Header.SyncSource, rtpPkt.Header.SequenceNumber,
-                    rtpPkt.Header.Timestamp, rtpPkt.Header.PayloadType,
-                    rtpPkt.Header.MarkerBit == 1, rtpPkt.Payload);
+                // Look up the user ID for this SSRC (for per-user volume control)
+                var ssrc = rtpPkt.Header.SyncSource;
+                Guid? userId = _audioSsrcToUserMap.TryGetValue(ssrc, out var uid) ? uid : null;
+
+                _audioMixer.ProcessAudioPacket(
+                    ssrc,
+                    userId,
+                    rtpPkt.Header.SequenceNumber,
+                    rtpPkt.Header.Timestamp,
+                    rtpPkt.Header.PayloadType,
+                    rtpPkt.Header.MarkerBit == 1,
+                    rtpPkt.Payload);
             }
             else if (media == SDPMediaTypesEnum.video)
             {
