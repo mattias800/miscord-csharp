@@ -26,17 +26,9 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
     private int _lastSentPointCount;
     private const int LiveUpdateThreshold = 30; // Send update every N points
 
-    // Auto-scroll state - track if user is at bottom of message lists
-    private bool _isMessagesAtBottom = true;
-    private const double ScrollBottomThreshold = 50; // pixels from bottom to consider "at bottom"
-
     public MainAppView()
     {
         InitializeComponent();
-
-        // Use tunneling (Preview) events to intercept Enter before AcceptsReturn processes it
-        MessageInputBox.AddHandler(KeyDownEvent, OnMessageKeyDown, RoutingStrategies.Tunnel);
-        EditMessageInputBox.AddHandler(KeyDownEvent, OnEditMessageKeyDown, RoutingStrategies.Tunnel);
 
         // ESC key to exit fullscreen video
         this.AddHandler(KeyDownEvent, OnGlobalKeyDown, RoutingStrategies.Tunnel);
@@ -48,12 +40,11 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         // Subscribe to ViewModel changes for annotation redraw
         this.DataContextChanged += OnDataContextChanged;
 
-        // Track scroll position for smart auto-scrolling
-        MessagesScrollViewer.ScrollChanged += OnMessagesScrollChanged;
-
-        // Drag-drop handlers for file attachments
-        MessageInputBox.AddHandler(DragDrop.DragOverEvent, OnDragOver);
-        MessageInputBox.AddHandler(DragDrop.DropEvent, OnDrop);
+        // Wire up ChatAreaView events for mention navigation
+        ChatArea.NavigateMentionUp += OnChatAreaNavigateMentionUp;
+        ChatArea.NavigateMentionDown += OnChatAreaNavigateMentionDown;
+        ChatArea.SelectCurrentMention += OnChatAreaSelectCurrentMention;
+        ChatArea.CloseMentionPopup += OnChatAreaCloseMentionPopup;
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
@@ -61,72 +52,6 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         if (ViewModel != null)
         {
             ViewModel.PropertyChanged += OnViewModelPropertyChanged;
-
-            // Subscribe to collection changes for auto-scrolling
-            ViewModel.Messages.CollectionChanged += OnMessagesCollectionChanged;
-
-            // Scroll to bottom if messages are already loaded (we missed the events)
-            // Also scroll after a short delay to handle async loading
-            ScrollToBottomAfterDelay();
-        }
-    }
-
-    // Scroll to bottom after a delay to ensure content is loaded and laid out
-    private async void ScrollToBottomAfterDelay()
-    {
-        // Wait for messages to load and layout to complete
-        await Task.Delay(100);
-        await Dispatcher.UIThread.InvokeAsync(() =>
-        {
-            MessagesScrollViewer?.ScrollToEnd();
-        });
-    }
-
-    // Track if user is scrolled to the bottom of messages
-    private double _lastMessagesExtentHeight;
-
-    private void OnMessagesScrollChanged(object? sender, ScrollChangedEventArgs e)
-    {
-        var scrollViewer = MessagesScrollViewer;
-        if (scrollViewer == null) return;
-
-        var distanceFromBottom = scrollViewer.Extent.Height - scrollViewer.Offset.Y - scrollViewer.Viewport.Height;
-
-        // If content grew (e.g., link preview loaded) and we were at bottom, scroll to bottom again
-        if (_isMessagesAtBottom && scrollViewer.Extent.Height > _lastMessagesExtentHeight && _lastMessagesExtentHeight > 0)
-        {
-            Dispatcher.UIThread.Post(() => scrollViewer.ScrollToEnd(), DispatcherPriority.Background);
-        }
-
-        _lastMessagesExtentHeight = scrollViewer.Extent.Height;
-        _isMessagesAtBottom = distanceFromBottom <= ScrollBottomThreshold;
-        scrollViewer.VerticalScrollBarVisibility = _isMessagesAtBottom
-            ? Avalonia.Controls.Primitives.ScrollBarVisibility.Hidden
-            : Avalonia.Controls.Primitives.ScrollBarVisibility.Auto;
-    }
-
-    // Auto-scroll to bottom when new messages arrive (if already at bottom)
-    private void OnMessagesCollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
-    {
-        // Reset scroll state when collection is cleared (channel changed)
-        if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Reset)
-        {
-            _isMessagesAtBottom = true;
-            // Scroll to bottom after messages are loaded (delay to allow layout)
-            Dispatcher.UIThread.Post(() =>
-            {
-                MessagesScrollViewer?.ScrollToEnd();
-            }, DispatcherPriority.Background);
-            return;
-        }
-
-        if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Add && _isMessagesAtBottom)
-        {
-            // Delay scroll to allow layout to update
-            Dispatcher.UIThread.Post(() =>
-            {
-                MessagesScrollViewer?.ScrollToEnd();
-            }, DispatcherPriority.Background);
         }
     }
 
@@ -141,17 +66,6 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
             // Redraw annotations when strokes change (from host or other guests)
             RedrawAnnotations();
         }
-        else if (e.PropertyName == nameof(MainAppViewModel.IsLoading))
-        {
-            // Scroll to bottom when loading completes
-            if (ViewModel?.IsLoading == false && _isMessagesAtBottom)
-            {
-                Dispatcher.UIThread.Post(() =>
-                {
-                    MessagesScrollViewer?.ScrollToEnd();
-                }, DispatcherPriority.Background);
-            }
-        }
     }
 
     // Global key handler for ESC to exit fullscreen
@@ -162,75 +76,6 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
             ViewModel.CloseFullscreen();
             e.Handled = true;
         }
-    }
-
-    // Called for message input TextBox (tunneling event)
-    // Enter sends message, Shift+Enter inserts newline
-    private void OnMessageKeyDown(object? sender, KeyEventArgs e)
-    {
-        // Handle mention popup navigation
-        if (ViewModel?.IsMentionPopupOpen == true)
-        {
-            switch (e.Key)
-            {
-                case Key.Up:
-                    ViewModel.NavigateMentionUp();
-                    e.Handled = true;
-                    return;
-                case Key.Down:
-                    ViewModel.NavigateMentionDown();
-                    e.Handled = true;
-                    return;
-                case Key.Enter:
-                case Key.Tab:
-                    var cursorPos = ViewModel.SelectCurrentMention();
-                    if (cursorPos >= 0 && MessageInputBox != null)
-                    {
-                        MessageInputBox.SelectionStart = cursorPos;
-                        MessageInputBox.SelectionEnd = cursorPos;
-                    }
-                    e.Handled = true;
-                    return;
-                case Key.Escape:
-                    ViewModel.CloseMentionPopup();
-                    e.Handled = true;
-                    return;
-            }
-        }
-
-        if (e.Key == Key.Enter && !e.KeyModifiers.HasFlag(KeyModifiers.Shift))
-        {
-            // Enter only = send message (mark handled to prevent newline)
-            e.Handled = true;
-
-            if (ViewModel?.SendMessageCommand.CanExecute.FirstAsync().GetAwaiter().GetResult() == true)
-            {
-                ViewModel.SendMessageCommand.Execute().Subscribe();
-            }
-        }
-        // Shift+Enter = let AcceptsReturn handle it (inserts newline)
-    }
-
-    // Called for message edit TextBox (tunneling event)
-    // Enter saves edit, Shift+Enter inserts newline
-    private void OnEditMessageKeyDown(object? sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Enter && !e.KeyModifiers.HasFlag(KeyModifiers.Shift))
-        {
-            // Enter only = save edit (mark handled to prevent newline)
-            e.Handled = true;
-
-            if (ViewModel?.SaveMessageEditCommand.CanExecute.FirstAsync().GetAwaiter().GetResult() == true)
-            {
-                ViewModel.SaveMessageEditCommand.Execute().Subscribe();
-            }
-        }
-        else if (e.Key == Key.Escape)
-        {
-            ViewModel?.CancelEditMessageCommand.Execute().Subscribe();
-            e.Handled = true;
-        }
-        // Shift+Enter = let AcceptsReturn handle it (inserts newline)
     }
 
     // Called when clicking a member in the members list - opens DMs
@@ -251,25 +96,6 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         if (ViewModel != null)
         {
             ViewModel.SelectedVoiceChannelForViewing = channel;
-        }
-    }
-
-    // Called when clicking a mention suggestion
-    private void MentionSuggestion_PointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (sender is Border border && border.DataContext is Services.CommunityMemberResponse member && ViewModel != null)
-        {
-            var cursorPos = ViewModel.SelectMention(member);
-            // Keep focus on the message input and set cursor position
-            if (MessageInputBox != null)
-            {
-                MessageInputBox.Focus();
-                if (cursorPos >= 0)
-                {
-                    MessageInputBox.SelectionStart = cursorPos;
-                    MessageInputBox.SelectionEnd = cursorPos;
-                }
-            }
         }
     }
 
@@ -314,8 +140,9 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
     // Store the current message for the emoji picker
     private Services.MessageResponse? _emojiPickerMessage;
 
-    // MessageItemView event handlers
-    private void OnMessageAddReactionRequested(object? sender, object message)
+    // ==================== ChatAreaView Event Handlers ====================
+
+    private void OnChatAreaAddReactionRequested(object? sender, object message)
     {
         if (ViewModel == null || message is not Services.MessageResponse msgResponse) return;
 
@@ -328,7 +155,7 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         }
     }
 
-    private void OnMessageStartThreadRequested(object? sender, object message)
+    private void OnChatAreaStartThreadRequested(object? sender, object message)
     {
         if (message is Services.MessageResponse msgResponse)
         {
@@ -336,7 +163,7 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         }
     }
 
-    private void OnMessageViewThreadRequested(object? sender, object message)
+    private void OnChatAreaViewThreadRequested(object? sender, object message)
     {
         if (message is Services.MessageResponse msgResponse)
         {
@@ -344,15 +171,125 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         }
     }
 
-    private void OnMessageReactionToggleRequested(object? sender, Services.ReactionSummary reaction)
+    private void OnChatAreaReactionToggleRequested(object? sender, Services.ReactionSummary reaction)
     {
         if (ViewModel == null) return;
 
-        // Find the message from the sender control
-        if (sender is MessageItemView messageItemView && messageItemView.Message is Services.MessageResponse msgResponse)
+        // Find the message from the ChatAreaView
+        if (sender is ChatAreaView chatArea)
         {
-            ViewModel.ToggleReactionCommand.Execute((msgResponse, reaction.Emoji)).Subscribe();
+            // The reaction event includes the message context through the sender chain
+            // We need to get the message from the original MessageItemView
         }
+    }
+
+    private void OnChatAreaImageClicked(object? sender, AttachmentResponse attachment)
+    {
+        ViewModel?.OpenLightbox(attachment);
+    }
+
+    /// <summary>
+    /// Called when an image attachment is clicked to open the lightbox (legacy handler for ThreadPanel).
+    /// </summary>
+    private void OnAttachmentImageClicked(object? sender, AttachmentResponse attachment)
+    {
+        ViewModel?.OpenLightbox(attachment);
+    }
+
+    private void OnChatAreaMentionSelected(object? sender, CommunityMemberResponse member)
+    {
+        if (ViewModel == null) return;
+        var cursorPos = ViewModel.SelectMention(member);
+        ChatArea?.SetMessageInputCursorPosition(cursorPos);
+        ChatArea?.FocusMessageInput();
+    }
+
+    private async void OnChatAreaGifButtonClicked(object? sender, EventArgs e)
+    {
+        if (ViewModel == null) return;
+
+        var gifButton = ChatArea?.GetGifButton();
+        if (gifButton != null)
+        {
+            GifPickerPopup.PlacementTarget = gifButton;
+            GifPickerPopup.IsOpen = true;
+
+            await ViewModel.LoadTrendingGifsAsync();
+            GifPickerContent?.FocusSearchBox();
+        }
+    }
+
+    private async void OnChatAreaAttachButtonClicked(object? sender, EventArgs e)
+    {
+        if (ViewModel == null) return;
+
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel == null) return;
+
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Select files to attach",
+            AllowMultiple = true,
+            FileTypeFilter = new[]
+            {
+                new FilePickerFileType("All supported files")
+                {
+                    Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.gif", "*.webp", "*.pdf", "*.txt", "*.doc", "*.docx", "*.zip", "*.mp3", "*.wav", "*.ogg", "*.m4a", "*.flac", "*.aac" }
+                },
+                new FilePickerFileType("Images")
+                {
+                    Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.gif", "*.webp" },
+                    MimeTypes = new[] { "image/*" }
+                },
+                new FilePickerFileType("Audio")
+                {
+                    Patterns = new[] { "*.mp3", "*.wav", "*.ogg", "*.m4a", "*.flac", "*.aac" },
+                    MimeTypes = new[] { "audio/*" }
+                },
+                new FilePickerFileType("Documents")
+                {
+                    Patterns = new[] { "*.pdf", "*.txt", "*.doc", "*.docx" }
+                },
+                FilePickerFileTypes.All
+            }
+        });
+
+        foreach (var file in files)
+        {
+            await AddFileAsAttachmentAsync(file);
+        }
+    }
+
+    private void OnChatAreaRemovePendingAttachment(object? sender, PendingAttachment attachment)
+    {
+        ViewModel?.RemovePendingAttachment(attachment);
+    }
+
+    private async void OnChatAreaFileDropped(object? sender, IStorageFile file)
+    {
+        await AddFileAsAttachmentAsync(file);
+    }
+
+    private int OnChatAreaNavigateMentionUp()
+    {
+        ViewModel?.NavigateMentionUp();
+        return -1;
+    }
+
+    private int OnChatAreaNavigateMentionDown()
+    {
+        ViewModel?.NavigateMentionDown();
+        return -1;
+    }
+
+    private int OnChatAreaSelectCurrentMention()
+    {
+        return ViewModel?.SelectCurrentMention() ?? -1;
+    }
+
+    private void OnChatAreaCloseMentionPopup()
+    {
+        ViewModel?.CloseMentionPopup();
     }
 
     // Thread message event handlers
@@ -411,27 +348,6 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         }
     }
 
-    // GIF Picker handlers
-    private async void OnGifButtonClick(object? sender, RoutedEventArgs e)
-    {
-        if (ViewModel == null) return;
-
-        var popup = this.FindControl<Popup>("GifPickerPopup");
-        var gifButton = this.FindControl<Button>("GifButton");
-
-        if (popup != null && gifButton != null)
-        {
-            popup.PlacementTarget = gifButton;
-            popup.IsOpen = true;
-
-            // Load trending GIFs when opening
-            await ViewModel.LoadTrendingGifsAsync();
-
-            // Focus the search box in the GifPickerContent
-            GifPickerContent?.FocusSearchBox();
-        }
-    }
-
     /// <summary>
     /// Called when a GIF is selected from the GifPickerContent component.
     /// </summary>
@@ -447,45 +363,6 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
 
         // Clear GIF state
         ViewModel.ClearGifResults();
-    }
-
-    // Formatting toolbar handlers
-    private void OnBoldClick(object? sender, RoutedEventArgs e) => WrapSelectionWith("**");
-    private void OnItalicClick(object? sender, RoutedEventArgs e) => WrapSelectionWith("*");
-    private void OnCodeClick(object? sender, RoutedEventArgs e) => WrapSelectionWith("`");
-
-    private void WrapSelectionWith(string wrapper)
-    {
-        var textBox = MessageInputBox;
-        if (textBox == null || ViewModel == null) return;
-
-        var text = ViewModel.MessageInput ?? "";
-        var selStart = textBox.SelectionStart;
-        var selEnd = textBox.SelectionEnd;
-
-        if (selStart > selEnd)
-            (selStart, selEnd) = (selEnd, selStart);
-
-        var selectedText = selEnd > selStart ? text.Substring(selStart, selEnd - selStart) : "";
-
-        if (string.IsNullOrEmpty(selectedText))
-        {
-            // No selection - insert wrapper pair and place cursor between them
-            var newText = text.Insert(selStart, wrapper + wrapper);
-            ViewModel.MessageInput = newText;
-            textBox.SelectionStart = selStart + wrapper.Length;
-            textBox.SelectionEnd = selStart + wrapper.Length;
-        }
-        else
-        {
-            // Wrap the selected text
-            var newText = text.Substring(0, selStart) + wrapper + selectedText + wrapper + text.Substring(selEnd);
-            ViewModel.MessageInput = newText;
-            textBox.SelectionStart = selStart;
-            textBox.SelectionEnd = selEnd + wrapper.Length * 2;
-        }
-
-        textBox.Focus();
     }
 
     // Called when Watch button is clicked in VoiceChannelContentView
@@ -727,116 +604,7 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         }
     }
 
-    // ==================== File Attachment Handlers ====================
-
-    /// <summary>
-    /// Called when a file is dragged over the message input.
-    /// </summary>
-    private void OnDragOver(object? sender, DragEventArgs e)
-    {
-        // Check if the drag contains files
-#pragma warning disable CS0618 // Type or member is obsolete
-        if (e.Data.Contains(DataFormats.Files))
-#pragma warning restore CS0618
-        {
-            e.DragEffects = DragDropEffects.Copy;
-        }
-        else
-        {
-            e.DragEffects = DragDropEffects.None;
-        }
-        e.Handled = true;
-    }
-
-    /// <summary>
-    /// Called when files are dropped onto the message input.
-    /// </summary>
-    private async void OnDrop(object? sender, DragEventArgs e)
-    {
-        if (ViewModel == null) return;
-
-#pragma warning disable CS0618 // Type or member is obsolete
-        if (e.Data.Contains(DataFormats.Files))
-        {
-            var items = e.Data.GetFiles();
-#pragma warning restore CS0618
-            if (items != null)
-            {
-                foreach (var item in items)
-                {
-                    // Only process files, not folders
-                    if (item is IStorageFile file)
-                    {
-                        await AddFileAsAttachmentAsync(file);
-                    }
-                }
-            }
-        }
-        e.Handled = true;
-    }
-
-    /// <summary>
-    /// Called when the attach button is clicked to open file picker.
-    /// </summary>
-    private async void OnAttachButtonClick(object? sender, RoutedEventArgs e)
-    {
-        if (ViewModel == null) return;
-
-        var topLevel = TopLevel.GetTopLevel(this);
-        if (topLevel == null) return;
-
-        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Select files to attach",
-            AllowMultiple = true,
-            FileTypeFilter = new[]
-            {
-                new FilePickerFileType("All supported files")
-                {
-                    Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.gif", "*.webp", "*.pdf", "*.txt", "*.doc", "*.docx", "*.zip", "*.mp3", "*.wav", "*.ogg", "*.m4a", "*.flac", "*.aac" }
-                },
-                new FilePickerFileType("Images")
-                {
-                    Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.gif", "*.webp" },
-                    MimeTypes = new[] { "image/*" }
-                },
-                new FilePickerFileType("Audio")
-                {
-                    Patterns = new[] { "*.mp3", "*.wav", "*.ogg", "*.m4a", "*.flac", "*.aac" },
-                    MimeTypes = new[] { "audio/*" }
-                },
-                new FilePickerFileType("Documents")
-                {
-                    Patterns = new[] { "*.pdf", "*.txt", "*.doc", "*.docx" }
-                },
-                FilePickerFileTypes.All
-            }
-        });
-
-        foreach (var file in files)
-        {
-            await AddFileAsAttachmentAsync(file);
-        }
-    }
-
-    /// <summary>
-    /// Called when the remove button is clicked on a pending attachment.
-    /// </summary>
-    private void OnRemovePendingAttachment(object? sender, RoutedEventArgs e)
-    {
-        if (sender is Button button && button.Tag is PendingAttachment attachment && ViewModel != null)
-        {
-            ViewModel.RemovePendingAttachment(attachment);
-        }
-    }
-
-    /// <summary>
-    /// Called when an image attachment is clicked to open the lightbox.
-    /// </summary>
-    private void OnAttachmentImageClicked(object? sender, AttachmentResponse attachment)
-    {
-        ViewModel?.OpenLightbox(attachment);
-    }
+    // ==================== File Attachment Helpers ====================
 
     /// <summary>
     /// Called when the lightbox close is requested.
