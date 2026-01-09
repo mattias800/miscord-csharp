@@ -1,662 +1,519 @@
 # Miscord Threads Implementation Plan
 
 ## Overview
-Add Slack-style message threads to Miscord, allowing users to have organized sub-conversations within channels. Threads will support all messaging features: replies, edits, deletions, and reactions.
+Add Slack-style message threads to Miscord, allowing users to have organized sub-conversations within channels. Thread replies are regular messages with a parent reference, reusing all existing message infrastructure.
 
-## Architecture Overview
+## Core Design Principle
 
-### Thread Model
-Threads are sub-conversations branching from a parent message in a channel:
-- Each thread has a **parent message** (the starting message in the channel)
-- Thread contains **replies** (messages within the thread)
-- All thread operations (edit, delete, react) work identically to channel messages
-- Parent message shows **reply count** and **latest reply timestamp**
-
-### Key Concepts
-- **Parent Message**: Original message in channel that starts a thread
-- **Thread ID**: Unique identifier (same as parent message ID)
-- **Thread Replies**: All responses within that thread
-- **Unread Thread Badge**: Count of unread replies per thread
+**A thread reply IS a message.** Instead of creating separate entities, we extend the existing `Message` entity with two optional parent references. This means:
+- All existing message features (edit, delete, reactions) work automatically for thread replies
+- No code duplication
+- Consistent behavior across channel messages and thread replies
+- Simpler maintenance
 
 ---
 
 ## Database Schema Changes
 
-### New Entity: ThreadReply
-Add a new entity to track replies within threads:
-
-```
-ThreadReply
-├─ Id (PK, Guid)
-├─ Content (string, required)
-├─ ParentMessageId (FK → Message) - The original channel message
-├─ AuthorId (FK → User)
-├─ Author (User navigation)
-├─ ChannelId (FK → Channel)
-├─ Channel (Channel navigation)
-├─ CreatedAt (DateTime)
-├─ UpdatedAt (DateTime)
-├─ IsEdited (bool computed from CreatedAt vs UpdatedAt)
-```
-
 ### Modified Entity: Message
-Add thread tracking to existing Message entity:
 
-```
+Add four fields to the existing `Message` entity:
+
+```csharp
 Message
-├─ ... (existing fields)
-├─ ReplyCount (int) - Count of replies in thread
-├─ LastReplyAt (DateTime?) - Timestamp of most recent reply
-├─ ThreadReplies (ICollection<ThreadReply>) - All replies in this thread
+├─ ... (existing fields: Id, Content, AuthorId, ChannelId, CreatedAt, UpdatedAt, Reactions, etc.)
+├─ ThreadParentMessageId (FK → Message, nullable)  // Which thread this belongs to (the thread starter)
+├─ ReplyParentMessageId (FK → Message, nullable)   // Which message this is replying to (for reply preview)
+├─ ReplyCount (int, default 0)                     // Cached count of thread replies (only on thread starters)
+├─ LastReplyAt (DateTime?, nullable)               // Timestamp of most recent reply (only on thread starters)
 ```
 
-### New Entity: ThreadReplyReaction
-Add reactions support for thread replies:
+**Two Parent References:**
+
+| Field | Purpose | When Set |
+|-------|---------|----------|
+| `ThreadParentMessageId` | Identifies which thread this message belongs to | Always set for messages inside a thread |
+| `ReplyParentMessageId` | Shows "replying to X" preview above message | Optional - only when user explicitly replies to a specific message |
+
+**Examples:**
 
 ```
-ThreadReplyReaction
-├─ Id (PK, Guid)
-├─ EmojiName (string, required)
-├─ UserId (FK → User)
-├─ User (User navigation)
-├─ ThreadReplyId (FK → ThreadReply)
-├─ ThreadReply (ThreadReply navigation)
-├─ CreatedAt (DateTime)
+Channel message (not in thread):
+  ThreadParentMessageId = null
+  ReplyParentMessageId = null
+
+First reply in a thread (to message A):
+  ThreadParentMessageId = A
+  ReplyParentMessageId = null  (or A, if we want to show reply preview)
+
+Reply to message B inside thread started by A:
+  ThreadParentMessageId = A    (still belongs to thread A)
+  ReplyParentMessageId = B     (shows "replying to B" preview)
+
+Channel message replying to another channel message C:
+  ThreadParentMessageId = null (not in a thread)
+  ReplyParentMessageId = C     (shows "replying to C" preview)
 ```
+
+**Logic:**
+- `ThreadParentMessageId == null` → Channel message (top-level)
+- `ThreadParentMessageId != null` → Thread message
+- `ReplyParentMessageId != null` → Show reply preview regardless of thread context
 
 ### EF Core Configuration
 
-**DbContext additions:**
 ```csharp
-public DbSet<ThreadReply> ThreadReplies => Set<ThreadReply>();
-public DbSet<ThreadReplyReaction> ThreadReplyReactions => Set<ThreadReplyReaction>();
+// In Message entity
+public Guid? ThreadParentMessageId { get; set; }
+public Message? ThreadParentMessage { get; set; }
+public ICollection<Message> ThreadReplies { get; set; } = new List<Message>();
+
+public Guid? ReplyParentMessageId { get; set; }
+public Message? ReplyParentMessage { get; set; }
+
+public int ReplyCount { get; set; }
+public DateTime? LastReplyAt { get; set; }
+
+// In DbContext OnModelCreating
+modelBuilder.Entity<Message>()
+    .HasOne(m => m.ThreadParentMessage)
+    .WithMany(m => m.ThreadReplies)
+    .HasForeignKey(m => m.ThreadParentMessageId)
+    .OnDelete(DeleteBehavior.Cascade);
+
+modelBuilder.Entity<Message>()
+    .HasOne(m => m.ReplyParentMessage)
+    .WithMany() // No inverse navigation needed
+    .HasForeignKey(m => m.ReplyParentMessageId)
+    .OnDelete(DeleteBehavior.SetNull); // Don't cascade - just remove the preview
 ```
 
-**Relationships to configure:**
-- Message → ThreadReplies (one-to-many, cascade delete)
-- ThreadReply → Author (many-to-one)
-- ThreadReply → Channel (many-to-one, for query optimization)
-- ThreadReplyReaction → ThreadReply (many-to-one, cascade delete)
-- ThreadReplyReaction → User (many-to-one)
+### Performance Indexes
 
-**Performance indexes:**
-- `ThreadReply.ParentMessageId` (for fetching thread replies)
-- `ThreadReply.AuthorId` (for user activity queries)
-- `ThreadReplyReaction.ThreadReplyId` (for reaction lookup)
+```csharp
+modelBuilder.Entity<Message>()
+    .HasIndex(m => m.ThreadParentMessageId);
+
+modelBuilder.Entity<Message>()
+    .HasIndex(m => m.ReplyParentMessageId);
+```
 
 ---
 
-## Phase 2.1: Backend - Thread Replies
+## Backend Changes
 
-### Endpoints to Implement
+### Extend Existing Message Service
 
-#### Thread Management
-- `GET /api/channels/{channelId}/messages/{messageId}/thread` - Get all replies in a thread
-  - Query parameters: `page`, `pageSize`, `sort` (newest/oldest)
-  - Returns: List of ThreadReply objects with author info and reactions
-  - Pagination support for large threads
-
-- `POST /api/channels/{channelId}/messages/{messageId}/thread/replies` - Add reply to thread
-  - Body: `{ content: string }`
-  - Returns: Created ThreadReply with author and timestamps
-  - Updates parent message `ReplyCount` and `LastReplyAt`
-
-- `PUT /api/thread-replies/{replyId}` - Edit thread reply
-  - Body: `{ content: string }`
-  - Returns: Updated ThreadReply
-  - Track edit timestamp in `UpdatedAt`
-
-- `DELETE /api/thread-replies/{replyId}` - Delete thread reply
-  - Decrements parent message `ReplyCount`
-  - Soft delete or hard delete (TBD based on requirements)
-
-#### Reactions in Threads
-- `POST /api/thread-replies/{replyId}/reactions` - Add reaction to thread reply
-  - Body: `{ emojiName: string }`
-  - Returns: Created ThreadReplyReaction
-
-- `DELETE /api/thread-replies/{replyId}/reactions/{emojiName}` - Remove reaction from thread reply
-  - Returns: 204 No Content
-
-- `GET /api/thread-replies/{replyId}/reactions` - Get all reactions for thread reply
-  - Returns: List of reactions grouped by emoji
-
-### SignalR Events for Threads
-
-#### Real-time Thread Updates
-- `SendThreadReply(parentMessageId, content)` - Send reply (from client)
-- `ReceiveThreadReply(threadReply)` - Notify channel users of new reply (to client)
-- `ThreadReplyEdited(replyId, newContent)` - Notify of edited reply
-- `ThreadReplyDeleted(replyId)` - Notify of deleted reply
-- `ThreadReplyReactionAdded(replyId, emoji, userId)` - Notify of reaction
-- `ThreadReplyReactionRemoved(replyId, emoji, userId)` - Notify of reaction removal
-- `ThreadUnreadCountUpdated(parentMessageId, unreadCount, userId)` - Per-user unread count
-
-#### Hub Groups
-- Create group per thread: `thread_{parentMessageId}`
-- Users join group when opening thread
-- Users leave group when closing thread
-- Broadcast updates only to users in that thread group
-
-### Data Transfer Objects (DTOs)
+No new service needed. Extend `IMessageService` with thread-aware methods:
 
 ```csharp
-// Request DTOs
-public class CreateThreadReplyDto
+public interface IMessageService
 {
-    public required string Content { get; set; }
-}
+    // Existing methods (unchanged)
+    Task<MessageDto> CreateMessageAsync(Guid channelId, Guid userId, string content);
+    Task<MessageDto> UpdateMessageAsync(Guid messageId, Guid userId, string content);
+    Task DeleteMessageAsync(Guid messageId, Guid userId);
+    Task<List<MessageDto>> GetChannelMessagesAsync(Guid channelId, int page, int pageSize);
 
-public class UpdateThreadReplyDto
-{
-    public required string Content { get; set; }
+    // New thread methods
+    Task<MessageDto> CreateThreadReplyAsync(Guid parentMessageId, Guid userId, string content);
+    Task<ThreadDto> GetThreadAsync(Guid parentMessageId, int page = 1, int pageSize = 50);
 }
+```
 
-public class AddReactionDto
-{
-    public required string EmojiName { get; set; }
-}
+**Implementation notes:**
+- `CreateThreadReplyAsync` calls existing message creation logic, but sets `ParentMessageId` and updates parent's `ReplyCount`/`LastReplyAt`
+- `GetThreadAsync` fetches the parent message + paginated replies
+- Edit/delete use existing methods - they work automatically since replies are messages
+- Reactions use existing reaction system - no changes needed
 
-// Response DTOs
-public class ThreadReplyDto
+### New API Endpoints
+
+Only two new endpoints needed:
+
+```
+GET  /api/messages/{parentMessageId}/thread
+     → Returns ThreadDto (parent message + paginated replies)
+     → Query params: page, pageSize
+
+POST /api/messages/{parentMessageId}/replies
+     → Creates a reply in the thread
+     → Body: { content: string }
+     → Returns: MessageDto (the created reply)
+```
+
+All other operations use existing endpoints:
+- `PUT /api/messages/{id}` - edit any message (channel or thread reply)
+- `DELETE /api/messages/{id}` - delete any message
+- `POST /api/messages/{id}/reactions` - add reaction to any message
+- `DELETE /api/messages/{id}/reactions/{emoji}` - remove reaction
+
+### Modify Existing Channel Messages Endpoint
+
+Update `GET /api/channels/{channelId}/messages` to exclude thread messages:
+
+```csharp
+// Only return top-level messages (not thread messages)
+var messages = await _context.Messages
+    .Where(m => m.ChannelId == channelId && m.ThreadParentMessageId == null)
+    .OrderByDescending(m => m.CreatedAt)
+    .ToListAsync();
+```
+
+### DTOs
+
+**Extend MessageDto:**
+```csharp
+public class MessageDto
 {
+    // Existing fields
     public Guid Id { get; set; }
-    public required string Content { get; set; }
-    public Guid ParentMessageId { get; set; }
+    public string Content { get; set; }
     public Guid AuthorId { get; set; }
     public UserDto? Author { get; set; }
+    public Guid ChannelId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public bool IsEdited => UpdatedAt > CreatedAt;
-    public List<ThreadReplyReactionDto> Reactions { get; set; } = new();
+    public List<ReactionDto> Reactions { get; set; }
+
+    // Thread fields
+    public Guid? ThreadParentMessageId { get; set; }  // Which thread this belongs to
+    public int ReplyCount { get; set; }                // Number of thread replies (for thread starters)
+    public DateTime? LastReplyAt { get; set; }         // Latest reply time (for thread starters)
+
+    // Reply preview fields
+    public Guid? ReplyParentMessageId { get; set; }   // Which message this replies to (for preview)
+    public MessagePreviewDto? ReplyParentMessage { get; set; }  // Preview of replied message
 }
 
+// Lightweight DTO for reply previews (avoid circular references)
+public class MessagePreviewDto
+{
+    public Guid Id { get; set; }
+    public string Content { get; set; }  // Truncated if long
+    public Guid AuthorId { get; set; }
+    public string AuthorName { get; set; }
+}
+```
+
+**New ThreadDto:**
+```csharp
 public class ThreadDto
 {
-    public Guid ParentMessageId { get; set; }
-    public MessageDto? ParentMessage { get; set; }
-    public int ReplyCount { get; set; }
-    public DateTime? LastReplyAt { get; set; }
-    public List<ThreadReplyDto> Replies { get; set; } = new();
-}
-
-public class ThreadReplyReactionDto
-{
-    public required string EmojiName { get; set; }
-    public List<UserDto> Users { get; set; } = new();
-    public int Count { get; set; }
-    public bool CurrentUserReacted { get; set; }
+    public MessageDto ParentMessage { get; set; }
+    public List<MessageDto> Replies { get; set; }
+    public int TotalReplyCount { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
 }
 ```
-
-### Service Layer
-
-**IThreadService interface:**
-```csharp
-public interface IThreadService
-{
-    Task<ThreadDto> GetThreadAsync(Guid parentMessageId, int page = 1, int pageSize = 50);
-    Task<ThreadReplyDto> AddReplyAsync(Guid parentMessageId, Guid userId, string content);
-    Task<ThreadReplyDto> UpdateReplyAsync(Guid replyId, Guid userId, string content);
-    Task DeleteReplyAsync(Guid replyId, Guid userId);
-    Task<ThreadReplyReactionDto> AddReactionAsync(Guid replyId, Guid userId, string emoji);
-    Task RemoveReactionAsync(Guid replyId, Guid userId, string emoji);
-    Task<int> GetUnreadThreadCountAsync(Guid channelId, Guid userId);
-}
-```
-
-**Key implementation details:**
-- Authorization: Verify user owns reply before edit/delete
-- Validation: Content length limits, emoji validation
-- Pagination: Implement cursor-based pagination for large threads
-- Caching: Cache thread metadata (reply count, last reply time)
 
 ---
 
-## Phase 4: UI - Thread Display
+## SignalR Changes
 
-### Thread UI Components
+### Extend Existing Events
 
-#### 1. Thread Panel (Replaces User List)
-**Location:** Right sidebar, appears when thread is opened
-**Layout:**
-```
-┌──────────────────────────┐
-│ Thread                [X] │  (Close button at top)
-├──────────────────────────┤
-│ [Parent Message Preview] │
-│ Author | 2m ago          │
-│ Original message content │
-│ 5 replies                │
-├──────────────────────────┤
-│ [ThreadReplyItem] ×5     │  (List of replies)
-│ Author | timestamp       │
-│ Reply content            │
-│ [emoji] [edit] [delete] │
-├──────────────────────────┤
-│ [Input field for reply]  │
-│ [Send button]            │
-└──────────────────────────┘
-```
+Most events work as-is. The client just needs to check `ThreadParentMessageId` to know if a message belongs to a thread.
 
-#### 2. Message with Thread Indicator
-**Location:** Channel message list
-**Changes to MessageItem:**
-- Add "N replies" badge showing reply count
-- Add "Last reply 2m ago" timestamp
-- Clickable to open thread panel
-- Show thread indicator icon (chat bubble with number)
+**Existing events that work automatically:**
+- `ReceiveMessage` - client checks if `ThreadParentMessageId` is set
+- `MessageEdited` - works for any message
+- `MessageDeleted` - works for any message
+- `ReactionAdded` / `ReactionRemoved` - works for any message
 
-#### 3. Thread Reply Item Component
-**Features:**
-- Author avatar and name
-- Timestamp (e.g., "2m ago")
-- Reply content with text formatting
-- Reactions display (emoji + count)
-- Action buttons (reply, edit, delete) - visible on hover
-- Edit indicator "edited" text if message was edited
+### New SignalR Features
 
-#### 4. Reactions Section in Thread Reply
-**Display:**
-- Show emoji groups (e.g., 👍 3, 🎉 1, 🔥 2)
-- Click emoji to add/remove reaction
-- Highlight if current user already reacted
-- Hover to show list of users who reacted
-
-### MVVM Architecture for Threads
-
-**ViewModels to Create:**
-
+**Thread group management:**
 ```csharp
-public class ThreadViewModel : IDisposable
+// When user opens a thread
+await Groups.AddToGroupAsync(connectionId, $"thread_{parentMessageId}");
+
+// When user closes a thread
+await Groups.RemoveFromGroupAsync(connectionId, $"thread_{parentMessageId}");
+```
+
+**New event for parent message updates:**
+```csharp
+// Broadcast when ReplyCount or LastReplyAt changes on a parent message
+ThreadMetadataUpdated(parentMessageId, replyCount, lastReplyAt)
+```
+
+**Targeted broadcasts:**
+- Thread replies broadcast to `thread_{parentMessageId}` group (users viewing that thread)
+- Also update parent message metadata for all channel users
+
+---
+
+## UI Implementation
+
+### ViewModels
+
+**Extend MessageViewModel:**
+```csharp
+public class MessageViewModel
 {
-    public Guid ParentMessageId { get; }
-    public MessageViewModel ParentMessage { get; }
-    public ObservableCollection<ThreadReplyViewModel> Replies { get; }
+    // Existing properties...
+
+    // Thread properties
+    public Guid? ThreadParentMessageId { get; set; }
     public int ReplyCount { get; set; }
     public DateTime? LastReplyAt { get; set; }
-    
+    public bool HasReplies => ReplyCount > 0;
+    public bool IsInThread => ThreadParentMessageId != null;
+
+    // Reply preview properties
+    public Guid? ReplyParentMessageId { get; set; }
+    public MessagePreviewViewModel? ReplyParentMessage { get; set; }
+    public bool HasReplyPreview => ReplyParentMessage != null;
+
     // Commands
+    public ICommand OpenThreadCommand { get; }
+    public ICommand ReplyToMessageCommand { get; }  // Sets ReplyParentMessageId for next message
+}
+```
+
+**New ThreadViewModel:**
+```csharp
+public class ThreadViewModel : ViewModelBase, IDisposable
+{
+    public MessageViewModel ParentMessage { get; }
+    public ObservableCollection<MessageViewModel> Replies { get; }
+    public string ReplyInput { get; set; }
+    public bool IsLoading { get; set; }
+
     public ICommand SendReplyCommand { get; }
-    public ICommand CloseThreadCommand { get; }
-    
-    // Methods
-    Task LoadThreadAsync();
-    Task SendReplyAsync(string content);
-    Task RefreshAsync();
-}
+    public ICommand CloseCommand { get; }
+    public ICommand LoadMoreCommand { get; }
 
-public class ThreadReplyViewModel
-{
-    public Guid Id { get; }
-    public Guid ParentMessageId { get; }
-    public string Content { get; set; }
-    public UserViewModel Author { get; }
-    public DateTime CreatedAt { get; }
-    public DateTime UpdatedAt { get; }
-    public bool IsEdited => UpdatedAt > CreatedAt;
-    public bool IsCurrentUserAuthor { get; }
-    
-    public ObservableCollection<ReactionViewModel> Reactions { get; }
-    
-    // Commands
-    public ICommand EditCommand { get; }
-    public ICommand DeleteCommand { get; }
-    public ICommand AddReactionCommand { get; }
-}
-
-public class ReactionViewModel
-{
-    public string EmojiName { get; }
-    public int Count { get; }
-    public bool CurrentUserReacted { get; set; }
-    public List<UserViewModel> Users { get; }
-    
-    public ICommand ToggleReactionCommand { get; }
+    public async Task LoadAsync();
+    public async Task SendReplyAsync();
+    public void Dispose(); // Leave SignalR group
 }
 ```
 
-### UI Hierarchy
+**Extend MainViewModel:**
+```csharp
+public class MainViewModel
+{
+    // Existing...
 
-**Main Channel Window (existing):**
+    public ThreadViewModel? CurrentThread { get; set; }
+    public bool IsThreadOpen => CurrentThread != null;
+
+    public void OpenThread(MessageViewModel parentMessage);
+    public void CloseThread();
+}
 ```
-├─ ServerListPanel
-├─ ChannelListPanel
-├─ ChatPanel
-│  └─ MessageItem (with thread indicator)
-│     └─ Click → Open Thread
-└─ RightPanel
-   ├─ ThreadPanel (NEW - replaces UserListPanel)
-   │  ├─ ParentMessagePreview
-   │  ├─ ThreadReplyList
-   │  │  └─ ThreadReplyItem × N
-   │  │     └─ ReactionRow
-   │  └─ ReplyInputField
-   └─ UserListPanel (hidden when thread open)
+
+### UI Components
+
+**ThreadPanel.axaml** (right sidebar, replaces UserList when open):
+```
+┌─────────────────────────────┐
+│ Thread                   [X]│  ← Header with close button
+├─────────────────────────────┤
+│ ┌─────────────────────────┐ │
+│ │ [Avatar] Author         │ │  ← Parent message preview
+│ │ Original message text   │ │
+│ │ 5 replies · Last 2m ago │ │
+│ └─────────────────────────┘ │
+├─────────────────────────────┤
+│                             │
+│ [Reply 1]                   │  ← Replies list (scrollable)
+│ [Reply 2]                   │
+│ [Reply 3]                   │
+│ ...                         │
+│                             │
+├─────────────────────────────┤
+│ [Reply input...]    [Send]  │  ← Reply input
+└─────────────────────────────┘
+```
+
+**Modify MessageItem.axaml:**
+Add thread indicator when `ReplyCount > 0`:
+```
+┌────────────────────────────────────────┐
+│ [Avatar] Author · 2m ago               │
+│ Message content here...                │
+│                                        │
+│ 💬 5 replies · Last reply 2m ago  →    │  ← Clickable thread indicator
+└────────────────────────────────────────┘
 ```
 
 ### Interaction Flow
 
-1. **User clicks "N replies" badge on channel message**
-   - MainViewModel detects click
-   - Calls `threadViewModel.LoadThreadAsync()`
-   - ThreadPanel becomes visible
-   - UserListPanel is hidden
-   - Thread replies load and display
+1. **User clicks thread indicator on message**
+   - `MainViewModel.OpenThread(message)` called
+   - Creates `ThreadViewModel`, calls `LoadAsync()`
+   - Joins SignalR group `thread_{parentMessageId}`
+   - `ThreadPanel` becomes visible, `UserListPanel` hides
 
-2. **User types in thread reply input and sends**
-   - ThreadViewModel.SendReplyCommand executes
-   - SignalR sends `SendThreadReply` event
-   - Server adds reply to database
-   - SignalR broadcasts `ReceiveThreadReply` to connected clients
-   - ThreadReplyList updates in real-time
+2. **User sends reply in thread**
+   - `ThreadViewModel.SendReplyAsync()` called
+   - POST to `/api/messages/{parentId}/replies`
+   - Server creates message with `ParentMessageId` set
+   - Server updates parent's `ReplyCount` and `LastReplyAt`
+   - Server broadcasts via SignalR to thread group
+   - UI updates automatically
 
-3. **User edits reply**
-   - ThreadReplyViewModel.EditCommand shows edit dialog
-   - User confirms changes
-   - SignalR sends update
-   - Message content updates in UI
-
-4. **User closes thread (X button)**
-   - ThreadPanel is hidden
-   - UserListPanel is shown
-   - Leave SignalR group for this thread
-
-### State Management
-
-**MainViewModel thread state:**
-```csharp
-public ThreadViewModel? CurrentThread { get; set; }
-
-public void OpenThread(Guid parentMessageId)
-{
-    CurrentThread = new ThreadViewModel(parentMessageId);
-    CurrentThread.LoadThreadAsync();
-}
-
-public void CloseThread()
-{
-    CurrentThread?.Dispose();
-    CurrentThread = null;
-}
-```
-
-**ChannelViewModel message list:**
-- Include `ReplyCount` and `LastReplyAt` in MessageViewModel
-- Subscribe to thread updates via SignalR to update counts
-- Bind "N replies" text to `ReplyCount`
-
----
-
-## Phase 5: Advanced Thread Features
-
-### 5.1 Unread Thread Tracking
-**Database addition:**
-```csharp
-public class UserThreadUnread
-{
-    public Guid Id { get; set; }
-    public Guid UserId { get; set; }
-    public Guid ParentMessageId { get; set; }
-    public int UnreadCount { get; set; }
-    public DateTime LastReadAt { get; set; }
-}
-```
-
-**Features:**
-- Track unread reply count per user per thread
-- Badge showing unread count on parent message
-- Mark as read when user opens thread
-- Broadcast unread count updates via SignalR
-
-### 5.2 Thread Notifications
-- Notify user when someone replies to a thread they're in
-- Notify user when someone reacts to their reply
-- Configurable notification settings per user
-
-### 5.3 Thread Pagination & Performance
-- Implement cursor-based pagination (load older replies)
-- Lazy load replies as user scrolls
-- Cache thread metadata separately from replies
-- Index queries on ParentMessageId for fast lookup
-
-### 5.4 Thread Search
-- Search within thread replies
-- Search for threads mentioning specific users
-- Search for threads with specific reactions
-
-### 5.5 Thread Exports
-- Export thread to PDF or markdown
-- Copy thread link to clipboard
-
----
-
-## Migration Plan
-
-### Step 1: Database Schema (EF Core)
-1. Create migration file for new entities
-2. Add ThreadReply and ThreadReplyReaction DbSets
-3. Configure relationships and indexes
-4. Apply migration
-
-**Migration Commands:**
-```bash
-dotnet ef migrations add AddThreadSupport --project src/Miscord.Server
-dotnet ef database update --project src/Miscord.Server
-```
-
-### Step 2: Backend API (Phase 2.1)
-1. Implement IThreadService with all methods
-2. Create ThreadController with endpoints
-3. Add SignalR hub methods for thread events
-4. Add authorization/validation logic
-
-### Step 3: DTOs and Models
-1. Create ThreadReplyDto, ThreadDto classes
-2. Add AutoMapper profiles for entity → DTO mapping
-3. Add validation attributes
-
-### Step 4: UI Components (Phase 4)
-1. Create ThreadPanel.axaml and ThreadViewModel
-2. Create ThreadReplyItem.axaml and ThreadReplyViewModel
-3. Create ReactionRow.axaml and ReactionViewModel
-4. Integrate with MessageItem (add reply count badge)
-5. Add thread opening logic to ChannelViewModel
-
-### Step 5: SignalR Integration
-1. Add thread event handlers to ChatHub
-2. Implement thread group management
-3. Test real-time updates
-
-### Step 6: Testing
-1. Unit tests for IThreadService
-2. Integration tests for thread endpoints
-3. UI tests for thread panel interactions
-4. SignalR connection tests
-
----
-
-## Implementation Order & Dependencies
-
-1. **Database Schema** (prerequisite for everything)
-   - Add ThreadReply entity
-   - Add ThreadReplyReaction entity
-   - Modify Message entity with ReplyCount, LastReplyAt
-   - Create and apply migration
-
-2. **Backend Service** (prerequisite for API)
-   - Implement IThreadService
-   - Add CRUD operations for replies
-   - Add reaction management
-
-3. **API Endpoints** (prerequisite for client)
-   - GET thread with pagination
-   - POST reply
-   - PUT/DELETE reply
-   - Reaction endpoints
-
-4. **SignalR Events** (for real-time updates)
-   - Thread reply events
-   - Reaction events
-   - Group management
-
-5. **DTOs & Mapping**
-   - Create all DTOs
-   - Setup AutoMapper profiles
-
-6. **UI Components** (client-side)
-   - ThreadPanel component
-   - ThreadReplyItem component
-   - ReactionRow component
-   - Integrate with existing message display
-
-7. **State Management**
-   - ThreadViewModel
-   - ThreadReplyViewModel
-   - ReactionViewModel
-   - Connect to MainViewModel
-
-8. **Testing** (throughout)
-   - Unit tests for service
-   - Integration tests for API
-   - UI component tests
-
----
-
-## Estimated Effort
-
-| Phase | Component | LOC | Days | Notes |
-|-------|-----------|-----|------|-------|
-| 2.1 | DB Schema | 150 | 0.5 | New entities, migration |
-| 2.1 | Thread Service | 600 | 3-4 | CRUD, reactions, validation |
-| 2.1 | API Endpoints | 400 | 2-3 | REST controllers |
-| 2.1 | SignalR Integration | 300 | 2 | Hub methods, groups |
-| 4 | Thread UI Components | 1000 | 5-6 | Panel, reply item, reactions |
-| 4 | Thread ViewModels | 500 | 3 | MVVM architecture |
-| 4 | Integration | 300 | 2 | Connect components |
-| 5 | Testing | 400 | 2-3 | Unit, integration, UI tests |
-| 5 | Advanced Features | 500 | 3-4 | Unread, notifications, search |
-| **Total** | | **4150** | **23-26 days** | ~4-5 weeks effort |
-
----
-
-## Success Criteria
-
-- ✅ Users can reply to channel messages in threads
-- ✅ Thread replies support all message features (edit, delete, reactions)
-- ✅ Parent message shows reply count and last reply timestamp
-- ✅ Thread panel replaces user list when opened
-- ✅ Close button returns to user list
-- ✅ Real-time updates via SignalR for new replies
-- ✅ Reactions work identically in threads and channels
-- ✅ Proper authorization (users can only edit/delete own messages)
-- ✅ Pagination for large threads
-- ✅ All tests passing (>80% coverage)
-
----
-
-## Database Schema Diagram
-
-```
-Channel
-  ├─ Messages (1:*)
-  │   ├─ ThreadReplies (1:*)
-  │   │   ├─ Author (FK → User)
-  │   │   └─ ThreadReplyReactions (1:*)
-  │   │       └─ User (FK → User)
-  │   └─ MessageReactions (existing)
-
-User
-  ├─ SentMessages
-  ├─ ThreadReplies
-  ├─ ThreadReplyReactions
-  └─ UserThreadUnread (future)
-```
-
----
-
-## Future Enhancements (Phase 5+)
-
-- **Muted Threads**: Users can mute notifications for specific threads
-- **Followed Threads**: Explicitly follow threads you're interested in
-- **Thread Summary**: AI-generated summaries of long threads
-- **Thread Pinning**: Pin important threads to top of channel
-- **Thread Analytics**: See most active threads, engagement stats
-- **Thread Bookmarks**: Save threads for later reading
-- **Thread Mentions**: Mention threads in other channels
-- **Thread Previews**: Hover preview of thread contents
-- **Nested Replies**: Allow replies-to-replies (3-level depth max)
+3. **User closes thread**
+   - `MainViewModel.CloseThread()` called
+   - `ThreadViewModel.Dispose()` leaves SignalR group
+   - `ThreadPanel` hides, `UserListPanel` shows
 
 ---
 
 ## Implementation Checklist
 
-**Database:**
-- [ ] Create ThreadReply entity
-- [ ] Create ThreadReplyReaction entity
-- [ ] Modify Message entity
+### Phase 1: Database Schema
+
+- [ ] Add `ThreadParentMessageId` (nullable FK) to Message entity
+- [ ] Add `ReplyParentMessageId` (nullable FK) to Message entity
+- [ ] Add `ReplyCount` (int, default 0) to Message entity
+- [ ] Add `LastReplyAt` (DateTime?, nullable) to Message entity
+- [ ] Add `ThreadParentMessage` navigation property
+- [ ] Add `ReplyParentMessage` navigation property
+- [ ] Add `ThreadReplies` collection navigation property
+- [ ] Configure thread self-referential relationship (cascade delete)
+- [ ] Configure reply self-referential relationship (set null on delete)
+- [ ] Add index on `ThreadParentMessageId`
+- [ ] Add index on `ReplyParentMessageId`
 - [ ] Create EF Core migration
-- [ ] Add relationships in DbContext
-- [ ] Add indexes for performance
+- [ ] Apply migration
 
-**Backend:**
-- [ ] Implement IThreadService
-- [ ] Create ThreadController
-- [ ] Add SignalR hub methods
-- [ ] Create DTOs and AutoMapper profiles
-- [ ] Add validation and authorization
+### Phase 2: Backend Service
 
-**Frontend:**
-- [ ] Create ThreadPanel component
-- [ ] Create ThreadReplyItem component
-- [ ] Create ReactionRow component
-- [ ] Create ViewModels (Thread, ThreadReply, Reaction)
-- [ ] Integrate with ChannelViewModel
-- [ ] Add thread opening/closing logic
+- [ ] Add `ThreadParentMessageId`, `ReplyCount`, `LastReplyAt` to MessageDto
+- [ ] Add `ReplyParentMessageId`, `ReplyParentMessage` to MessageDto
+- [ ] Create `MessagePreviewDto` class (for reply previews)
+- [ ] Create `ThreadDto` class
+- [ ] Add `CreateThreadReplyAsync` method to IMessageService
+- [ ] Add `GetThreadAsync` method to IMessageService
+- [ ] Update `GetChannelMessagesAsync` to exclude thread messages (where ThreadParentMessageId == null)
+- [ ] Update delete logic to decrement parent's ReplyCount when thread message is deleted
+- [ ] Add validation: thread parent message must exist and be in same channel
+- [ ] Include reply preview data when fetching messages
 
-**Testing:**
-- [ ] Unit tests for IThreadService
-- [ ] Integration tests for API endpoints
-- [ ] UI component tests
-- [ ] SignalR event tests
-- [ ] End-to-end thread flow tests
+### Phase 3: API Endpoints
 
-**Documentation:**
-- [ ] Update API documentation
-- [ ] Update user guide
-- [ ] Add code comments
+- [ ] Add `GET /api/messages/{parentMessageId}/thread` endpoint
+- [ ] Add `POST /api/messages/{parentMessageId}/replies` endpoint
+- [ ] Test that existing message endpoints work for thread replies
+
+### Phase 4: SignalR
+
+- [ ] Add method to join thread group when opening thread
+- [ ] Add method to leave thread group when closing thread
+- [ ] Add `ThreadMetadataUpdated` event for parent message updates
+- [ ] Broadcast new replies to thread group
+- [ ] Broadcast parent metadata updates to channel
+
+### Phase 5: UI - ViewModels
+
+- [ ] Add `ThreadParentMessageId`, `ReplyCount`, `LastReplyAt`, `HasReplies`, `IsInThread` to MessageViewModel
+- [ ] Add `ReplyParentMessageId`, `ReplyParentMessage`, `HasReplyPreview` to MessageViewModel
+- [ ] Create `MessagePreviewViewModel` class
+- [ ] Add `OpenThreadCommand` to MessageViewModel
+- [ ] Add `ReplyToMessageCommand` to MessageViewModel
+- [ ] Create `ThreadViewModel` with Replies collection
+- [ ] Add `SendReplyCommand` to ThreadViewModel
+- [ ] Add `CloseCommand` to ThreadViewModel
+- [ ] Add `LoadAsync` method to ThreadViewModel
+- [ ] Add `CurrentThread` property to MainViewModel
+- [ ] Add `IsThreadOpen` computed property to MainViewModel
+- [ ] Add `OpenThread` method to MainViewModel
+- [ ] Add `CloseThread` method to MainViewModel
+- [ ] Add `ReplyingToMessage` property for tracking reply-in-progress
+
+### Phase 6: UI - Components
+
+- [ ] Create `ThreadPanel.axaml` layout
+- [ ] Add parent message preview section to ThreadPanel
+- [ ] Add replies list (reuse MessageItem or create ThreadReplyItem)
+- [ ] Add reply input field and send button
+- [ ] Add close button to ThreadPanel header
+- [ ] Add thread indicator to MessageItem (reply count badge)
+- [ ] Make thread indicator clickable
+- [ ] Style "N replies · Last reply Xm ago" text
+- [ ] Add reply preview component above MessageItem (when replying to a message)
+- [ ] Add "Reply to" button/context menu on messages
+- [ ] Add cancel reply button in input area
+- [ ] Integrate ThreadPanel into MainWindow right sidebar
+- [ ] Add visibility toggle between ThreadPanel and UserListPanel
+
+### Phase 7: Real-time Updates
+
+- [ ] Subscribe to SignalR events in ThreadViewModel
+- [ ] Handle new reply received (add to Replies collection)
+- [ ] Handle reply edited (update in Replies collection)
+- [ ] Handle reply deleted (remove from Replies collection)
+- [ ] Handle `ThreadMetadataUpdated` in channel view (update parent message badge)
+- [ ] Add loading state while fetching thread
+
+### Phase 8: Polish
+
+- [ ] Add scroll to bottom when thread opens
+- [ ] Add scroll to bottom when new reply received
+- [ ] Add "Load more" for pagination
+- [ ] Handle edge case: parent message deleted while thread is open
+- [ ] Add empty state when thread has no replies yet
+
+### Phase 9: Testing
+
+- [ ] Unit test: CreateThreadReplyAsync creates message with ThreadParentMessageId
+- [ ] Unit test: CreateThreadReplyAsync increments parent ReplyCount
+- [ ] Unit test: DeleteMessageAsync decrements parent ReplyCount (for thread messages)
+- [ ] Unit test: GetChannelMessagesAsync excludes thread messages
+- [ ] Unit test: GetThreadAsync returns parent + replies
+- [ ] Unit test: Message with ReplyParentMessageId includes preview data
+- [ ] Unit test: Deleting replied-to message sets ReplyParentMessageId to null
+- [ ] Integration test: POST /messages/{id}/replies endpoint
+- [ ] Integration test: GET /messages/{id}/thread endpoint
+- [ ] Integration test: existing PUT/DELETE work for thread messages
+- [ ] Integration test: reply preview loads correctly
+- [ ] Test SignalR group join/leave
+- [ ] Test real-time reply broadcast
 
 ---
 
-## Notes for Developers
+## What We're NOT Building (Reusing Instead)
 
-### Performance Considerations
-1. **Pagination is critical**: Don't load all replies at once
-2. **Cache thread metadata**: ReplyCount and LastReplyAt should be cached
-3. **Index ParentMessageId**: Most common query filter
-4. **Lazy load author info**: Load user details only when needed
-5. **SignalR group management**: Minimize broadcast scope
-
-### Threading Model
-- Use async/await throughout
-- Handle concurrent replies gracefully
-- Ensure edit/delete operations are atomic
-
-### User Experience
-- Show "loading..." while fetching thread
-- Smooth scroll to newest reply
-- Preserve scroll position when adding reactions
-- Show "X is typing..." indicator in thread
-
-### Testing Strategy
-- Mock IThreadService for UI tests
-- Test SignalR events with test hub
-- Verify authorization on all endpoints
-- Test concurrent operations (2 users editing same reply)
+| Feature | Reused From |
+|---------|-------------|
+| Reply editing | Existing `PUT /api/messages/{id}` |
+| Reply deletion | Existing `DELETE /api/messages/{id}` |
+| Reply reactions | Existing reaction endpoints |
+| Reply entity | Existing `Message` entity |
+| Reply DTO | Existing `MessageDto` (extended) |
+| Reply SignalR events | Existing message events |
 
 ---
 
-**Last Updated:** 2026-01-09  
-**Status:** Plan Created, Ready for Implementation  
-**Estimated Start:** After Phase 2 (Direct Messages complete)  
-**Estimated Completion:** 4-5 weeks from start
+## Migration Notes
+
+**Breaking change:** None. Existing messages get `ThreadParentMessageId = null`, `ReplyParentMessageId = null`, `ReplyCount = 0`, `LastReplyAt = null`.
+
+**Migration commands:**
+```bash
+dotnet ef migrations add AddThreadSupport --project src/Miscord.Server
+dotnet ef database update --project src/Miscord.Server
+```
+
+---
+
+## Future Enhancements (Out of Scope)
+
+- Unread thread tracking per user
+- Thread notifications
+- Thread search
+- "Also send to channel" option when replying in thread
+- Thread following/muting
+- Thread previews on hover
+- Jump to replied message when clicking reply preview
+
+---
+
+**Last Updated:** 2025-01-09
+**Status:** Plan Revised - Ready for Implementation
