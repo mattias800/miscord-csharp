@@ -19,6 +19,7 @@ public class AudioSettingsViewModel : ViewModelBase
     private float _inputGain;
     private float _gateThreshold;
     private bool _gateEnabled;
+    private bool _isRefreshingDevices; // Flag to prevent binding feedback during refresh
 
     public AudioSettingsViewModel(ISettingsStore settingsStore, IAudioDeviceService audioDeviceService)
     {
@@ -43,23 +44,30 @@ public class AudioSettingsViewModel : ViewModelBase
         RefreshDevices();
 
         // Notify UI of initial selections (must be after devices are loaded)
-        this.RaisePropertyChanged(nameof(SelectedInputDevice));
-        this.RaisePropertyChanged(nameof(SelectedOutputDevice));
+        this.RaisePropertyChanged(nameof(SelectedInputDeviceItem));
+        this.RaisePropertyChanged(nameof(SelectedOutputDeviceItem));
     }
 
     public ObservableCollection<AudioDeviceItem> InputDevices { get; }
     public ObservableCollection<AudioDeviceItem> OutputDevices { get; }
 
-    public string? SelectedInputDevice
+    public AudioDeviceItem? SelectedInputDeviceItem
     {
-        get => _selectedInputDevice;
+        get => InputDevices.FirstOrDefault(d => d.Value == _selectedInputDevice)
+               ?? InputDevices.FirstOrDefault(); // Fall back to "Default"
         set
         {
-            if (_selectedInputDevice == value) return;
+            var newValue = value?.Value;
 
-            this.RaiseAndSetIfChanged(ref _selectedInputDevice, value);
-            _settingsStore.Settings.AudioInputDevice = value;
+            // Ignore binding updates during device refresh
+            if (_isRefreshingDevices) return;
+
+            if (_selectedInputDevice == newValue) return;
+
+            _selectedInputDevice = newValue;
+            _settingsStore.Settings.AudioInputDevice = newValue;
             _settingsStore.Save();
+            this.RaisePropertyChanged(nameof(SelectedInputDeviceItem));
 
             // Restart test with new device if testing
             if (_isTestingMicrophone)
@@ -69,21 +77,28 @@ public class AudioSettingsViewModel : ViewModelBase
         }
     }
 
-    public string? SelectedOutputDevice
+    public AudioDeviceItem? SelectedOutputDeviceItem
     {
-        get => _selectedOutputDevice;
+        get => OutputDevices.FirstOrDefault(d => d.Value == _selectedOutputDevice)
+               ?? OutputDevices.FirstOrDefault(); // Fall back to "Default"
         set
         {
-            if (_selectedOutputDevice == value) return;
+            var newValue = value?.Value;
 
-            this.RaiseAndSetIfChanged(ref _selectedOutputDevice, value);
-            _settingsStore.Settings.AudioOutputDevice = value;
+            // Ignore binding updates during device refresh
+            if (_isRefreshingDevices) return;
+
+            if (_selectedOutputDevice == newValue) return;
+
+            _selectedOutputDevice = newValue;
+            _settingsStore.Settings.AudioOutputDevice = newValue;
             _settingsStore.Save();
+            this.RaisePropertyChanged(nameof(SelectedOutputDeviceItem));
 
             // Update loopback device if enabled
             if (_isLoopbackEnabled)
             {
-                _audioDeviceService.SetLoopbackEnabled(true, value);
+                _audioDeviceService.SetLoopbackEnabled(true, newValue);
             }
         }
     }
@@ -164,23 +179,35 @@ public class AudioSettingsViewModel : ViewModelBase
 
     private void RefreshDevices()
     {
-        InputDevices.Clear();
-        OutputDevices.Clear();
-
-        // Add default option
-        InputDevices.Add(new AudioDeviceItem(null, "Default"));
-        OutputDevices.Add(new AudioDeviceItem(null, "Default"));
-
-        // Add available devices
-        foreach (var device in _audioDeviceService.GetInputDevices())
+        _isRefreshingDevices = true;
+        try
         {
-            InputDevices.Add(new AudioDeviceItem(device, device));
+            InputDevices.Clear();
+            OutputDevices.Clear();
+
+            // Add default option
+            InputDevices.Add(new AudioDeviceItem(null, "Default"));
+            OutputDevices.Add(new AudioDeviceItem(null, "Default"));
+
+            // Add available devices
+            foreach (var device in _audioDeviceService.GetInputDevices())
+            {
+                InputDevices.Add(new AudioDeviceItem(device, device));
+            }
+
+            foreach (var device in _audioDeviceService.GetOutputDevices())
+            {
+                OutputDevices.Add(new AudioDeviceItem(device, device));
+            }
+        }
+        finally
+        {
+            _isRefreshingDevices = false;
         }
 
-        foreach (var device in _audioDeviceService.GetOutputDevices())
-        {
-            OutputDevices.Add(new AudioDeviceItem(device, device));
-        }
+        // Notify UI to re-sync the selection after items are populated
+        this.RaisePropertyChanged(nameof(SelectedInputDeviceItem));
+        this.RaisePropertyChanged(nameof(SelectedOutputDeviceItem));
     }
 
     private async Task ToggleMicrophoneTest()

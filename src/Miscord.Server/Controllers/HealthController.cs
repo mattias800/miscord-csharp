@@ -10,12 +10,14 @@ public class HealthController : ControllerBase
 {
     private readonly IConfiguration _configuration;
     private readonly IServerInviteService _inviteService;
+    private readonly IWebHostEnvironment _environment;
     private readonly TenorSettings _tenorSettings;
 
-    public HealthController(IConfiguration configuration, IServerInviteService inviteService, IOptions<TenorSettings> tenorSettings)
+    public HealthController(IConfiguration configuration, IServerInviteService inviteService, IWebHostEnvironment environment, IOptions<TenorSettings> tenorSettings)
     {
         _configuration = configuration;
         _inviteService = inviteService;
+        _environment = environment;
         _tenorSettings = tenorSettings.Value;
     }
 
@@ -25,8 +27,9 @@ public class HealthController : ControllerBase
         var hasUsers = await _inviteService.HasAnyUsersAsync(cancellationToken);
         string? bootstrapInviteCode = null;
 
-        // Only return bootstrap invite code when there are no users (first-time setup)
-        if (!hasUsers)
+        // Return bootstrap invite code when there are no users (first-time setup)
+        // OR in development mode (for dev-start.sh multi-client testing)
+        if (!hasUsers || _environment.IsDevelopment())
         {
             bootstrapInviteCode = await _inviteService.GetOrCreateBootstrapInviteAsync(cancellationToken);
         }

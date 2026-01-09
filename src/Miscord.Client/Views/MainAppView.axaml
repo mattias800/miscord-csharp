@@ -2132,8 +2132,7 @@
                                    FontSize="12"
                                    Foreground="#b9bbbe"/>
                         <ComboBox ItemsSource="{Binding InputDevices}"
-                                  SelectedValue="{Binding SelectedInputDevice, Mode=TwoWay}"
-                                  SelectedValueBinding="{Binding Value}"
+                                  SelectedItem="{Binding SelectedInputDeviceItem, Mode=TwoWay}"
                                   DisplayMemberBinding="{Binding DisplayName}"
                                   Background="#40444b"
                                   Foreground="White"
@@ -2160,8 +2159,7 @@
                                    FontSize="12"
                                    Foreground="#b9bbbe"/>
                         <ComboBox ItemsSource="{Binding OutputDevices}"
-                                  SelectedValue="{Binding SelectedOutputDevice, Mode=TwoWay}"
-                                  SelectedValueBinding="{Binding Value}"
+                                  SelectedItem="{Binding SelectedOutputDeviceItem, Mode=TwoWay}"
                                   DisplayMemberBinding="{Binding DisplayName}"
                                   Background="#40444b"
                                   Foreground="White"

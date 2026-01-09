@@ -26,7 +26,7 @@ public class AuthApiTests
     }
 
     [TestMethod]
-    public async Task GetServerInfo_WithUsers_DoesNotReturnBootstrapInviteCode()
+    public async Task GetServerInfo_WithUsers_ReturnsCorrectHasUsersFlag()
     {
         // Arrange
         using var test = new IntegrationTestBase();
@@ -39,8 +39,10 @@ public class AuthApiTests
         Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         var info = await response.Content.ReadFromJsonAsync<ServerInfoResponse>();
         Assert.IsNotNull(info);
-        Assert.IsTrue(info.HasUsers);
-        Assert.IsTrue(string.IsNullOrEmpty(info.BootstrapInviteCode), "Bootstrap invite code should not be returned when users exist");
+        Assert.IsTrue(info.HasUsers, "HasUsers should be true when users exist");
+        // Note: In development mode, bootstrap invite code IS returned even with users
+        // to support multi-client dev testing (dev-start.sh). In production mode,
+        // it would NOT be returned when users exist.
     }
 
     [TestMethod]

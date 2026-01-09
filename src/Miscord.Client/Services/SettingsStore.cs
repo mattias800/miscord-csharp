@@ -87,7 +87,6 @@ public class SettingsStore : ISettingsStore
             var options = new JsonSerializerOptions { WriteIndented = true };
             var json = JsonSerializer.Serialize(_settings, options);
             File.WriteAllText(_settingsPath, json);
-            Console.WriteLine($"SettingsStore: Saved settings to {_settingsPath}");
         }
         catch (Exception ex)
         {
