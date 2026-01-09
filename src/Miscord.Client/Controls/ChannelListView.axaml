@@ -348,6 +348,49 @@
                     </StackPanel>
                 </StackPanel>
             </Border>
+
+            <!-- Channel Delete Confirmation -->
+            <Border Background="#202225"
+                    CornerRadius="4"
+                    Padding="12"
+                    Margin="8,8,8,0"
+                    IsVisible="{Binding ChannelPendingDelete, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="DELETE CHANNEL"
+                               Foreground="#ed4245"
+                               FontSize="11"
+                               FontWeight="SemiBold"/>
+                    <TextBlock TextWrapping="Wrap"
+                               Foreground="#dcddde"
+                               FontSize="13">
+                        <Run Text="Are you sure you want to delete "/>
+                        <Run Text="#" Foreground="#72767d"/>
+                        <Run Text="{Binding ChannelPendingDelete.Name, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}" FontWeight="SemiBold"/>
+                        <Run Text="? This action cannot be undone."/>
+                    </TextBlock>
+                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                        <Button Command="{Binding CancelDeleteChannelCommand, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}"
+                                Background="Transparent"
+                                Foreground="#b9bbbe"
+                                Content="Cancel"
+                                Padding="12,6"
+                                Cursor="Hand"
+                                IsEnabled="{Binding IsLoading, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}, Converter={x:Static BoolConverters.Not}}"/>
+                        <Button Command="{Binding ConfirmDeleteChannelCommand, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}"
+                                Background="#ed4245"
+                                Foreground="White"
+                                Padding="12,6"
+                                CornerRadius="4"
+                                Cursor="Hand"
+                                IsEnabled="{Binding IsLoading, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}, Converter={x:Static BoolConverters.Not}}">
+                            <Panel>
+                                <TextBlock Text="Delete" IsVisible="{Binding IsLoading, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}, Converter={x:Static BoolConverters.Not}}"/>
+                                <TextBlock Text="Deleting..." IsVisible="{Binding IsLoading, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}"/>
+                            </Panel>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

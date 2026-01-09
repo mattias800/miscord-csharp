@@ -69,6 +69,15 @@ public partial class ChannelListView : UserControl
     public static readonly StyledProperty<ICommand?> DeleteChannelCommandProperty =
         AvaloniaProperty.Register<ChannelListView, ICommand?>(nameof(DeleteChannelCommand));
 
+    public static readonly StyledProperty<ICommand?> ConfirmDeleteChannelCommandProperty =
+        AvaloniaProperty.Register<ChannelListView, ICommand?>(nameof(ConfirmDeleteChannelCommand));
+
+    public static readonly StyledProperty<ICommand?> CancelDeleteChannelCommandProperty =
+        AvaloniaProperty.Register<ChannelListView, ICommand?>(nameof(CancelDeleteChannelCommand));
+
+    public static readonly StyledProperty<ChannelResponse?> ChannelPendingDeleteProperty =
+        AvaloniaProperty.Register<ChannelListView, ChannelResponse?>(nameof(ChannelPendingDelete));
+
     public static readonly StyledProperty<ICommand?> JoinVoiceChannelCommandProperty =
         AvaloniaProperty.Register<ChannelListView, ICommand?>(nameof(JoinVoiceChannelCommand));
 
@@ -171,6 +180,24 @@ public partial class ChannelListView : UserControl
     {
         get => GetValue(DeleteChannelCommandProperty);
         set => SetValue(DeleteChannelCommandProperty, value);
+    }
+
+    public ICommand? ConfirmDeleteChannelCommand
+    {
+        get => GetValue(ConfirmDeleteChannelCommandProperty);
+        set => SetValue(ConfirmDeleteChannelCommandProperty, value);
+    }
+
+    public ICommand? CancelDeleteChannelCommand
+    {
+        get => GetValue(CancelDeleteChannelCommandProperty);
+        set => SetValue(CancelDeleteChannelCommandProperty, value);
+    }
+
+    public ChannelResponse? ChannelPendingDelete
+    {
+        get => GetValue(ChannelPendingDeleteProperty);
+        set => SetValue(ChannelPendingDeleteProperty, value);
     }
 
     public ICommand? JoinVoiceChannelCommand

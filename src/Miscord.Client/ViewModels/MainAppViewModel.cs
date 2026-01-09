@@ -32,6 +32,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private string? _errorMessage;
     private ChannelResponse? _editingChannel;
     private string _editingChannelName = string.Empty;
+    private ChannelResponse? _channelPendingDelete;
     private MessageResponse? _editingMessage;
     private string _editingMessageContent = string.Empty;
     private MessageResponse? _replyingToMessage;
@@ -216,7 +217,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         StartEditChannelCommand = ReactiveCommand.Create<ChannelResponse>(StartEditChannel);
         SaveChannelNameCommand = ReactiveCommand.CreateFromTask(SaveChannelNameAsync);
         CancelEditChannelCommand = ReactiveCommand.Create(CancelEditChannel);
-        DeleteChannelCommand = ReactiveCommand.CreateFromTask<ChannelResponse>(DeleteChannelAsync);
+        DeleteChannelCommand = ReactiveCommand.Create<ChannelResponse>(RequestDeleteChannel);
+        ConfirmDeleteChannelCommand = ReactiveCommand.CreateFromTask(ConfirmDeleteChannelAsync);
+        CancelDeleteChannelCommand = ReactiveCommand.Create(CancelDeleteChannel);
 
         // Message commands
         StartEditMessageCommand = ReactiveCommand.Create<MessageResponse>(StartEditMessage);
@@ -1012,6 +1015,24 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref _editingChannelName, value);
     }
 
+    /// <summary>
+    /// The channel pending deletion (shown in confirmation dialog).
+    /// </summary>
+    public ChannelResponse? ChannelPendingDelete
+    {
+        get => _channelPendingDelete;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _channelPendingDelete, value);
+            this.RaisePropertyChanged(nameof(ShowChannelDeleteConfirmation));
+        }
+    }
+
+    /// <summary>
+    /// Whether to show the channel deletion confirmation dialog.
+    /// </summary>
+    public bool ShowChannelDeleteConfirmation => ChannelPendingDelete is not null;
+
     public MessageResponse? EditingMessage
     {
         get => _editingMessage;
@@ -1723,6 +1744,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<Unit, Unit> SaveChannelNameCommand { get; }
     public ReactiveCommand<Unit, Unit> CancelEditChannelCommand { get; }
     public ReactiveCommand<ChannelResponse, Unit> DeleteChannelCommand { get; }
+    public ReactiveCommand<Unit, Unit> ConfirmDeleteChannelCommand { get; }
+    public ReactiveCommand<Unit, Unit> CancelDeleteChannelCommand { get; }
     public ReactiveCommand<Unit, Unit> SendMessageCommand { get; }
     public ReactiveCommand<MessageResponse, Unit> StartEditMessageCommand { get; }
     public ReactiveCommand<Unit, Unit> SaveMessageEditCommand { get; }
@@ -2053,9 +2076,21 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private async Task DeleteChannelAsync(ChannelResponse channel)
+    private void RequestDeleteChannel(ChannelResponse channel)
     {
-        if (SelectedCommunity is null) return;
+        ChannelPendingDelete = channel;
+    }
+
+    private void CancelDeleteChannel()
+    {
+        ChannelPendingDelete = null;
+    }
+
+    private async Task ConfirmDeleteChannelAsync()
+    {
+        if (ChannelPendingDelete is null || SelectedCommunity is null) return;
+
+        var channel = ChannelPendingDelete;
 
         // Check if this is the currently selected channel
         var wasSelected = SelectedChannel?.Id == channel.Id;
@@ -2085,6 +2120,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 {
                     SelectedChannel = null;
                 }
+
+                // Clear the pending delete
+                ChannelPendingDelete = null;
             }
             else
             {

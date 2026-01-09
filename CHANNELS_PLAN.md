@@ -28,7 +28,7 @@ This document outlines planned improvements for the text and voice channel list 
 
 #### 1.1 Channel Deletion
 - [x] Right-click context menu with "Delete Channel" option
-- [ ] Confirmation dialog to prevent accidents
+- [x] Confirmation dialog to prevent accidents
 - [ ] Different confirmation for channels with messages vs empty channels
 - [x] Server-side deletion endpoint
 
