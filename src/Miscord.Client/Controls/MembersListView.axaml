@@ -41,7 +41,7 @@
                                     <Border.ContextMenu>
                                         <ContextMenu>
                                             <MenuItem Header="Change Nickname"
-                                                      Command="{Binding ChangeMyNicknameCommand, RelativeSource={RelativeSource AncestorType=controls:MembersListView}}"/>
+                                                      Click="OnChangeMyNicknameClick"/>
                                         </ContextMenu>
                                     </Border.ContextMenu>
                                     <Grid>
@@ -55,7 +55,7 @@
                                             <Border Width="32" Height="32"
                                                     CornerRadius="16"
                                                     Background="#5865f2">
-                                                <TextBlock Text="{Binding Username[0]}"
+                                                <TextBlock Text="{Binding Username, Converter={x:Static conv:FirstCharConverter.Instance}}"
                                                            Foreground="White"
                                                            FontSize="14"
                                                            FontWeight="Bold"
@@ -103,30 +103,25 @@
                                         </MultiBinding>
                                     </Border.IsVisible>
                                     <Border.ContextMenu>
-                                        <ContextMenu>
+                                        <ContextMenu Opened="OnMemberContextMenuOpened">
                                             <MenuItem Header="Send Direct Message"
-                                                      Command="{Binding StartDMCommand, RelativeSource={RelativeSource AncestorType=controls:MembersListView}}"
-                                                      CommandParameter="{Binding}"/>
-                                            <Separator IsVisible="{Binding CanManageMembers, RelativeSource={RelativeSource AncestorType=controls:MembersListView}}"/>
+                                                      Click="OnStartDMClick"/>
+                                            <Separator x:Name="AdminSeparator1"/>
                                             <MenuItem Header="Change Nickname"
-                                                      Command="{Binding ChangeMemberNicknameCommand, RelativeSource={RelativeSource AncestorType=controls:MembersListView}}"
-                                                      CommandParameter="{Binding}"
-                                                      IsVisible="{Binding CanManageMembers, RelativeSource={RelativeSource AncestorType=controls:MembersListView}}"/>
+                                                      x:Name="ChangeNicknameItem"
+                                                      Click="OnChangeMemberNicknameClick"/>
                                             <MenuItem Header="Promote to Admin"
-                                                      Command="{Binding PromoteToAdminCommand, RelativeSource={RelativeSource AncestorType=controls:MembersListView}}"
-                                                      CommandParameter="{Binding}"
-                                                      IsVisible="{Binding CanManageMembers, RelativeSource={RelativeSource AncestorType=controls:MembersListView}}"
+                                                      x:Name="PromoteItem"
+                                                      Click="OnPromoteToAdminClick"
                                                       IsEnabled="{Binding Role, Converter={x:Static conv:CanPromoteConverter.Instance}}"/>
                                             <MenuItem Header="Demote to Member"
-                                                      Command="{Binding DemoteToMemberCommand, RelativeSource={RelativeSource AncestorType=controls:MembersListView}}"
-                                                      CommandParameter="{Binding}"
-                                                      IsVisible="{Binding CanManageMembers, RelativeSource={RelativeSource AncestorType=controls:MembersListView}}"
+                                                      x:Name="DemoteItem"
+                                                      Click="OnDemoteToMemberClick"
                                                       IsEnabled="{Binding Role, Converter={x:Static conv:CanDemoteConverter.Instance}}"/>
-                                            <Separator IsVisible="{Binding CanManageMembers, RelativeSource={RelativeSource AncestorType=controls:MembersListView}}"/>
+                                            <Separator x:Name="AdminSeparator2"/>
                                             <MenuItem Header="Transfer Ownership"
-                                                      Command="{Binding TransferOwnershipCommand, RelativeSource={RelativeSource AncestorType=controls:MembersListView}}"
-                                                      CommandParameter="{Binding}"
-                                                      IsVisible="{Binding CanManageMembers, RelativeSource={RelativeSource AncestorType=controls:MembersListView}}"
+                                                      x:Name="TransferItem"
+                                                      Click="OnTransferOwnershipClick"
                                                       IsEnabled="{Binding Role, Converter={x:Static conv:CanTransferOwnershipConverter.Instance}}"/>
                                         </ContextMenu>
                                     </Border.ContextMenu>
@@ -142,7 +137,7 @@
                                             <Border Width="32" Height="32"
                                                     CornerRadius="16"
                                                     Background="#5865f2">
-                                                <TextBlock Text="{Binding Username[0]}"
+                                                <TextBlock Text="{Binding Username, Converter={x:Static conv:FirstCharConverter.Instance}}"
                                                            Foreground="White"
                                                            FontSize="14"
                                                            FontWeight="Bold"

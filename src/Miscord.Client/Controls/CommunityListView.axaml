@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:controls="using:Miscord.Client.Controls"
              xmlns:services="using:Miscord.Client.Services"
+             xmlns:conv="using:Miscord.Client.Converters"
              mc:Ignorable="d"
              x:Class="Miscord.Client.Controls.CommunityListView"
              x:DataType="controls:CommunityListView">
@@ -70,7 +71,7 @@
                                     <Border Width="48" Height="48"
                                             CornerRadius="24"
                                             Background="#5865f2">
-                                        <TextBlock Text="{Binding Name[0]}"
+                                        <TextBlock Text="{Binding Name, Converter={x:Static conv:FirstCharConverter.Instance}}"
                                                    Foreground="White"
                                                    FontSize="20"
                                                    FontWeight="SemiBold"

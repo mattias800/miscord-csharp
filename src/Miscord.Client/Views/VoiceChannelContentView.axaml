@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Miscord.Client.ViewModels"
+             xmlns:conv="using:Miscord.Client.Converters"
              x:Class="Miscord.Client.Views.VoiceChannelContentView"
              x:DataType="vm:VoiceChannelContentViewModel">
 
@@ -85,7 +86,7 @@
                                                 Background="#5865f2"
                                                 HorizontalAlignment="Center"
                                                 IsVisible="{Binding !IsLoadingStream}">
-                                            <TextBlock Text="{Binding Username[0]}"
+                                            <TextBlock Text="{Binding Username, Converter={x:Static conv:FirstCharConverter.Instance}}"
                                                        Foreground="White"
                                                        FontSize="36"
                                                        FontWeight="Bold"

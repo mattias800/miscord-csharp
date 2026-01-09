@@ -38,7 +38,7 @@
                         Background="#5865f2"
                         VerticalAlignment="Top"
                         Margin="0,0,12,0">
-                    <TextBlock Text="{Binding AuthorUsername[0], RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
+                    <TextBlock Text="{Binding AuthorUsername, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}, Converter={x:Static conv:FirstCharConverter.Instance}}"
                                Foreground="White"
                                FontSize="16"
                                FontWeight="Bold"

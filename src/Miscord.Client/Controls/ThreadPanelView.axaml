@@ -37,7 +37,7 @@
             <StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <Border Width="24" Height="24" CornerRadius="12" Background="#5865f2">
-                        <TextBlock Text="{Binding ParentMessage.AuthorUsername[0]}"
+                        <TextBlock Text="{Binding ParentMessage.AuthorUsername, Converter={x:Static conv:FirstCharConverter.Instance}}"
                                    Foreground="White"
                                    FontSize="11"
                                    FontWeight="Bold"

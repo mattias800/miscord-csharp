@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:controls="using:Miscord.Client.Controls"
              xmlns:vm="using:Miscord.Client.ViewModels"
+             xmlns:conv="using:Miscord.Client.Converters"
              mc:Ignorable="d"
              x:Class="Miscord.Client.Controls.VoiceChannelContentView"
              x:DataType="controls:VoiceChannelContentView">
@@ -96,7 +97,7 @@
                                                     CornerRadius="40"
                                                     Background="#5865f2"
                                                     HorizontalAlignment="Center">
-                                                <TextBlock Text="{Binding Username[0]}"
+                                                <TextBlock Text="{Binding Username, Converter={x:Static conv:FirstCharConverter.Instance}}"
                                                            Foreground="White"
                                                            FontSize="36"
                                                            FontWeight="Bold"

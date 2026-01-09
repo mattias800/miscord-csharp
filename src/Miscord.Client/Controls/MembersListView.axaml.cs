@@ -3,6 +3,7 @@ using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Miscord.Client.Services;
 
 namespace Miscord.Client.Controls;
@@ -110,6 +111,76 @@ public partial class MembersListView : UserControl
         if (sender is Border border && border.Tag is CommunityMemberResponse member)
         {
             MemberClicked?.Invoke(this, member);
+        }
+    }
+
+    // Context menu click handlers
+    private void OnChangeMyNicknameClick(object? sender, RoutedEventArgs e)
+    {
+        ChangeMyNicknameCommand?.Execute(null);
+    }
+
+    private void OnMemberContextMenuOpened(object? sender, RoutedEventArgs e)
+    {
+        // Show/hide admin items based on CanManageMembers
+        if (sender is ContextMenu menu)
+        {
+            foreach (var item in menu.Items)
+            {
+                if (item is Separator sep && (sep.Name == "AdminSeparator1" || sep.Name == "AdminSeparator2"))
+                {
+                    sep.IsVisible = CanManageMembers;
+                }
+                else if (item is MenuItem menuItem)
+                {
+                    var name = menuItem.Name;
+                    if (name == "ChangeNicknameItem" || name == "PromoteItem" ||
+                        name == "DemoteItem" || name == "TransferItem")
+                    {
+                        menuItem.IsVisible = CanManageMembers;
+                    }
+                }
+            }
+        }
+    }
+
+    private void OnStartDMClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem menuItem && menuItem.DataContext is CommunityMemberResponse member)
+        {
+            StartDMCommand?.Execute(member);
+        }
+    }
+
+    private void OnChangeMemberNicknameClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem menuItem && menuItem.DataContext is CommunityMemberResponse member)
+        {
+            ChangeMemberNicknameCommand?.Execute(member);
+        }
+    }
+
+    private void OnPromoteToAdminClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem menuItem && menuItem.DataContext is CommunityMemberResponse member)
+        {
+            PromoteToAdminCommand?.Execute(member);
+        }
+    }
+
+    private void OnDemoteToMemberClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem menuItem && menuItem.DataContext is CommunityMemberResponse member)
+        {
+            DemoteToMemberCommand?.Execute(member);
+        }
+    }
+
+    private void OnTransferOwnershipClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem menuItem && menuItem.DataContext is CommunityMemberResponse member)
+        {
+            TransferOwnershipCommand?.Execute(member);
         }
     }
 }

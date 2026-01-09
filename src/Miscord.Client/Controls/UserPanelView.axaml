@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:controls="using:Miscord.Client.Controls"
+             xmlns:conv="using:Miscord.Client.Converters"
              mc:Ignorable="d"
              x:Class="Miscord.Client.Controls.UserPanelView"
              x:DataType="controls:UserPanelView">
@@ -24,7 +25,7 @@
                         IsVisible="{Binding IsSpeaking, RelativeSource={RelativeSource AncestorType=controls:UserPanelView}}"/>
                 <Border Width="32" Height="32" CornerRadius="16" Background="#5865f2"
                         HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding Username[0], RelativeSource={RelativeSource AncestorType=controls:UserPanelView}}"
+                    <TextBlock Text="{Binding Username, RelativeSource={RelativeSource AncestorType=controls:UserPanelView}, Converter={x:Static conv:FirstCharConverter.Instance}}"
                                Foreground="White"
                                FontSize="14"
                                FontWeight="Bold"

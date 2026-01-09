@@ -85,7 +85,7 @@
                         </Grid.ColumnDefinitions>
 
                         <Border Grid.Column="0" Width="32" Height="32" CornerRadius="16" Background="#5865f2" Margin="0,0,8,0">
-                            <TextBlock Text="{Binding Username[0]}"
+                            <TextBlock Text="{Binding Username, Converter={x:Static converters:FirstCharConverter.Instance}}"
                                        Foreground="White"
                                        FontSize="14"
                                        FontWeight="Bold"
@@ -140,7 +140,7 @@
                                             <!-- Avatar -->
                                             <Grid Grid.Column="0" Margin="0,0,8,0">
                                                 <Border Width="32" Height="32" CornerRadius="16" Background="#5865f2">
-                                                    <TextBlock Text="{Binding Username[0]}"
+                                                    <TextBlock Text="{Binding Username, Converter={x:Static converters:FirstCharConverter.Instance}}"
                                                                Foreground="White"
                                                                FontSize="14"
                                                                FontWeight="Bold"
@@ -348,7 +348,7 @@
                                                 Background="#5865f2"
                                                 VerticalAlignment="Top"
                                                 Margin="0,0,12,0">
-                                            <TextBlock Text="{Binding SenderUsername[0]}"
+                                            <TextBlock Text="{Binding SenderUsername, Converter={x:Static converters:FirstCharConverter.Instance}}"
                                                        Foreground="White"
                                                        FontSize="16"
                                                        FontWeight="Bold"

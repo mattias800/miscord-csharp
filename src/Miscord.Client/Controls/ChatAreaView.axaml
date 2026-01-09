@@ -214,7 +214,7 @@
                                                     CornerRadius="14"
                                                     Background="#5865f2"
                                                     Margin="0,0,8,0">
-                                                <TextBlock Text="{Binding Username[0]}"
+                                                <TextBlock Text="{Binding Username, Converter={x:Static conv:FirstCharConverter.Instance}}"
                                                            Foreground="White"
                                                            FontSize="12"
                                                            FontWeight="Bold"
