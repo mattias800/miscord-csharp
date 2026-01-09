@@ -28,6 +28,7 @@ public class VoiceChannelCreationTests
             Icon: null,
             OwnerId: Guid.NewGuid(),
             OwnerUsername: "owner",
+            OwnerEffectiveDisplayName: "owner",
             CreatedAt: DateTime.UtcNow,
             MemberCount: 1
         );
@@ -106,6 +107,39 @@ public class VoiceChannelCreationTests
             .Returns(Task.CompletedTask);
         mock.Setup(x => x.LeaveChannelAsync(It.IsAny<Guid>()))
             .Returns(Task.CompletedTask);
+        mock.Setup(x => x.GetVoiceParticipantsAsync(It.IsAny<Guid>()))
+            .ReturnsAsync(new List<VoiceParticipantResponse>());
+        return mock;
+    }
+
+    private Mock<IWebRtcService> CreateMockWebRtc()
+    {
+        var mock = new Mock<IWebRtcService>();
+        mock.Setup(x => x.JoinVoiceChannelAsync(It.IsAny<Guid>(), It.IsAny<IEnumerable<VoiceParticipantResponse>>()))
+            .Returns(Task.CompletedTask);
+        mock.Setup(x => x.LeaveVoiceChannelAsync())
+            .Returns(Task.CompletedTask);
+        return mock;
+    }
+
+    private Mock<IScreenCaptureService> CreateMockScreenCapture()
+    {
+        var mock = new Mock<IScreenCaptureService>();
+        return mock;
+    }
+
+    private Mock<ISettingsStore> CreateMockSettingsStore()
+    {
+        var mock = new Mock<ISettingsStore>();
+        mock.Setup(x => x.Settings).Returns(new UserSettings());
+        return mock;
+    }
+
+    private Mock<IAudioDeviceService> CreateMockAudioDeviceService()
+    {
+        var mock = new Mock<IAudioDeviceService>();
+        mock.Setup(x => x.GetInputDevices()).Returns(new List<string>());
+        mock.Setup(x => x.GetOutputDevices()).Returns(new List<string>());
         return mock;
     }
 
@@ -115,9 +149,28 @@ public class VoiceChannelCreationTests
             UserId: Guid.NewGuid(),
             Username: "testuser",
             Email: "test@example.com",
+            IsServerAdmin: false,
             AccessToken: "test-token",
             RefreshToken: "test-refresh",
             ExpiresAt: DateTime.UtcNow.AddHours(1)
+        );
+    }
+
+    private MainAppViewModel CreateViewModel(
+        Mock<IApiClient> mockApi,
+        Mock<ISignalRService> mockSignalR,
+        AuthResponse auth)
+    {
+        return new MainAppViewModel(
+            mockApi.Object,
+            mockSignalR.Object,
+            CreateMockWebRtc().Object,
+            CreateMockScreenCapture().Object,
+            CreateMockSettingsStore().Object,
+            CreateMockAudioDeviceService().Object,
+            "http://localhost:5000",
+            auth,
+            onLogout: () => { }
         );
     }
 
@@ -129,13 +182,7 @@ public class VoiceChannelCreationTests
         var mockSignalR = CreateMockSignalR();
         var auth = CreateTestAuth();
 
-        var viewModel = new MainAppViewModel(
-            mockApi.Object,
-            mockSignalR.Object,
-            "http://localhost:5000",
-            auth,
-            onLogout: () => { }
-        );
+        var viewModel = CreateViewModel(mockApi, mockSignalR, auth);
 
         // Wait for initialization
         await Task.Delay(200);
@@ -153,7 +200,7 @@ public class VoiceChannelCreationTests
         Assert.Equal("Test Community", viewModel.SelectedCommunity.Name);
 
         // Act - Get initial voice channel count
-        var initialVoiceChannelCount = viewModel.VoiceChannels.Count();
+        var initialVoiceChannelCount = viewModel.VoiceChannelViewModels.Count();
         Assert.Equal(0, initialVoiceChannelCount);
 
         // Execute the create voice channel command
@@ -163,13 +210,12 @@ public class VoiceChannelCreationTests
         await Task.Delay(300);
 
         // Assert - Voice channel count should have increased by 1
-        var finalVoiceChannelCount = viewModel.VoiceChannels.Count();
+        var finalVoiceChannelCount = viewModel.VoiceChannelViewModels.Count();
         Assert.Equal(1, finalVoiceChannelCount);
 
         // Assert - The new channel should have the correct name
-        var newChannel = viewModel.VoiceChannels.FirstOrDefault(c => c.Name == "Voice 1");
+        var newChannel = viewModel.VoiceChannelViewModels.FirstOrDefault(c => c.Name == "Voice 1");
         Assert.NotNull(newChannel);
-        Assert.Equal(ChannelType.Voice, newChannel.Type);
 
         // Cleanup
         window.Close();
@@ -184,13 +230,7 @@ public class VoiceChannelCreationTests
         var mockSignalR = CreateMockSignalR();
         var auth = CreateTestAuth();
 
-        var viewModel = new MainAppViewModel(
-            mockApi.Object,
-            mockSignalR.Object,
-            "http://localhost:5000",
-            auth,
-            onLogout: () => { }
-        );
+        var viewModel = CreateViewModel(mockApi, mockSignalR, auth);
 
         // Wait for initialization
         await Task.Delay(200);
@@ -215,7 +255,7 @@ public class VoiceChannelCreationTests
         await Task.Delay(200);
 
         // Assert - Should have 3 voice channels
-        var voiceChannels = viewModel.VoiceChannels.ToList();
+        var voiceChannels = viewModel.VoiceChannelViewModels.ToList();
         Assert.Equal(3, voiceChannels.Count);
 
         // Assert - All channel names should be unique
@@ -240,13 +280,7 @@ public class VoiceChannelCreationTests
         var mockSignalR = CreateMockSignalR();
         var auth = CreateTestAuth();
 
-        var viewModel = new MainAppViewModel(
-            mockApi.Object,
-            mockSignalR.Object,
-            "http://localhost:5000",
-            auth,
-            onLogout: () => { }
-        );
+        var viewModel = CreateViewModel(mockApi, mockSignalR, auth);
 
         // Wait for initialization
         await Task.Delay(200);
@@ -261,9 +295,9 @@ public class VoiceChannelCreationTests
         viewModel.CreateVoiceChannelCommand.Execute().Subscribe();
         await Task.Delay(300);
 
-        // Assert - Channel should be in VoiceChannels, not TextChannels
-        Assert.Single(viewModel.VoiceChannels);
-        Assert.Equal("Voice 1", viewModel.VoiceChannels.First().Name);
+        // Assert - Channel should be in VoiceChannelViewModels
+        Assert.Single(viewModel.VoiceChannelViewModels);
+        Assert.Equal("Voice 1", viewModel.VoiceChannelViewModels.First().Name);
 
         // TextChannels should only have the default 'general' channel
         Assert.Single(viewModel.TextChannels);
@@ -283,13 +317,7 @@ public class VoiceChannelCreationTests
         var mockSignalR = CreateMockSignalR();
         var auth = CreateTestAuth();
 
-        var viewModel = new MainAppViewModel(
-            mockApi.Object,
-            mockSignalR.Object,
-            "http://localhost:5000",
-            auth,
-            onLogout: () => { }
-        );
+        var viewModel = CreateViewModel(mockApi, mockSignalR, auth);
 
         await Task.Delay(200);
 
@@ -315,7 +343,7 @@ public class VoiceChannelCreationTests
         await Task.Delay(300);
 
         // Assert - Should have exactly 3 voice channels (not 5)
-        var voiceChannels = viewModel.VoiceChannels.ToList();
+        var voiceChannels = viewModel.VoiceChannelViewModels.ToList();
         Assert.Equal(3, voiceChannels.Count);
 
         // Cleanup
