@@ -343,7 +343,50 @@
                                        FontSize="11"/>
                         </StackPanel>
 
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2">
+                            <!-- Mute Button - always visible -->
+                            <Panel>
+                                <Button Command="{Binding ToggleMuteCommand}"
+                                        Padding="6,4"
+                                        CornerRadius="4"
+                                        Cursor="Hand"
+                                        Background="#ed4245"
+                                        ToolTip.Tip="Unmute"
+                                        IsVisible="{Binding IsMuted}">
+                                    <TextBlock Text="🔇" Foreground="White" FontSize="14"/>
+                                </Button>
+                                <Button Command="{Binding ToggleMuteCommand}"
+                                        Padding="6,4"
+                                        CornerRadius="4"
+                                        Cursor="Hand"
+                                        Background="Transparent"
+                                        ToolTip.Tip="Mute"
+                                        IsVisible="{Binding !IsMuted}">
+                                    <TextBlock Text="🎤" Foreground="#b9bbbe" FontSize="14"/>
+                                </Button>
+                            </Panel>
+                            <!-- Deafen Button - always visible -->
+                            <Panel>
+                                <Button Command="{Binding ToggleDeafenCommand}"
+                                        Padding="6,4"
+                                        CornerRadius="4"
+                                        Cursor="Hand"
+                                        Background="#ed4245"
+                                        ToolTip.Tip="Undeafen"
+                                        IsVisible="{Binding IsDeafened}">
+                                    <TextBlock Text="🔇" Foreground="White" FontSize="14"/>
+                                </Button>
+                                <Button Command="{Binding ToggleDeafenCommand}"
+                                        Padding="6,4"
+                                        CornerRadius="4"
+                                        Cursor="Hand"
+                                        Background="Transparent"
+                                        ToolTip.Tip="Deafen"
+                                        IsVisible="{Binding !IsDeafened}">
+                                    <TextBlock Text="🔊" Foreground="#b9bbbe" FontSize="14"/>
+                                </Button>
+                            </Panel>
+                            <!-- Settings Button -->
                             <Button Command="{Binding OpenSettingsCommand}"
                                     Background="Transparent"
                                     Padding="6,4"
