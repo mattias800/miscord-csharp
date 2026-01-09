@@ -59,6 +59,29 @@
                                     Padding="8,6"
                                     Margin="0,1"
                                     Cursor="Hand">
+                                <!-- Context menu for text channels -->
+                                <Button.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Rename Channel"
+                                                  Command="{Binding StartEditChannelCommand, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}"
+                                                  CommandParameter="{Binding}"
+                                                  IsVisible="{Binding CanManageChannels, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}">
+                                            <MenuItem.Icon>
+                                                <TextBlock Text="✎" FontSize="12"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <Separator IsVisible="{Binding CanManageChannels, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}"/>
+                                        <MenuItem Header="Delete Channel"
+                                                  Command="{Binding DeleteChannelCommand, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}"
+                                                  CommandParameter="{Binding}"
+                                                  IsVisible="{Binding CanManageChannels, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}"
+                                                  Foreground="#ed4245">
+                                            <MenuItem.Icon>
+                                                <TextBlock Text="🗑" FontSize="12"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Button.ContextMenu>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>

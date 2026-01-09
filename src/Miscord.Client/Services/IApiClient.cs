@@ -43,6 +43,7 @@ public interface IApiClient
     Task<ApiResult<List<ChannelResponse>>> GetChannelsAsync(Guid communityId);
     Task<ApiResult<ChannelResponse>> CreateChannelAsync(Guid communityId, string name, string? topic, ChannelType type = ChannelType.Text);
     Task<ApiResult<ChannelResponse>> UpdateChannelAsync(Guid communityId, Guid channelId, string? name, string? topic);
+    Task<ApiResult<bool>> DeleteChannelAsync(Guid channelId);
     Task<ApiResult<bool>> MarkChannelAsReadAsync(Guid communityId, Guid channelId);
 
     // Messages

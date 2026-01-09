@@ -27,10 +27,10 @@ This document outlines planned improvements for the text and voice channel list 
 ### Phase 1: High Priority (User Experience)
 
 #### 1.1 Channel Deletion
-- [ ] Right-click context menu with "Delete Channel" option
+- [x] Right-click context menu with "Delete Channel" option
 - [ ] Confirmation dialog to prevent accidents
 - [ ] Different confirmation for channels with messages vs empty channels
-- [ ] Server-side deletion endpoint
+- [x] Server-side deletion endpoint
 
 #### 1.2 Drag & Drop Channel Reordering
 - [ ] Allow admins to drag channels to reorder them

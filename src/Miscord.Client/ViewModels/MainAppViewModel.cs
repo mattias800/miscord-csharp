@@ -216,6 +216,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         StartEditChannelCommand = ReactiveCommand.Create<ChannelResponse>(StartEditChannel);
         SaveChannelNameCommand = ReactiveCommand.CreateFromTask(SaveChannelNameAsync);
         CancelEditChannelCommand = ReactiveCommand.Create(CancelEditChannel);
+        DeleteChannelCommand = ReactiveCommand.CreateFromTask<ChannelResponse>(DeleteChannelAsync);
 
         // Message commands
         StartEditMessageCommand = ReactiveCommand.Create<MessageResponse>(StartEditMessage);
@@ -1721,6 +1722,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<ChannelResponse, Unit> StartEditChannelCommand { get; }
     public ReactiveCommand<Unit, Unit> SaveChannelNameCommand { get; }
     public ReactiveCommand<Unit, Unit> CancelEditChannelCommand { get; }
+    public ReactiveCommand<ChannelResponse, Unit> DeleteChannelCommand { get; }
     public ReactiveCommand<Unit, Unit> SendMessageCommand { get; }
     public ReactiveCommand<MessageResponse, Unit> StartEditMessageCommand { get; }
     public ReactiveCommand<Unit, Unit> SaveMessageEditCommand { get; }
@@ -2043,6 +2045,51 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             {
                 ErrorMessage = result.Error;
                 Console.WriteLine($"Error: {result.Error}");
+            }
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task DeleteChannelAsync(ChannelResponse channel)
+    {
+        if (SelectedCommunity is null) return;
+
+        // Check if this is the currently selected channel
+        var wasSelected = SelectedChannel?.Id == channel.Id;
+
+        IsLoading = true;
+        try
+        {
+            var result = await _apiClient.DeleteChannelAsync(channel.Id);
+            if (result.Success)
+            {
+                Console.WriteLine($"Deleted channel: {channel.Name}");
+
+                // Remove from local collection (SignalR should also handle this)
+                var toRemove = Channels.FirstOrDefault(c => c.Id == channel.Id);
+                if (toRemove is not null)
+                {
+                    Channels.Remove(toRemove);
+                }
+
+                // If the deleted channel was selected, select another one
+                if (wasSelected && Channels.Count > 0)
+                {
+                    var textChannels = Channels.Where(c => c.Type == Shared.Models.ChannelType.Text).ToList();
+                    SelectedChannel = textChannels.FirstOrDefault() ?? Channels.FirstOrDefault();
+                }
+                else if (wasSelected)
+                {
+                    SelectedChannel = null;
+                }
+            }
+            else
+            {
+                ErrorMessage = result.Error;
+                Console.WriteLine($"Error deleting channel: {result.Error}");
             }
         }
         finally

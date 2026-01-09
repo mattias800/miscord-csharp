@@ -79,6 +79,7 @@
                                           StartEditChannelCommand="{Binding StartEditChannelCommand}"
                                           SaveChannelNameCommand="{Binding SaveChannelNameCommand}"
                                           CancelEditChannelCommand="{Binding CancelEditChannelCommand}"
+                                          DeleteChannelCommand="{Binding DeleteChannelCommand}"
                                           ServerMuteUserCommand="{Binding ServerMuteUserCommand}"
                                           ServerDeafenUserCommand="{Binding ServerDeafenUserCommand}"
                                           VoiceChannelClicked="OnVoiceChannelClicked"

@@ -323,6 +323,11 @@ public class ApiClient : IApiClient
             new UpdateChannelRequest(name, topic));
     }
 
+    public async Task<ApiResult<bool>> DeleteChannelAsync(Guid channelId)
+    {
+        return await DeleteAsync($"/api/channels/{channelId}");
+    }
+
     public async Task<ApiResult<bool>> MarkChannelAsReadAsync(Guid communityId, Guid channelId)
     {
         return await PostEmptyAsync($"/api/communities/{communityId}/channels/{channelId}/read");

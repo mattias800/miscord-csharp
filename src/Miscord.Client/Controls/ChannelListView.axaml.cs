@@ -66,6 +66,9 @@ public partial class ChannelListView : UserControl
     public static readonly StyledProperty<ICommand?> CancelEditChannelCommandProperty =
         AvaloniaProperty.Register<ChannelListView, ICommand?>(nameof(CancelEditChannelCommand));
 
+    public static readonly StyledProperty<ICommand?> DeleteChannelCommandProperty =
+        AvaloniaProperty.Register<ChannelListView, ICommand?>(nameof(DeleteChannelCommand));
+
     public static readonly StyledProperty<ICommand?> JoinVoiceChannelCommandProperty =
         AvaloniaProperty.Register<ChannelListView, ICommand?>(nameof(JoinVoiceChannelCommand));
 
@@ -162,6 +165,12 @@ public partial class ChannelListView : UserControl
     {
         get => GetValue(CancelEditChannelCommandProperty);
         set => SetValue(CancelEditChannelCommandProperty, value);
+    }
+
+    public ICommand? DeleteChannelCommand
+    {
+        get => GetValue(DeleteChannelCommandProperty);
+        set => SetValue(DeleteChannelCommandProperty, value);
     }
 
     public ICommand? JoinVoiceChannelCommand
