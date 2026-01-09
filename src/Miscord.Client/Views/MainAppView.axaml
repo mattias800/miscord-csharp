@@ -160,162 +160,7 @@
                                FontSize="16"/>
                 </Border>
 
-                <!-- Voice Connected Panel (shows when in voice channel) -->
-                <Border DockPanel.Dock="Bottom"
-                        Background="#292b2f"
-                        Padding="8"
-                        IsVisible="{Binding IsInVoiceChannel}">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-
-                        <!-- Voice Channel Info -->
-                        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
-                            <!-- Connected icon (green) -->
-                            <TextBlock Text="🔊"
-                                       Foreground="#3ba55c"
-                                       FontSize="14"
-                                       VerticalAlignment="Center"
-                                       IsVisible="{Binding IsVoiceConnected}"/>
-                            <!-- Connecting icon (yellow) -->
-                            <TextBlock Text="📡"
-                                       Foreground="#faa61a"
-                                       FontSize="14"
-                                       VerticalAlignment="Center"
-                                       IsVisible="{Binding IsVoiceConnecting}"/>
-                            <StackPanel>
-                                <!-- Connected status (green) -->
-                                <TextBlock Text="{Binding VoiceConnectionStatusText}"
-                                           Foreground="#3ba55c"
-                                           FontSize="12"
-                                           FontWeight="SemiBold"
-                                           IsVisible="{Binding IsVoiceConnected}"/>
-                                <!-- Connecting status (yellow) -->
-                                <TextBlock Text="{Binding VoiceConnectionStatusText}"
-                                           Foreground="#faa61a"
-                                           FontSize="12"
-                                           FontWeight="SemiBold"
-                                           IsVisible="{Binding IsVoiceConnecting}"/>
-                                <TextBlock Text="{Binding CurrentVoiceChannel.Name}"
-                                           Foreground="#72767d"
-                                           FontSize="11"/>
-                            </StackPanel>
-                        </StackPanel>
-
-                        <!-- Voice Controls (only show when connected) -->
-                        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8"
-                                    IsVisible="{Binding IsVoiceConnected}">
-                            <!-- Mute Button - red when muted -->
-                            <Panel>
-                                <Button Command="{Binding ToggleMuteCommand}"
-                                        Padding="8"
-                                        CornerRadius="4"
-                                        Cursor="Hand"
-                                        Background="#ed4245"
-                                        ToolTip.Tip="Unmute"
-                                        IsVisible="{Binding IsMuted}">
-                                    <TextBlock Text="🔇" Foreground="White" FontSize="16"/>
-                                </Button>
-                                <Button Command="{Binding ToggleMuteCommand}"
-                                        Padding="8"
-                                        CornerRadius="4"
-                                        Cursor="Hand"
-                                        Background="Transparent"
-                                        ToolTip.Tip="Mute"
-                                        IsVisible="{Binding !IsMuted}">
-                                    <TextBlock Text="🎤" Foreground="White" FontSize="16"/>
-                                </Button>
-                            </Panel>
-                            <!-- Deafen Button - red when deafened -->
-                            <Panel>
-                                <Button Command="{Binding ToggleDeafenCommand}"
-                                        Padding="8"
-                                        CornerRadius="4"
-                                        Cursor="Hand"
-                                        Background="#ed4245"
-                                        ToolTip.Tip="Undeafen"
-                                        IsVisible="{Binding IsDeafened}">
-                                    <TextBlock Text="🔇" Foreground="White" FontSize="16"/>
-                                </Button>
-                                <Button Command="{Binding ToggleDeafenCommand}"
-                                        Padding="8"
-                                        CornerRadius="4"
-                                        Cursor="Hand"
-                                        Background="Transparent"
-                                        ToolTip.Tip="Deafen"
-                                        IsVisible="{Binding !IsDeafened}">
-                                    <TextBlock Text="🔊" Foreground="White" FontSize="16"/>
-                                </Button>
-                            </Panel>
-                            <!-- Camera Button - green when on -->
-                            <Panel>
-                                <Button Command="{Binding ToggleCameraCommand}"
-                                        Padding="8"
-                                        CornerRadius="4"
-                                        Cursor="Hand"
-                                        Background="#3ba55c"
-                                        ToolTip.Tip="Turn off camera"
-                                        IsVisible="{Binding IsCameraOn}">
-                                    <TextBlock Text="📹" Foreground="White" FontSize="16"/>
-                                </Button>
-                                <Button Command="{Binding ToggleCameraCommand}"
-                                        Padding="8"
-                                        CornerRadius="4"
-                                        Cursor="Hand"
-                                        Background="Transparent"
-                                        ToolTip.Tip="Turn on camera"
-                                        IsVisible="{Binding !IsCameraOn}">
-                                    <TextBlock Text="📷" Foreground="White" FontSize="16"/>
-                                </Button>
-                            </Panel>
-                            <!-- Screen Share Button - green when sharing -->
-                            <Panel>
-                                <Button Command="{Binding ToggleScreenShareCommand}"
-                                        Padding="8"
-                                        CornerRadius="4"
-                                        Cursor="Hand"
-                                        Background="#3ba55c"
-                                        ToolTip.Tip="Stop sharing"
-                                        IsVisible="{Binding IsScreenSharing}">
-                                    <TextBlock Text="🖥️" Foreground="White" FontSize="16"/>
-                                </Button>
-                                <Button Command="{Binding ToggleScreenShareCommand}"
-                                        Padding="8"
-                                        CornerRadius="4"
-                                        Cursor="Hand"
-                                        Background="Transparent"
-                                        ToolTip.Tip="Share screen"
-                                        IsVisible="{Binding !IsScreenSharing}">
-                                    <TextBlock Text="🖥️" Foreground="White" FontSize="16"/>
-                                </Button>
-                            </Panel>
-                            <!-- Allow Drawing Button - only visible when screen sharing -->
-                            <Panel IsVisible="{Binding IsScreenSharing}">
-                                <ToggleButton IsChecked="{Binding IsDrawingAllowedForViewers}"
-                                              Padding="8"
-                                              CornerRadius="4"
-                                              Cursor="Hand"
-                                              ToolTip.Tip="Allow viewers to draw on your screen">
-                                    <TextBlock Text="✏️" Foreground="White" FontSize="16"/>
-                                </ToggleButton>
-                            </Panel>
-                            <Button Command="{Binding LeaveVoiceChannelCommand}"
-                                    Background="#ed4245"
-                                    Padding="8"
-                                    CornerRadius="4"
-                                    Cursor="Hand"
-                                    ToolTip.Tip="Disconnect">
-                                <TextBlock Text="📞"
-                                           Foreground="White"
-                                           FontSize="16"/>
-                            </Button>
-                        </StackPanel>
-                    </Grid>
-                </Border>
-
-                <!-- User Panel at Bottom -->
+                <!-- User Panel at Bottom (always visible, docked first to be at very bottom) -->
                 <Border DockPanel.Dock="Bottom" Background="#292b2f" Padding="8">
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -425,6 +270,121 @@
                                 <TextBlock Text="⚙"
                                            Foreground="#b9bbbe"
                                            FontSize="14"/>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Voice Connected Panel (shows when in voice channel, above user panel) -->
+                <Border DockPanel.Dock="Bottom"
+                        Background="#292b2f"
+                        Padding="8"
+                        BorderThickness="0,0,0,1"
+                        BorderBrush="#202225"
+                        IsVisible="{Binding IsInVoiceChannel}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Voice Channel Info -->
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                            <!-- Connected icon (green) -->
+                            <TextBlock Text="🔊"
+                                       Foreground="#3ba55c"
+                                       FontSize="14"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding IsVoiceConnected}"/>
+                            <!-- Connecting icon (yellow) -->
+                            <TextBlock Text="📡"
+                                       Foreground="#faa61a"
+                                       FontSize="14"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding IsVoiceConnecting}"/>
+                            <StackPanel>
+                                <!-- Connected status (green) -->
+                                <TextBlock Text="{Binding VoiceConnectionStatusText}"
+                                           Foreground="#3ba55c"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           IsVisible="{Binding IsVoiceConnected}"/>
+                                <!-- Connecting status (yellow) -->
+                                <TextBlock Text="{Binding VoiceConnectionStatusText}"
+                                           Foreground="#faa61a"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           IsVisible="{Binding IsVoiceConnecting}"/>
+                                <TextBlock Text="{Binding CurrentVoiceChannel.Name}"
+                                           Foreground="#72767d"
+                                           FontSize="11"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Voice Controls (only show when connected) - no mute/deafen since they're in user panel -->
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8"
+                                    IsVisible="{Binding IsVoiceConnected}">
+                            <!-- Camera Button - green when on -->
+                            <Panel>
+                                <Button Command="{Binding ToggleCameraCommand}"
+                                        Padding="8"
+                                        CornerRadius="4"
+                                        Cursor="Hand"
+                                        Background="#3ba55c"
+                                        ToolTip.Tip="Turn off camera"
+                                        IsVisible="{Binding IsCameraOn}">
+                                    <TextBlock Text="📹" Foreground="White" FontSize="16"/>
+                                </Button>
+                                <Button Command="{Binding ToggleCameraCommand}"
+                                        Padding="8"
+                                        CornerRadius="4"
+                                        Cursor="Hand"
+                                        Background="Transparent"
+                                        ToolTip.Tip="Turn on camera"
+                                        IsVisible="{Binding !IsCameraOn}">
+                                    <TextBlock Text="📷" Foreground="White" FontSize="16"/>
+                                </Button>
+                            </Panel>
+                            <!-- Screen Share Button - green when sharing -->
+                            <Panel>
+                                <Button Command="{Binding ToggleScreenShareCommand}"
+                                        Padding="8"
+                                        CornerRadius="4"
+                                        Cursor="Hand"
+                                        Background="#3ba55c"
+                                        ToolTip.Tip="Stop sharing"
+                                        IsVisible="{Binding IsScreenSharing}">
+                                    <TextBlock Text="🖥️" Foreground="White" FontSize="16"/>
+                                </Button>
+                                <Button Command="{Binding ToggleScreenShareCommand}"
+                                        Padding="8"
+                                        CornerRadius="4"
+                                        Cursor="Hand"
+                                        Background="Transparent"
+                                        ToolTip.Tip="Share screen"
+                                        IsVisible="{Binding !IsScreenSharing}">
+                                    <TextBlock Text="🖥️" Foreground="White" FontSize="16"/>
+                                </Button>
+                            </Panel>
+                            <!-- Allow Drawing Button - only visible when screen sharing -->
+                            <Panel IsVisible="{Binding IsScreenSharing}">
+                                <ToggleButton IsChecked="{Binding IsDrawingAllowedForViewers}"
+                                              Padding="8"
+                                              CornerRadius="4"
+                                              Cursor="Hand"
+                                              ToolTip.Tip="Allow viewers to draw on your screen">
+                                    <TextBlock Text="✏️" Foreground="White" FontSize="16"/>
+                                </ToggleButton>
+                            </Panel>
+                            <Button Command="{Binding LeaveVoiceChannelCommand}"
+                                    Background="#ed4245"
+                                    Padding="8"
+                                    CornerRadius="4"
+                                    Cursor="Hand"
+                                    ToolTip.Tip="Disconnect">
+                                <TextBlock Text="📞"
+                                           Foreground="White"
+                                           FontSize="16"/>
                             </Button>
                         </StackPanel>
                     </Grid>
