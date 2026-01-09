@@ -9,6 +9,8 @@ public class VoiceParticipant
     public Channel? Channel { get; set; }
     public bool IsMuted { get; set; }
     public bool IsDeafened { get; set; }
+    public bool IsServerMuted { get; set; }     // Admin muted - user cannot unmute themselves
+    public bool IsServerDeafened { get; set; }  // Admin deafened - user cannot undeafen themselves
     public bool IsScreenSharing { get; set; }
     public bool IsCameraOn { get; set; }
     public DateTime JoinedAt { get; set; } = DateTime.UtcNow;

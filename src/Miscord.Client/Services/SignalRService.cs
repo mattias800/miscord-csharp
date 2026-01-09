@@ -20,6 +20,11 @@ public interface ISignalRService : IAsyncDisposable
     Task UpdateVoiceStateAsync(Guid channelId, VoiceStateUpdate update);
     Task UpdateSpeakingStateAsync(Guid channelId, bool isSpeaking);
 
+    // Admin voice control methods
+    Task ServerMuteUserAsync(Guid channelId, Guid targetUserId, bool isServerMuted);
+    Task ServerDeafenUserAsync(Guid channelId, Guid targetUserId, bool isServerDeafened);
+    Task MoveUserAsync(Guid targetUserId, Guid targetChannelId);
+
     // WebRTC signaling methods (P2P - legacy)
     Task SendWebRtcOfferAsync(Guid targetUserId, string sdp);
     Task SendWebRtcAnswerAsync(Guid targetUserId, string sdp);
@@ -69,6 +74,10 @@ public interface ISignalRService : IAsyncDisposable
     event Action<VoiceParticipantLeftEvent>? VoiceParticipantLeft;
     event Action<VoiceStateChangedEvent>? VoiceStateChanged;
     event Action<SpeakingStateChangedEvent>? SpeakingStateChanged;
+
+    // Admin voice action events
+    event Action<ServerVoiceStateChangedEvent>? ServerVoiceStateChanged;
+    event Action<UserMovedEvent>? UserMoved;
 
     // WebRTC signaling events (P2P - legacy)
     event Action<WebRtcOfferEvent>? WebRtcOfferReceived;
@@ -133,6 +142,10 @@ public class SignalRService : ISignalRService
     public event Action<VoiceParticipantLeftEvent>? VoiceParticipantLeft;
     public event Action<VoiceStateChangedEvent>? VoiceStateChanged;
     public event Action<SpeakingStateChangedEvent>? SpeakingStateChanged;
+
+    // Admin voice action events
+    public event Action<ServerVoiceStateChangedEvent>? ServerVoiceStateChanged;
+    public event Action<UserMovedEvent>? UserMoved;
 
     // WebRTC signaling events (P2P - legacy)
     public event Action<WebRtcOfferEvent>? WebRtcOfferReceived;
@@ -293,6 +306,28 @@ public class SignalRService : ISignalRService
     {
         if (_hubConnection is null || !IsConnected) return;
         await _hubConnection.InvokeAsync("UpdateSpeakingState", channelId, isSpeaking);
+    }
+
+    // Admin voice control methods
+    public async Task ServerMuteUserAsync(Guid channelId, Guid targetUserId, bool isServerMuted)
+    {
+        if (_hubConnection is null || !IsConnected) return;
+        await _hubConnection.InvokeAsync("ServerMuteUser", channelId, targetUserId, isServerMuted);
+        Console.WriteLine($"SignalR: ServerMuteUser - {targetUserId} in channel {channelId}, muted={isServerMuted}");
+    }
+
+    public async Task ServerDeafenUserAsync(Guid channelId, Guid targetUserId, bool isServerDeafened)
+    {
+        if (_hubConnection is null || !IsConnected) return;
+        await _hubConnection.InvokeAsync("ServerDeafenUser", channelId, targetUserId, isServerDeafened);
+        Console.WriteLine($"SignalR: ServerDeafenUser - {targetUserId} in channel {channelId}, deafened={isServerDeafened}");
+    }
+
+    public async Task MoveUserAsync(Guid targetUserId, Guid targetChannelId)
+    {
+        if (_hubConnection is null || !IsConnected) return;
+        await _hubConnection.InvokeAsync("MoveUser", targetUserId, targetChannelId);
+        Console.WriteLine($"SignalR: MoveUser - {targetUserId} to channel {targetChannelId}");
     }
 
     // WebRTC signaling methods
@@ -492,6 +527,19 @@ public class SignalRService : ISignalRService
         _hubConnection.On<SpeakingStateChangedEvent>("SpeakingStateChanged", e =>
         {
             SpeakingStateChanged?.Invoke(e);
+        });
+
+        // Admin voice action events
+        _hubConnection.On<ServerVoiceStateChangedEvent>("ServerVoiceStateChanged", e =>
+        {
+            Console.WriteLine($"SignalR: ServerVoiceStateChanged - user {e.TargetUserId} in channel {e.ChannelId}, serverMuted={e.IsServerMuted}, serverDeafened={e.IsServerDeafened}");
+            ServerVoiceStateChanged?.Invoke(e);
+        });
+
+        _hubConnection.On<UserMovedEvent>("UserMoved", e =>
+        {
+            Console.WriteLine($"SignalR: UserMoved - {e.Username} moved from {e.FromChannelId} to {e.ToChannelId} by {e.AdminUsername}");
+            UserMoved?.Invoke(e);
         });
 
         // WebRTC signaling events

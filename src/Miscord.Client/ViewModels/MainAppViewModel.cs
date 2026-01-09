@@ -241,6 +241,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         ToggleCameraCommand = ReactiveCommand.CreateFromTask(ToggleCameraAsync);
         ToggleScreenShareCommand = ReactiveCommand.CreateFromTask(ToggleScreenShareAsync);
 
+        // Admin voice commands
+        ServerMuteUserCommand = ReactiveCommand.CreateFromTask<VoiceParticipantViewModel>(ServerMuteUserAsync);
+        ServerDeafenUserCommand = ReactiveCommand.CreateFromTask<VoiceParticipantViewModel>(ServerDeafenUserAsync);
+
         var canSendMessage = this.WhenAnyValue(
             x => x.MessageInput,
             x => x.SelectedChannel,
@@ -651,6 +655,60 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
                 // Update video grid
                 _voiceChannelContent?.UpdateSpeakingState(_auth.UserId, isSpeaking);
+            }
+        });
+
+        // Admin voice state changed (server mute/deafen)
+        _signalR.ServerVoiceStateChanged += e => Dispatcher.UIThread.Post(() =>
+        {
+            Console.WriteLine($"EVENT ServerVoiceStateChanged: User {e.TargetUserId} in channel {e.ChannelId}");
+
+            // Update VoiceChannelViewModel
+            var voiceChannel = VoiceChannelViewModels.FirstOrDefault(v => v.Id == e.ChannelId);
+            voiceChannel?.UpdateServerState(e.TargetUserId, e.IsServerMuted, e.IsServerDeafened);
+
+            // If this is the current user being server-muted, update local state
+            if (e.TargetUserId == _auth.UserId)
+            {
+                // If server-muted, ensure we're actually muted
+                if (e.IsServerMuted == true && !IsMuted)
+                {
+                    // Force mute
+                    IsMuted = true;
+                    _webRtc.SetMuted(true);
+                }
+                // If server-deafened, ensure we're actually deafened
+                if (e.IsServerDeafened == true && !IsDeafened)
+                {
+                    // Force deafen (and mute)
+                    IsDeafened = true;
+                    IsMuted = true;
+                    _webRtc.SetMuted(true);
+                }
+            }
+        });
+
+        // User moved by admin
+        _signalR.UserMoved += e => Dispatcher.UIThread.Post(async () =>
+        {
+            Console.WriteLine($"EVENT UserMoved: {e.Username} moved from {e.FromChannelId} to {e.ToChannelId} by {e.AdminUsername}");
+
+            // If the current user was moved
+            if (e.UserId == _auth.UserId)
+            {
+                // Leave current channel and join new one
+                await LeaveVoiceChannelAsync();
+                var channel = Channels.FirstOrDefault(c => c.Id == e.ToChannelId);
+                if (channel != null)
+                {
+                    await JoinVoiceChannelAsync(channel);
+                }
+            }
+            else
+            {
+                // Update VoiceChannelViewModels - remove from old, add to new
+                var oldChannel = VoiceChannelViewModels.FirstOrDefault(v => v.Id == e.FromChannelId);
+                oldChannel?.RemoveParticipant(e.UserId);
             }
         });
 
@@ -1684,11 +1742,13 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             this.RaiseAndSetIfChanged(ref _currentUserRole, value);
             this.RaisePropertyChanged(nameof(CanManageChannels));
             this.RaisePropertyChanged(nameof(CanManageMembers));
+            this.RaisePropertyChanged(nameof(CanManageVoice));
         }
     }
 
     public bool CanManageChannels => CurrentUserRole is UserRole.Owner or UserRole.Admin;
     public bool CanManageMembers => CurrentUserRole is UserRole.Owner;
+    public bool CanManageVoice => CurrentUserRole is UserRole.Owner or UserRole.Admin;
 
     public ReactiveCommand<Unit, Unit> LogoutCommand { get; }
     public ReactiveCommand<Unit, Unit>? SwitchServerCommand { get; }
@@ -1739,6 +1799,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<Unit, Unit> ToggleDeafenCommand { get; }
     public ReactiveCommand<Unit, Unit> ToggleCameraCommand { get; }
     public ReactiveCommand<Unit, Unit> ToggleScreenShareCommand { get; }
+
+    // Admin voice commands
+    public ReactiveCommand<VoiceParticipantViewModel, Unit> ServerMuteUserCommand { get; }
+    public ReactiveCommand<VoiceParticipantViewModel, Unit> ServerDeafenUserCommand { get; }
 
     public bool CanSwitchServer => _onSwitchServer is not null;
 
@@ -2563,6 +2627,18 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
     private async Task ToggleMuteAsync()
     {
+        // Check if server-muted (cannot unmute if server-muted)
+        if (CurrentVoiceChannel is not null && !IsMuted)
+        {
+            var voiceChannel = VoiceChannelViewModels.FirstOrDefault(v => v.Id == CurrentVoiceChannel.Id);
+            var currentParticipant = voiceChannel?.Participants.FirstOrDefault(p => p.UserId == _auth.UserId);
+            if (currentParticipant?.IsServerMuted == true)
+            {
+                Console.WriteLine("Cannot unmute: user is server-muted");
+                return;
+            }
+        }
+
         IsMuted = !IsMuted;
 
         // Persist to settings
@@ -2585,6 +2661,18 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
     private async Task ToggleDeafenAsync()
     {
+        // Check if server-deafened (cannot undeafen if server-deafened)
+        if (CurrentVoiceChannel is not null && !IsDeafened)
+        {
+            var voiceChannel = VoiceChannelViewModels.FirstOrDefault(v => v.Id == CurrentVoiceChannel.Id);
+            var currentParticipant = voiceChannel?.Participants.FirstOrDefault(p => p.UserId == _auth.UserId);
+            if (currentParticipant?.IsServerDeafened == true)
+            {
+                Console.WriteLine("Cannot undeafen: user is server-deafened");
+                return;
+            }
+        }
+
         IsDeafened = !IsDeafened;
 
         // If deafening, also mute
@@ -2723,6 +2811,46 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         catch (Exception ex)
         {
             Console.WriteLine($"Failed to stop screen share: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Server mute/unmute a user (admin action).
+    /// </summary>
+    private async Task ServerMuteUserAsync(VoiceParticipantViewModel participant)
+    {
+        if (CurrentVoiceChannel is null || !CanManageVoice) return;
+        if (participant.UserId == _auth.UserId) return; // Cannot server mute yourself
+
+        try
+        {
+            var newServerMuted = !participant.IsServerMuted;
+            await _signalR.ServerMuteUserAsync(CurrentVoiceChannel.Id, participant.UserId, newServerMuted);
+            Console.WriteLine($"Server {(newServerMuted ? "muted" : "unmuted")} user {participant.Username}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to server mute user: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Server deafen/undeafen a user (admin action).
+    /// </summary>
+    private async Task ServerDeafenUserAsync(VoiceParticipantViewModel participant)
+    {
+        if (CurrentVoiceChannel is null || !CanManageVoice) return;
+        if (participant.UserId == _auth.UserId) return; // Cannot server deafen yourself
+
+        try
+        {
+            var newServerDeafened = !participant.IsServerDeafened;
+            await _signalR.ServerDeafenUserAsync(CurrentVoiceChannel.Id, participant.UserId, newServerDeafened);
+            Console.WriteLine($"Server {(newServerDeafened ? "deafened" : "undeafened")} user {participant.Username}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to server deafen user: {ex.Message}");
         }
     }
 

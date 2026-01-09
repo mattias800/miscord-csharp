@@ -452,8 +452,24 @@ public class MiscordHub : Hub
 
         // Get current state before update
         var currentParticipant = await _voiceService.GetParticipantAsync(channelId, userId.Value);
-        var wasCameraOn = currentParticipant?.IsCameraOn ?? false;
-        var wasScreenSharing = currentParticipant?.IsScreenSharing ?? false;
+        if (currentParticipant is null) return;
+
+        // Prevent unmuting if server-muted
+        if (update.IsMuted == false && currentParticipant.IsServerMuted)
+        {
+            _logger.LogWarning("User {UserId} tried to unmute but is server-muted", userId.Value);
+            return;
+        }
+
+        // Prevent undeafening if server-deafened
+        if (update.IsDeafened == false && currentParticipant.IsServerDeafened)
+        {
+            _logger.LogWarning("User {UserId} tried to undeafen but is server-deafened", userId.Value);
+            return;
+        }
+
+        var wasCameraOn = currentParticipant.IsCameraOn;
+        var wasScreenSharing = currentParticipant.IsScreenSharing;
 
         var participant = await _voiceService.UpdateStateAsync(channelId, userId.Value, update);
         if (participant is not null && channel is not null)
@@ -537,6 +553,162 @@ public class MiscordHub : Hub
             await Clients.OthersInGroup($"community:{channel.CommunityId}")
                 .SendAsync("SpeakingStateChanged", new SpeakingStateChangedEvent(channelId, userId.Value, isSpeaking));
         }
+    }
+
+    // ==================== Admin Voice Channel Methods ====================
+
+    /// <summary>
+    /// Admin action to server-mute a user. Server-muted users cannot unmute themselves.
+    /// </summary>
+    public async Task ServerMuteUser(Guid channelId, Guid targetUserId, bool isServerMuted)
+    {
+        var adminUserId = GetUserId();
+        if (adminUserId is null) return;
+
+        // Get channel for authorization
+        var channel = await _db.Channels
+            .FirstOrDefaultAsync(c => c.Id == channelId);
+        if (channel is null) return;
+
+        // Check admin permissions
+        var adminRole = await GetUserRoleInCommunity(adminUserId.Value, channel.CommunityId);
+        if (adminRole != Shared.Models.UserRole.Owner && adminRole != Shared.Models.UserRole.Admin)
+        {
+            throw new HubException("You don't have permission to server mute users.");
+        }
+
+        var participant = await _voiceService.SetServerMuteAsync(channelId, targetUserId, isServerMuted);
+        if (participant is null) return;
+
+        var admin = await _db.Users.FindAsync(adminUserId.Value);
+
+        // Broadcast to community
+        await Clients.Group($"community:{channel.CommunityId}")
+            .SendAsync("ServerVoiceStateChanged", new ServerVoiceStateChangedEvent(
+                channelId,
+                targetUserId,
+                isServerMuted,
+                null,
+                adminUserId.Value,
+                admin?.Username ?? "Admin"
+            ));
+
+        _logger.LogInformation("Admin {AdminId} server-muted user {TargetId} in channel {ChannelId}: {IsMuted}",
+            adminUserId.Value, targetUserId, channelId, isServerMuted);
+    }
+
+    /// <summary>
+    /// Admin action to server-deafen a user. Server-deafened users cannot undeafen themselves.
+    /// Server deafen also implies server mute.
+    /// </summary>
+    public async Task ServerDeafenUser(Guid channelId, Guid targetUserId, bool isServerDeafened)
+    {
+        var adminUserId = GetUserId();
+        if (adminUserId is null) return;
+
+        // Get channel for authorization
+        var channel = await _db.Channels
+            .FirstOrDefaultAsync(c => c.Id == channelId);
+        if (channel is null) return;
+
+        // Check admin permissions
+        var adminRole = await GetUserRoleInCommunity(adminUserId.Value, channel.CommunityId);
+        if (adminRole != Shared.Models.UserRole.Owner && adminRole != Shared.Models.UserRole.Admin)
+        {
+            throw new HubException("You don't have permission to server deafen users.");
+        }
+
+        var participant = await _voiceService.SetServerDeafenAsync(channelId, targetUserId, isServerDeafened);
+        if (participant is null) return;
+
+        var admin = await _db.Users.FindAsync(adminUserId.Value);
+
+        // Broadcast to community (note: server deafen also sets server mute)
+        await Clients.Group($"community:{channel.CommunityId}")
+            .SendAsync("ServerVoiceStateChanged", new ServerVoiceStateChangedEvent(
+                channelId,
+                targetUserId,
+                isServerDeafened ? true : null, // If deafening, also muting
+                isServerDeafened,
+                adminUserId.Value,
+                admin?.Username ?? "Admin"
+            ));
+
+        _logger.LogInformation("Admin {AdminId} server-deafened user {TargetId} in channel {ChannelId}: {IsDeafened}",
+            adminUserId.Value, targetUserId, channelId, isServerDeafened);
+    }
+
+    /// <summary>
+    /// Admin action to move a user to a different voice channel.
+    /// </summary>
+    public async Task MoveUser(Guid targetUserId, Guid targetChannelId)
+    {
+        var adminUserId = GetUserId();
+        if (adminUserId is null) return;
+
+        // Get current participant info for authorization
+        var currentParticipant = await _db.VoiceParticipants
+            .Include(p => p.Channel)
+            .Include(p => p.User)
+            .FirstOrDefaultAsync(p => p.UserId == targetUserId);
+        if (currentParticipant?.Channel is null) return;
+
+        var communityId = currentParticipant.Channel.CommunityId;
+
+        // Verify target channel is in same community
+        var targetChannel = await _db.Channels
+            .FirstOrDefaultAsync(c => c.Id == targetChannelId && c.CommunityId == communityId);
+        if (targetChannel is null)
+        {
+            throw new HubException("Target channel must be in the same community.");
+        }
+
+        // Check admin permissions
+        var adminRole = await GetUserRoleInCommunity(adminUserId.Value, communityId);
+        if (adminRole != Shared.Models.UserRole.Owner && adminRole != Shared.Models.UserRole.Admin)
+        {
+            throw new HubException("You don't have permission to move users.");
+        }
+
+        var result = await _voiceService.MoveUserAsync(targetUserId, targetChannelId);
+        if (result is null) return;
+
+        var (participant, fromChannelId) = result.Value;
+        var admin = await _db.Users.FindAsync(adminUserId.Value);
+        var targetUser = currentParticipant.User;
+
+        // Update SFU session (remove from old channel)
+        _sfuService.RemoveSession(fromChannelId, targetUserId);
+
+        // Broadcast move event to community
+        await Clients.Group($"community:{communityId}")
+            .SendAsync("UserMoved", new UserMovedEvent(
+                targetUserId,
+                targetUser?.Username ?? "User",
+                fromChannelId,
+                targetChannelId,
+                adminUserId.Value,
+                admin?.Username ?? "Admin"
+            ));
+
+        // Also send left/joined events for UI consistency
+        await Clients.Group($"community:{communityId}")
+            .SendAsync("VoiceParticipantLeft", new VoiceParticipantLeftEvent(fromChannelId, targetUserId));
+        await Clients.Group($"community:{communityId}")
+            .SendAsync("VoiceParticipantJoined", new VoiceParticipantJoinedEvent(targetChannelId, participant));
+
+        _logger.LogInformation("Admin {AdminId} moved user {TargetId} from {FromChannel} to {ToChannel}",
+            adminUserId.Value, targetUserId, fromChannelId, targetChannelId);
+    }
+
+    /// <summary>
+    /// Gets the user's role in a community.
+    /// </summary>
+    private async Task<Shared.Models.UserRole?> GetUserRoleInCommunity(Guid userId, Guid communityId)
+    {
+        var membership = await _db.UserCommunities
+            .FirstOrDefaultAsync(uc => uc.UserId == userId && uc.CommunityId == communityId);
+        return membership?.Role;
     }
 
     // ==================== Screen Share Watching Methods ====================

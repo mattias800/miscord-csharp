@@ -572,6 +572,36 @@
                                                                         </StackPanel>
                                                                     </MenuItem.Header>
                                                                 </MenuItem>
+                                                                <!-- Admin options separator -->
+                                                                <Separator IsVisible="{Binding $parent[ItemsControl].DataContext.CanManageVoice}"/>
+                                                                <!-- Server Mute (admin only, not for current user) -->
+                                                                <MenuItem Header="{Binding IsServerMuted, Converter={x:Static conv:ServerMuteTextConverter.Instance}}"
+                                                                          Command="{Binding $parent[ItemsControl].DataContext.ServerMuteUserCommand}"
+                                                                          CommandParameter="{Binding}">
+                                                                    <MenuItem.IsVisible>
+                                                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                                            <Binding Path="!IsCurrentUser"/>
+                                                                            <Binding Path="$parent[ItemsControl].DataContext.CanManageVoice"/>
+                                                                        </MultiBinding>
+                                                                    </MenuItem.IsVisible>
+                                                                    <MenuItem.Icon>
+                                                                        <TextBlock Text="🔇" FontSize="12"/>
+                                                                    </MenuItem.Icon>
+                                                                </MenuItem>
+                                                                <!-- Server Deafen (admin only, not for current user) -->
+                                                                <MenuItem Header="{Binding IsServerDeafened, Converter={x:Static conv:ServerDeafenTextConverter.Instance}}"
+                                                                          Command="{Binding $parent[ItemsControl].DataContext.ServerDeafenUserCommand}"
+                                                                          CommandParameter="{Binding}">
+                                                                    <MenuItem.IsVisible>
+                                                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                                            <Binding Path="!IsCurrentUser"/>
+                                                                            <Binding Path="$parent[ItemsControl].DataContext.CanManageVoice"/>
+                                                                        </MultiBinding>
+                                                                    </MenuItem.IsVisible>
+                                                                    <MenuItem.Icon>
+                                                                        <TextBlock Text="🔕" FontSize="12"/>
+                                                                    </MenuItem.Icon>
+                                                                </MenuItem>
                                                                 <MenuItem Header="(You)" IsEnabled="False"
                                                                           IsVisible="{Binding IsCurrentUser}"/>
                                                             </ContextMenu>
@@ -583,16 +613,46 @@
                                                                        Foreground="{Binding IsSpeaking, Converter={x:Static conv:SpeakingForegroundConverter.Instance}}"
                                                                        FontSize="13"
                                                                        VerticalAlignment="Center"/>
+                                                            <!-- Self muted (red) - only show if self-muted but not server-muted -->
                                                             <TextBlock Text="🔇"
                                                                        FontSize="10"
                                                                        Foreground="#ed4245"
                                                                        VerticalAlignment="Center"
-                                                                       IsVisible="{Binding IsMuted}"/>
+                                                                       ToolTip.Tip="Muted">
+                                                                <TextBlock.IsVisible>
+                                                                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                                        <Binding Path="IsMuted"/>
+                                                                        <Binding Path="!IsServerMuted"/>
+                                                                    </MultiBinding>
+                                                                </TextBlock.IsVisible>
+                                                            </TextBlock>
+                                                            <!-- Server muted (orange) -->
+                                                            <TextBlock Text="🔇"
+                                                                       FontSize="10"
+                                                                       Foreground="#faa61a"
+                                                                       VerticalAlignment="Center"
+                                                                       ToolTip.Tip="Server Muted"
+                                                                       IsVisible="{Binding IsServerMuted}"/>
+                                                            <!-- Self deafened (red) - only show if self-deafened but not server-deafened -->
                                                             <TextBlock Text="🔕"
                                                                        FontSize="10"
                                                                        Foreground="#ed4245"
                                                                        VerticalAlignment="Center"
-                                                                       IsVisible="{Binding IsDeafened}"/>
+                                                                       ToolTip.Tip="Deafened">
+                                                                <TextBlock.IsVisible>
+                                                                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                                        <Binding Path="IsDeafened"/>
+                                                                        <Binding Path="!IsServerDeafened"/>
+                                                                    </MultiBinding>
+                                                                </TextBlock.IsVisible>
+                                                            </TextBlock>
+                                                            <!-- Server deafened (orange) -->
+                                                            <TextBlock Text="🔕"
+                                                                       FontSize="10"
+                                                                       Foreground="#faa61a"
+                                                                       VerticalAlignment="Center"
+                                                                       ToolTip.Tip="Server Deafened"
+                                                                       IsVisible="{Binding IsServerDeafened}"/>
                                                             <TextBlock Text="📹"
                                                                        FontSize="10"
                                                                        Foreground="#3ba55c"

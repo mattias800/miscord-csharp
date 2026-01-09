@@ -28,7 +28,19 @@ public class VoiceParticipantViewModel : ReactiveObject
     public string Username => Participant.Username;
     public bool IsMuted => Participant.IsMuted;
     public bool IsDeafened => Participant.IsDeafened;
+    public bool IsServerMuted => Participant.IsServerMuted;
+    public bool IsServerDeafened => Participant.IsServerDeafened;
     public bool IsCameraOn => Participant.IsCameraOn;
+
+    /// <summary>
+    /// Whether the user is effectively muted (self-muted OR server-muted).
+    /// </summary>
+    public bool IsEffectivelyMuted => IsMuted || IsServerMuted;
+
+    /// <summary>
+    /// Whether the user is effectively deafened (self-deafened OR server-deafened).
+    /// </summary>
+    public bool IsEffectivelyDeafened => IsDeafened || IsServerDeafened;
 
     /// <summary>
     /// Whether this participant is the current user.
@@ -80,6 +92,24 @@ public class VoiceParticipantViewModel : ReactiveObject
         this.RaisePropertyChanged(nameof(IsMuted));
         this.RaisePropertyChanged(nameof(IsDeafened));
         this.RaisePropertyChanged(nameof(IsCameraOn));
+        this.RaisePropertyChanged(nameof(IsEffectivelyMuted));
+        this.RaisePropertyChanged(nameof(IsEffectivelyDeafened));
+    }
+
+    /// <summary>
+    /// Updates the server-imposed mute/deafen state (admin action).
+    /// </summary>
+    public void UpdateServerState(bool? isServerMuted, bool? isServerDeafened)
+    {
+        Participant = Participant with
+        {
+            IsServerMuted = isServerMuted ?? Participant.IsServerMuted,
+            IsServerDeafened = isServerDeafened ?? Participant.IsServerDeafened
+        };
+        this.RaisePropertyChanged(nameof(IsServerMuted));
+        this.RaisePropertyChanged(nameof(IsServerDeafened));
+        this.RaisePropertyChanged(nameof(IsEffectivelyMuted));
+        this.RaisePropertyChanged(nameof(IsEffectivelyDeafened));
     }
 }
 
@@ -153,6 +183,16 @@ public class VoiceChannelViewModel : ReactiveObject
         if (participant is not null)
         {
             participant.IsSpeaking = isSpeaking;
+        }
+    }
+
+    public void UpdateServerState(Guid userId, bool? isServerMuted, bool? isServerDeafened)
+    {
+        var participant = Participants.FirstOrDefault(p => p.UserId == userId);
+        if (participant is not null)
+        {
+            participant.UpdateServerState(isServerMuted, isServerDeafened);
+            Console.WriteLine($"VoiceChannelVM [{Name}]: Updated server state for {participant.Username} - serverMuted={isServerMuted}, serverDeafened={isServerDeafened}");
         }
     }
 

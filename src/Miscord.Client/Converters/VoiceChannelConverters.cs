@@ -95,3 +95,64 @@ public class SpeakingForegroundConverter : IValueConverter
         throw new NotSupportedException();
     }
 }
+
+/// <summary>
+/// Converts IsServerMuted boolean to menu item text.
+/// Returns "Remove Server Mute" when true, "Server Mute" when false.
+/// </summary>
+public class ServerMuteTextConverter : IValueConverter
+{
+    public static readonly ServerMuteTextConverter Instance = new();
+
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        return value is true ? "Remove Server Mute" : "Server Mute";
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotSupportedException();
+    }
+}
+
+/// <summary>
+/// Converts IsServerDeafened boolean to menu item text.
+/// Returns "Remove Server Deafen" when true, "Server Deafen" when false.
+/// </summary>
+public class ServerDeafenTextConverter : IValueConverter
+{
+    public static readonly ServerDeafenTextConverter Instance = new();
+
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        return value is true ? "Remove Server Deafen" : "Server Deafen";
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotSupportedException();
+    }
+}
+
+/// <summary>
+/// Converts IsServerMuted/IsServerDeafened to a color for mute/deafen icon.
+/// Orange (#faa61a) for server-muted/deafened, Red (#ed4245) for self-muted/deafened.
+/// </summary>
+public class MuteIconColorConverter : IMultiValueConverter
+{
+    public static readonly MuteIconColorConverter Instance = new();
+
+    private static readonly IBrush ServerMutedBrush = new SolidColorBrush(Color.Parse("#faa61a")); // Orange
+    private static readonly IBrush SelfMutedBrush = new SolidColorBrush(Color.Parse("#ed4245")); // Red
+
+    public object Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (values.Count < 2) return SelfMutedBrush;
+
+        var isSelfMuted = values[0] is true;
+        var isServerMuted = values[1] is true;
+
+        // Server muted takes precedence (show orange)
+        return isServerMuted ? ServerMutedBrush : SelfMutedBrush;
+    }
+}

@@ -27,7 +27,7 @@ This document outlines planned improvements for voice channels in Miscord.
 #### 1.2 Visual Feedback Improvements
 - [x] Show muted icon on user avatar in sidebar
 - [x] Speaking indicator ring on avatar (green ring when speaking)
-- [ ] Different icon for self-muted vs server-muted (requires server-side admin mute feature - see 3.1)
+- [x] Different icon for self-muted vs server-muted (red for self, orange for server)
 
 ---
 
@@ -49,14 +49,14 @@ This document outlines planned improvements for voice channels in Miscord.
 ### Phase 3: Advanced Features
 
 #### 3.1 Voice Channel Permissions
-- [ ] Server mute (admin can mute users)
-- [ ] Server deafen (admin can deafen users)
+- [x] Server mute (admin can mute users - cannot unmute themselves)
+- [x] Server deafen (admin can deafen users - cannot undeafen themselves)
 - [ ] Channel-specific mute permissions
 - [ ] Priority speaker role
-- [ ] Move users between channels (admin)
+- [x] Move users between channels (admin)
 
 #### 3.2 Audio Mixing
-- [ ] Per-user volume control
+- [x] Per-user volume control (0-200% via right-click context menu, persisted)
 - [ ] Separate volume for screen share audio
 - [ ] Ducking (lower other audio when someone speaks)
 
@@ -92,11 +92,16 @@ This document outlines planned improvements for voice channels in Miscord.
 - [x] Remember mute/deafen state between sessions
 - [x] Show muted icon on user avatar
 - [x] Speaking indicator ring on avatar
+- [x] Phase 1.2: Different icon for self-muted vs server-muted
 - [x] Phase 2.1: Audio device selection (input/output switcher, level meter, push-to-talk)
+- [x] Per-user volume control (Phase 3.2)
+- [x] Phase 3.1: Voice Channel Permissions (server mute/deafen, move users)
 
 ### In Progress
 - [ ] Phase 2.2: Noise Suppression (optional)
 
 ### Not Started
-- [ ] Phase 3: Advanced Features (includes server mute for admin)
+- [ ] Phase 3.1: Remaining permissions (channel-specific mute, priority speaker)
+- [ ] Phase 3.2: Remaining audio mixing (screen share volume, ducking)
+- [ ] Phase 3.3: Recording
 - [ ] Phase 4: Nice to Have

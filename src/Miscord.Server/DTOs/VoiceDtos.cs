@@ -7,6 +7,8 @@ public record VoiceParticipantResponse(
     Guid ChannelId,
     bool IsMuted,
     bool IsDeafened,
+    bool IsServerMuted,
+    bool IsServerDeafened,
     bool IsScreenSharing,
     bool IsCameraOn,
     DateTime JoinedAt
@@ -29,3 +31,22 @@ public record VoiceParticipantJoinedEvent(Guid ChannelId, VoiceParticipantRespon
 public record VoiceParticipantLeftEvent(Guid ChannelId, Guid UserId);
 public record VoiceStateChangedEvent(Guid ChannelId, Guid UserId, VoiceStateUpdate State);
 public record SpeakingStateChangedEvent(Guid ChannelId, Guid UserId, bool IsSpeaking);
+
+// Admin voice action events
+public record ServerVoiceStateChangedEvent(
+    Guid ChannelId,
+    Guid TargetUserId,
+    bool? IsServerMuted,
+    bool? IsServerDeafened,
+    Guid AdminUserId,
+    string AdminUsername
+);
+
+public record UserMovedEvent(
+    Guid UserId,
+    string Username,
+    Guid FromChannelId,
+    Guid ToChannelId,
+    Guid AdminUserId,
+    string AdminUsername
+);
