@@ -417,14 +417,23 @@ public class MainWindowViewModel : ViewModelBase
     {
         if (CurrentUser is null || CurrentServer is null) return;
 
-        CurrentView = new DirectMessagesViewModel(
-            _apiClient,
-            _signalR,
-            CurrentUser,
-            onBack: () => OnAuthSuccess(CurrentUser),
-            initialUserId: userId,
-            initialUsername: username
-        );
+        try
+        {
+            CurrentView = new DirectMessagesViewModel(
+                _apiClient,
+                _signalR,
+                CurrentUser,
+                onBack: () => OnAuthSuccess(CurrentUser),
+                initialUserId: userId,
+                initialUsername: username
+            );
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error creating DirectMessagesViewModel: {ex}");
+            Console.WriteLine($"Error creating DirectMessagesViewModel: {ex}");
+            throw;
+        }
     }
 
     private void OnLogout()

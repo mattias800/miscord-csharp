@@ -123,13 +123,15 @@
                                             HorizontalContentAlignment="Stretch"
                                             Padding="8,8"
                                             Margin="0,1"
-                                            Cursor="Hand">
-                                        <Button.Classes>
-                                            <MultiBinding Converter="{x:Static converters:IsSelectedConversationConverter.Instance}">
+                                            Cursor="Hand"
+                                            Classes="conversation-btn"
+                                            BorderThickness="0">
+                                        <Button.Background>
+                                            <MultiBinding Converter="{x:Static converters:IsSelectedBackgroundConverter.Instance}">
                                                 <Binding />
                                                 <Binding Path="DataContext.SelectedConversation" ElementName="ConversationsList" />
                                             </MultiBinding>
-                                        </Button.Classes>
+                                        </Button.Background>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto"/>
