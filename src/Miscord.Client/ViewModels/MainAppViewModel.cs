@@ -28,6 +28,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private ChannelResponse? _selectedChannel;
     private string _messageInput = string.Empty;
     private bool _isLoading;
+    private bool _isDMLoading;
+    private bool _isMessagesLoading;
+    private bool _isMemberOperationLoading;
     private string? _errorMessage;
     private ChannelResponse? _editingChannel;
     private string _editingChannelName = string.Empty;
@@ -1070,6 +1073,24 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref _isLoading, value);
     }
 
+    public bool IsDMLoading
+    {
+        get => _isDMLoading;
+        set => this.RaiseAndSetIfChanged(ref _isDMLoading, value);
+    }
+
+    public bool IsMessagesLoading
+    {
+        get => _isMessagesLoading;
+        set => this.RaiseAndSetIfChanged(ref _isMessagesLoading, value);
+    }
+
+    public bool IsMemberOperationLoading
+    {
+        get => _isMemberOperationLoading;
+        set => this.RaiseAndSetIfChanged(ref _isMemberOperationLoading, value);
+    }
+
     public string? ErrorMessage
     {
         get => _errorMessage;
@@ -1912,7 +1933,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     {
         if (!DMRecipientId.HasValue) return;
 
-        IsLoading = true;
+        IsDMLoading = true;
         try
         {
             var result = await _apiClient.GetDirectMessagesAsync(DMRecipientId.Value);
@@ -1928,7 +1949,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         }
         finally
         {
-            IsLoading = false;
+            IsDMLoading = false;
         }
     }
 
@@ -1980,7 +2001,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         if (EditingDMMessage is null || string.IsNullOrWhiteSpace(EditingDMMessageContent))
             return;
 
-        IsLoading = true;
+        IsDMLoading = true;
         try
         {
             var result = await _apiClient.UpdateDirectMessageAsync(EditingDMMessage.Id, EditingDMMessageContent.Trim());
@@ -2001,13 +2022,13 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         }
         finally
         {
-            IsLoading = false;
+            IsDMLoading = false;
         }
     }
 
     private async Task DeleteDMMessageAsync(DirectMessageResponse message)
     {
-        IsLoading = true;
+        IsDMLoading = true;
         try
         {
             var result = await _apiClient.DeleteDirectMessageAsync(message.Id);
@@ -2023,7 +2044,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         }
         finally
         {
-            IsLoading = false;
+            IsDMLoading = false;
         }
     }
 
@@ -2034,7 +2055,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // Can't change owner or self
         if (member.Role == UserRole.Owner || member.UserId == _auth.UserId) return;
 
-        IsLoading = true;
+        IsMemberOperationLoading = true;
         try
         {
             var result = await _apiClient.UpdateMemberRoleAsync(SelectedCommunity.Id, member.UserId, UserRole.Admin);
@@ -2052,7 +2073,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         }
         finally
         {
-            IsLoading = false;
+            IsMemberOperationLoading = false;
         }
     }
 
@@ -2063,7 +2084,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // Can't change owner or self
         if (member.Role == UserRole.Owner || member.UserId == _auth.UserId) return;
 
-        IsLoading = true;
+        IsMemberOperationLoading = true;
         try
         {
             var result = await _apiClient.UpdateMemberRoleAsync(SelectedCommunity.Id, member.UserId, UserRole.Member);
@@ -2081,7 +2102,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         }
         finally
         {
-            IsLoading = false;
+            IsMemberOperationLoading = false;
         }
     }
 
@@ -2092,7 +2113,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // Can't transfer to yourself or to the current owner
         if (member.UserId == _auth.UserId || member.Role == UserRole.Owner) return;
 
-        IsLoading = true;
+        IsMemberOperationLoading = true;
         try
         {
             var result = await _apiClient.TransferOwnershipAsync(SelectedCommunity.Id, member.UserId);
@@ -2119,7 +2140,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         }
         finally
         {
-            IsLoading = false;
+            IsMemberOperationLoading = false;
         }
     }
 
@@ -2155,7 +2176,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     {
         if (SelectedCommunity is null || EditingNicknameMember is null) return;
 
-        IsLoading = true;
+        IsMemberOperationLoading = true;
         try
         {
             // Use null if nickname is empty to clear it
@@ -2190,7 +2211,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         }
         finally
         {
-            IsLoading = false;
+            IsMemberOperationLoading = false;
         }
     }
 
@@ -2290,7 +2311,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     {
         if (SelectedChannel is null) return;
 
-        IsLoading = true;
+        IsMessagesLoading = true;
         try
         {
             var result = await _apiClient.GetMessagesAsync(SelectedChannel.Id);
@@ -2303,7 +2324,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         }
         finally
         {
-            IsLoading = false;
+            IsMessagesLoading = false;
         }
     }
 
@@ -2502,7 +2523,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         if (EditingMessage is null || SelectedChannel is null || string.IsNullOrWhiteSpace(EditingMessageContent))
             return;
 
-        IsLoading = true;
+        IsMessagesLoading = true;
         try
         {
             var result = await _apiClient.UpdateMessageAsync(SelectedChannel.Id, EditingMessage.Id, EditingMessageContent.Trim());
@@ -2524,7 +2545,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         }
         finally
         {
-            IsLoading = false;
+            IsMessagesLoading = false;
         }
     }
 
@@ -2532,7 +2553,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     {
         if (SelectedChannel is null) return;
 
-        IsLoading = true;
+        IsMessagesLoading = true;
         try
         {
             var result = await _apiClient.DeleteMessageAsync(SelectedChannel.Id, message.Id);
@@ -2548,7 +2569,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         }
         finally
         {
-            IsLoading = false;
+            IsMessagesLoading = false;
         }
     }
 

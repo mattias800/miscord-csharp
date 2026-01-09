@@ -97,7 +97,7 @@
                                     DMMessages="{Binding DMMessages}"
                                     EditingDMMessage="{Binding EditingDMMessage}"
                                     EditingDMMessageContent="{Binding EditingDMMessageContent, Mode=TwoWay}"
-                                    IsLoading="{Binding IsLoading}"
+                                    IsLoading="{Binding IsDMLoading}"
                                     CloseDMCommand="{Binding CloseDMCommand}"
                                     SendDMMessageCommand="{Binding SendDMMessageCommand}"
                                     StartEditDMMessageCommand="{Binding StartEditDMMessageCommand}"
