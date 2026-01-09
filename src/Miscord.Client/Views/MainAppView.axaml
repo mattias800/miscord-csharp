@@ -90,20 +90,7 @@
         <Grid Grid.Column="2">
             <!-- DM Content (shown when viewing DM conversation) -->
             <controls:DMContentView IsVisible="{Binding IsViewingDM}"
-                                    DMRecipientName="{Binding DMRecipientName}"
-                                    IsDMTyping="{Binding IsDMTyping}"
-                                    DMTypingIndicatorText="{Binding DMTypingIndicatorText}"
-                                    DMMessageInput="{Binding DMMessageInput, Mode=TwoWay}"
-                                    DMMessages="{Binding DMMessages}"
-                                    EditingDMMessage="{Binding EditingDMMessage}"
-                                    EditingDMMessageContent="{Binding EditingDMMessageContent, Mode=TwoWay}"
-                                    IsLoading="{Binding IsDMLoading}"
-                                    CloseDMCommand="{Binding CloseDMCommand}"
-                                    SendDMMessageCommand="{Binding SendDMMessageCommand}"
-                                    StartEditDMMessageCommand="{Binding StartEditDMMessageCommand}"
-                                    DeleteDMMessageCommand="{Binding DeleteDMMessageCommand}"
-                                    CancelEditDMMessageCommand="{Binding CancelEditDMMessageCommand}"
-                                    SaveDMMessageEditCommand="{Binding SaveDMMessageEditCommand}"/>
+                                    ViewModel="{Binding DMContent}"/>
 
             <!-- Voice Channel Content (shown when viewing voice channel, but not DM) -->
             <controls:VoiceChannelContentView SelectedVoiceChannel="{Binding SelectedVoiceChannelForViewing}"
@@ -177,15 +164,7 @@
 
         <!-- Right Sidebar (Members List - always visible) -->
         <controls:MembersListView Grid.Column="3"
-                                  Members="{Binding SortedMembers}"
-                                  CurrentUserId="{Binding UserId}"
-                                  CanManageMembers="{Binding CanManageMembers}"
-                                  ChangeMyNicknameCommand="{Binding ChangeMyNicknameCommand}"
-                                  StartDMCommand="{Binding StartDMCommand}"
-                                  ChangeMemberNicknameCommand="{Binding ChangeMemberNicknameCommand}"
-                                  PromoteToAdminCommand="{Binding PromoteToAdminCommand}"
-                                  DemoteToMemberCommand="{Binding DemoteToMemberCommand}"
-                                  TransferOwnershipCommand="{Binding TransferOwnershipCommand}"
+                                  ViewModel="{Binding MembersList}"
                                   MemberClicked="OnMemberClicked"/>
 
         <!-- Thread Panel Overlay (visible when thread IS open) -->

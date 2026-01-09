@@ -5,6 +5,7 @@
              xmlns:conv="using:Miscord.Client.Converters"
              xmlns:controls="using:Miscord.Client.Controls"
              xmlns:services="using:Miscord.Client.Services"
+             xmlns:vm="using:Miscord.Client.ViewModels"
              mc:Ignorable="d"
              x:Class="Miscord.Client.Controls.MembersListView"
              x:DataType="controls:MembersListView">
@@ -20,7 +21,7 @@
 
             <ScrollViewer>
                 <ItemsControl x:Name="MembersList"
-                              ItemsSource="{Binding Members, RelativeSource={RelativeSource AncestorType=controls:MembersListView}}"
+                              ItemsSource="{Binding ViewModel.SortedMembers, RelativeSource={RelativeSource AncestorType=controls:MembersListView}}"
                               Margin="8,0">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="services:CommunityMemberResponse">
@@ -35,7 +36,7 @@
                                     <Border.IsVisible>
                                         <MultiBinding Converter="{x:Static conv:GuidEqualsConverter.Instance}">
                                             <Binding Path="UserId"/>
-                                            <Binding Path="CurrentUserId" RelativeSource="{RelativeSource AncestorType=controls:MembersListView}"/>
+                                            <Binding Path="ViewModel.CurrentUserId" RelativeSource="{RelativeSource AncestorType=controls:MembersListView}"/>
                                         </MultiBinding>
                                     </Border.IsVisible>
                                     <Border.ContextMenu>
@@ -99,7 +100,7 @@
                                     <Border.IsVisible>
                                         <MultiBinding Converter="{x:Static conv:GuidNotEqualsConverter.Instance}">
                                             <Binding Path="UserId"/>
-                                            <Binding Path="CurrentUserId" RelativeSource="{RelativeSource AncestorType=controls:MembersListView}"/>
+                                            <Binding Path="ViewModel.CurrentUserId" RelativeSource="{RelativeSource AncestorType=controls:MembersListView}"/>
                                         </MultiBinding>
                                     </Border.IsVisible>
                                     <Border.ContextMenu>
@@ -166,7 +167,7 @@
 
                                         <!-- DM Button -->
                                         <Button Grid.Column="2"
-                                                Command="{Binding StartDMCommand, RelativeSource={RelativeSource AncestorType=controls:MembersListView}}"
+                                                Command="{Binding ViewModel.StartDMCommand, RelativeSource={RelativeSource AncestorType=controls:MembersListView}}"
                                                 CommandParameter="{Binding}"
                                                 Background="Transparent"
                                                 Padding="4"

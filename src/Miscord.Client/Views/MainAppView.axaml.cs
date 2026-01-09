@@ -81,7 +81,7 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
     // Called when clicking a member in the members list - opens DMs
     private void OnMemberClicked(object? sender, Services.CommunityMemberResponse member)
     {
-        ViewModel?.StartDMCommand.Execute(member).Subscribe();
+        ViewModel?.MembersList?.StartDMCommand.Execute(member).Subscribe();
     }
 
     // Called when clicking a voice channel to join it

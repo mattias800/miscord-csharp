@@ -1,14 +1,12 @@
-using System;
-using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Reactive.Linq;
-using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Miscord.Client.Services;
+using Miscord.Client.ViewModels;
 using ReactiveUI;
 
 namespace Miscord.Client.Controls;
@@ -22,54 +20,15 @@ public partial class DMContentView : UserControl
     private bool _isDMMessagesAtBottom = true;
     private double _lastDMMessagesExtentHeight;
 
-    public static readonly StyledProperty<string?> DMRecipientNameProperty =
-        AvaloniaProperty.Register<DMContentView, string?>(nameof(DMRecipientName));
-
-    public static readonly StyledProperty<bool> IsDMTypingProperty =
-        AvaloniaProperty.Register<DMContentView, bool>(nameof(IsDMTyping));
-
-    public static readonly StyledProperty<string?> DMTypingIndicatorTextProperty =
-        AvaloniaProperty.Register<DMContentView, string?>(nameof(DMTypingIndicatorText));
-
-    public static readonly StyledProperty<string?> DMMessageInputProperty =
-        AvaloniaProperty.Register<DMContentView, string?>(nameof(DMMessageInput));
-
-    public static readonly StyledProperty<IEnumerable<DirectMessageResponse>?> DMMessagesProperty =
-        AvaloniaProperty.Register<DMContentView, IEnumerable<DirectMessageResponse>?>(nameof(DMMessages));
-
-    public static readonly StyledProperty<DirectMessageResponse?> EditingDMMessageProperty =
-        AvaloniaProperty.Register<DMContentView, DirectMessageResponse?>(nameof(EditingDMMessage));
-
-    public static readonly StyledProperty<string?> EditingDMMessageContentProperty =
-        AvaloniaProperty.Register<DMContentView, string?>(nameof(EditingDMMessageContent));
-
-    public static readonly StyledProperty<bool> IsLoadingProperty =
-        AvaloniaProperty.Register<DMContentView, bool>(nameof(IsLoading));
-
-    public static readonly StyledProperty<ICommand?> CloseDMCommandProperty =
-        AvaloniaProperty.Register<DMContentView, ICommand?>(nameof(CloseDMCommand));
-
-    public static readonly StyledProperty<ICommand?> SendDMMessageCommandProperty =
-        AvaloniaProperty.Register<DMContentView, ICommand?>(nameof(SendDMMessageCommand));
-
-    public static readonly StyledProperty<ICommand?> StartEditDMMessageCommandProperty =
-        AvaloniaProperty.Register<DMContentView, ICommand?>(nameof(StartEditDMMessageCommand));
-
-    public static readonly StyledProperty<ICommand?> DeleteDMMessageCommandProperty =
-        AvaloniaProperty.Register<DMContentView, ICommand?>(nameof(DeleteDMMessageCommand));
-
-    public static readonly StyledProperty<ICommand?> CancelEditDMMessageCommandProperty =
-        AvaloniaProperty.Register<DMContentView, ICommand?>(nameof(CancelEditDMMessageCommand));
-
-    public static readonly StyledProperty<ICommand?> SaveDMMessageEditCommandProperty =
-        AvaloniaProperty.Register<DMContentView, ICommand?>(nameof(SaveDMMessageEditCommand));
+    public static readonly StyledProperty<DMContentViewModel?> ViewModelProperty =
+        AvaloniaProperty.Register<DMContentView, DMContentViewModel?>(nameof(ViewModel));
 
     public DMContentView()
     {
         InitializeComponent();
 
-        // Subscribe to collection changes for auto-scrolling
-        this.GetObservable(DMMessagesProperty).Subscribe(OnDMMessagesChanged);
+        // Subscribe to ViewModel changes to wire up collection change handling
+        this.GetObservable(ViewModelProperty).Subscribe(OnViewModelChanged);
     }
 
     protected override void OnInitialized()
@@ -92,94 +51,16 @@ public partial class DMContentView : UserControl
         }
     }
 
-    public string? DMRecipientName
+    public DMContentViewModel? ViewModel
     {
-        get => GetValue(DMRecipientNameProperty);
-        set => SetValue(DMRecipientNameProperty, value);
-    }
-
-    public bool IsDMTyping
-    {
-        get => GetValue(IsDMTypingProperty);
-        set => SetValue(IsDMTypingProperty, value);
-    }
-
-    public string? DMTypingIndicatorText
-    {
-        get => GetValue(DMTypingIndicatorTextProperty);
-        set => SetValue(DMTypingIndicatorTextProperty, value);
-    }
-
-    public string? DMMessageInput
-    {
-        get => GetValue(DMMessageInputProperty);
-        set => SetValue(DMMessageInputProperty, value);
-    }
-
-    public IEnumerable<DirectMessageResponse>? DMMessages
-    {
-        get => GetValue(DMMessagesProperty);
-        set => SetValue(DMMessagesProperty, value);
-    }
-
-    public DirectMessageResponse? EditingDMMessage
-    {
-        get => GetValue(EditingDMMessageProperty);
-        set => SetValue(EditingDMMessageProperty, value);
-    }
-
-    public string? EditingDMMessageContent
-    {
-        get => GetValue(EditingDMMessageContentProperty);
-        set => SetValue(EditingDMMessageContentProperty, value);
-    }
-
-    public bool IsLoading
-    {
-        get => GetValue(IsLoadingProperty);
-        set => SetValue(IsLoadingProperty, value);
-    }
-
-    public ICommand? CloseDMCommand
-    {
-        get => GetValue(CloseDMCommandProperty);
-        set => SetValue(CloseDMCommandProperty, value);
-    }
-
-    public ICommand? SendDMMessageCommand
-    {
-        get => GetValue(SendDMMessageCommandProperty);
-        set => SetValue(SendDMMessageCommandProperty, value);
-    }
-
-    public ICommand? StartEditDMMessageCommand
-    {
-        get => GetValue(StartEditDMMessageCommandProperty);
-        set => SetValue(StartEditDMMessageCommandProperty, value);
-    }
-
-    public ICommand? DeleteDMMessageCommand
-    {
-        get => GetValue(DeleteDMMessageCommandProperty);
-        set => SetValue(DeleteDMMessageCommandProperty, value);
-    }
-
-    public ICommand? CancelEditDMMessageCommand
-    {
-        get => GetValue(CancelEditDMMessageCommandProperty);
-        set => SetValue(CancelEditDMMessageCommandProperty, value);
-    }
-
-    public ICommand? SaveDMMessageEditCommand
-    {
-        get => GetValue(SaveDMMessageEditCommandProperty);
-        set => SetValue(SaveDMMessageEditCommandProperty, value);
+        get => GetValue(ViewModelProperty);
+        set => SetValue(ViewModelProperty, value);
     }
 
     // Track collection changes for auto-scrolling
     private INotifyCollectionChanged? _currentCollection;
 
-    private void OnDMMessagesChanged(IEnumerable<DirectMessageResponse>? messages)
+    private void OnViewModelChanged(DMContentViewModel? viewModel)
     {
         // Unsubscribe from old collection
         if (_currentCollection != null)
@@ -188,7 +69,7 @@ public partial class DMContentView : UserControl
         }
 
         // Subscribe to new collection
-        if (messages is INotifyCollectionChanged notifyCollection)
+        if (viewModel?.Messages is INotifyCollectionChanged notifyCollection)
         {
             _currentCollection = notifyCollection;
             _currentCollection.CollectionChanged += OnDMMessagesCollectionChanged;
@@ -253,7 +134,8 @@ public partial class DMContentView : UserControl
         {
             e.Handled = true;
 
-            if (SendDMMessageCommand is ReactiveCommand<System.Reactive.Unit, System.Reactive.Unit> reactiveCmd)
+            var cmd = ViewModel?.SendMessageCommand;
+            if (cmd is ReactiveCommand<System.Reactive.Unit, System.Reactive.Unit> reactiveCmd)
             {
                 if (reactiveCmd.CanExecute.FirstAsync().GetAwaiter().GetResult())
                 {
@@ -262,7 +144,7 @@ public partial class DMContentView : UserControl
             }
             else
             {
-                SendDMMessageCommand?.Execute(null);
+                cmd?.Execute().Subscribe();
             }
         }
     }
@@ -274,7 +156,8 @@ public partial class DMContentView : UserControl
         {
             e.Handled = true;
 
-            if (SaveDMMessageEditCommand is ReactiveCommand<System.Reactive.Unit, System.Reactive.Unit> reactiveCmd)
+            var cmd = ViewModel?.SaveMessageEditCommand;
+            if (cmd is ReactiveCommand<System.Reactive.Unit, System.Reactive.Unit> reactiveCmd)
             {
                 if (reactiveCmd.CanExecute.FirstAsync().GetAwaiter().GetResult())
                 {
@@ -283,18 +166,19 @@ public partial class DMContentView : UserControl
             }
             else
             {
-                SaveDMMessageEditCommand?.Execute(null);
+                cmd?.Execute().Subscribe();
             }
         }
         else if (e.Key == Key.Escape)
         {
-            if (CancelEditDMMessageCommand is ReactiveCommand<System.Reactive.Unit, System.Reactive.Unit> reactiveCmd)
+            var cmd = ViewModel?.CancelEditMessageCommand;
+            if (cmd is ReactiveCommand<System.Reactive.Unit, System.Reactive.Unit> reactiveCmd)
             {
                 reactiveCmd.Execute().Subscribe();
             }
             else
             {
-                CancelEditDMMessageCommand?.Execute(null);
+                cmd?.Execute().Subscribe();
             }
             e.Handled = true;
         }

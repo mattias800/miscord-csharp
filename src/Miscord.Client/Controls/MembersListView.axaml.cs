@@ -1,10 +1,12 @@
-using System.Collections.Generic;
+using System.Reactive;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Miscord.Client.Services;
+using Miscord.Client.ViewModels;
+using ReactiveUI;
 
 namespace Miscord.Client.Controls;
 
@@ -13,94 +15,18 @@ namespace Miscord.Client.Controls;
 /// </summary>
 public partial class MembersListView : UserControl
 {
-    // The current user's ID (for showing "(You)" label)
-    public static readonly StyledProperty<Guid> CurrentUserIdProperty =
-        AvaloniaProperty.Register<MembersListView, Guid>(nameof(CurrentUserId));
-
-    // The members collection
-    public static readonly StyledProperty<IEnumerable<CommunityMemberResponse>?> MembersProperty =
-        AvaloniaProperty.Register<MembersListView, IEnumerable<CommunityMemberResponse>?>(nameof(Members));
-
-    // Whether the current user can manage members (admin/owner)
-    public static readonly StyledProperty<bool> CanManageMembersProperty =
-        AvaloniaProperty.Register<MembersListView, bool>(nameof(CanManageMembers), false);
-
-    // Commands
-    public static readonly StyledProperty<ICommand?> ChangeMyNicknameCommandProperty =
-        AvaloniaProperty.Register<MembersListView, ICommand?>(nameof(ChangeMyNicknameCommand));
-
-    public static readonly StyledProperty<ICommand?> StartDMCommandProperty =
-        AvaloniaProperty.Register<MembersListView, ICommand?>(nameof(StartDMCommand));
-
-    public static readonly StyledProperty<ICommand?> ChangeMemberNicknameCommandProperty =
-        AvaloniaProperty.Register<MembersListView, ICommand?>(nameof(ChangeMemberNicknameCommand));
-
-    public static readonly StyledProperty<ICommand?> PromoteToAdminCommandProperty =
-        AvaloniaProperty.Register<MembersListView, ICommand?>(nameof(PromoteToAdminCommand));
-
-    public static readonly StyledProperty<ICommand?> DemoteToMemberCommandProperty =
-        AvaloniaProperty.Register<MembersListView, ICommand?>(nameof(DemoteToMemberCommand));
-
-    public static readonly StyledProperty<ICommand?> TransferOwnershipCommandProperty =
-        AvaloniaProperty.Register<MembersListView, ICommand?>(nameof(TransferOwnershipCommand));
+    public static readonly StyledProperty<MembersListViewModel?> ViewModelProperty =
+        AvaloniaProperty.Register<MembersListView, MembersListViewModel?>(nameof(ViewModel));
 
     public MembersListView()
     {
         InitializeComponent();
     }
 
-    public Guid CurrentUserId
+    public MembersListViewModel? ViewModel
     {
-        get => GetValue(CurrentUserIdProperty);
-        set => SetValue(CurrentUserIdProperty, value);
-    }
-
-    public IEnumerable<CommunityMemberResponse>? Members
-    {
-        get => GetValue(MembersProperty);
-        set => SetValue(MembersProperty, value);
-    }
-
-    public bool CanManageMembers
-    {
-        get => GetValue(CanManageMembersProperty);
-        set => SetValue(CanManageMembersProperty, value);
-    }
-
-    public ICommand? ChangeMyNicknameCommand
-    {
-        get => GetValue(ChangeMyNicknameCommandProperty);
-        set => SetValue(ChangeMyNicknameCommandProperty, value);
-    }
-
-    public ICommand? StartDMCommand
-    {
-        get => GetValue(StartDMCommandProperty);
-        set => SetValue(StartDMCommandProperty, value);
-    }
-
-    public ICommand? ChangeMemberNicknameCommand
-    {
-        get => GetValue(ChangeMemberNicknameCommandProperty);
-        set => SetValue(ChangeMemberNicknameCommandProperty, value);
-    }
-
-    public ICommand? PromoteToAdminCommand
-    {
-        get => GetValue(PromoteToAdminCommandProperty);
-        set => SetValue(PromoteToAdminCommandProperty, value);
-    }
-
-    public ICommand? DemoteToMemberCommand
-    {
-        get => GetValue(DemoteToMemberCommandProperty);
-        set => SetValue(DemoteToMemberCommandProperty, value);
-    }
-
-    public ICommand? TransferOwnershipCommand
-    {
-        get => GetValue(TransferOwnershipCommandProperty);
-        set => SetValue(TransferOwnershipCommandProperty, value);
+        get => GetValue(ViewModelProperty);
+        set => SetValue(ViewModelProperty, value);
     }
 
     // Event for when a member is clicked
@@ -119,7 +45,7 @@ public partial class MembersListView : UserControl
     // Context menu click handlers
     private void OnChangeMyNicknameClick(object? sender, RoutedEventArgs e)
     {
-        ChangeMyNicknameCommand?.Execute(null);
+        ViewModel?.ChangeMyNicknameCommand?.Execute().Subscribe();
     }
 
     private void OnMemberContextMenuOpened(object? sender, RoutedEventArgs e)
@@ -127,11 +53,12 @@ public partial class MembersListView : UserControl
         // Show/hide admin items based on CanManageMembers
         if (sender is ContextMenu menu)
         {
+            var canManage = ViewModel?.CanManageMembers ?? false;
             foreach (var item in menu.Items)
             {
                 if (item is Separator sep && (sep.Name == "AdminSeparator1" || sep.Name == "AdminSeparator2"))
                 {
-                    sep.IsVisible = CanManageMembers;
+                    sep.IsVisible = canManage;
                 }
                 else if (item is MenuItem menuItem)
                 {
@@ -139,7 +66,7 @@ public partial class MembersListView : UserControl
                     if (name == "ChangeNicknameItem" || name == "PromoteItem" ||
                         name == "DemoteItem" || name == "TransferItem")
                     {
-                        menuItem.IsVisible = CanManageMembers;
+                        menuItem.IsVisible = canManage;
                     }
                 }
             }
@@ -150,7 +77,7 @@ public partial class MembersListView : UserControl
     {
         if (sender is MenuItem menuItem && menuItem.DataContext is CommunityMemberResponse member)
         {
-            StartDMCommand?.Execute(member);
+            ViewModel?.StartDMCommand?.Execute(member);
         }
     }
 
@@ -158,7 +85,7 @@ public partial class MembersListView : UserControl
     {
         if (sender is MenuItem menuItem && menuItem.DataContext is CommunityMemberResponse member)
         {
-            ChangeMemberNicknameCommand?.Execute(member);
+            ViewModel?.ChangeMemberNicknameCommand?.Execute(member);
         }
     }
 
@@ -166,7 +93,7 @@ public partial class MembersListView : UserControl
     {
         if (sender is MenuItem menuItem && menuItem.DataContext is CommunityMemberResponse member)
         {
-            PromoteToAdminCommand?.Execute(member);
+            ViewModel?.PromoteToAdminCommand?.Execute(member);
         }
     }
 
@@ -174,7 +101,7 @@ public partial class MembersListView : UserControl
     {
         if (sender is MenuItem menuItem && menuItem.DataContext is CommunityMemberResponse member)
         {
-            DemoteToMemberCommand?.Execute(member);
+            ViewModel?.DemoteToMemberCommand?.Execute(member);
         }
     }
 
@@ -182,7 +109,7 @@ public partial class MembersListView : UserControl
     {
         if (sender is MenuItem menuItem && menuItem.DataContext is CommunityMemberResponse member)
         {
-            TransferOwnershipCommand?.Execute(member);
+            ViewModel?.TransferOwnershipCommand?.Execute(member);
         }
     }
 }

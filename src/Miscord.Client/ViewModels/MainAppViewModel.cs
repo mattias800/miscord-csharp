@@ -28,9 +28,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private ChannelResponse? _selectedChannel;
     private string _messageInput = string.Empty;
     private bool _isLoading;
-    private bool _isDMLoading;
     private bool _isMessagesLoading;
-    private bool _isMemberOperationLoading;
     private string? _errorMessage;
     private ChannelResponse? _editingChannel;
     private string _editingChannelName = string.Empty;
@@ -59,12 +57,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     // Permission state
     private UserRole? _currentUserRole;
 
-    // Inline DM state
-    private Guid? _dmRecipientId;
-    private string? _dmRecipientName;
-    private string _dmMessageInput = string.Empty;
-    private DirectMessageResponse? _editingDMMessage;
-    private string _editingDMMessageContent = string.Empty;
+    // Inline DM ViewModel (encapsulates all DM state and logic)
+    private DMContentViewModel? _dmContent;
 
     // Screen share picker state
     private bool _isScreenSharePickerOpen;
@@ -86,11 +80,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private Views.ScreenAnnotationWindow? _screenAnnotationWindow;
     private Views.AnnotationToolbarWindow? _annotationToolbarWindow;
 
-    // Typing indicator state
+    // Typing indicator state (channel typing only - DM typing is in DMContentViewModel)
     private ObservableCollection<TypingUser> _typingUsers = new();
-    private ObservableCollection<TypingUser> _dmTypingUsers = new();
     private DateTime _lastTypingSent = DateTime.MinValue;
-    private DateTime _lastDMTypingSent = DateTime.MinValue;
     private const int TypingThrottleMs = 3000; // Send typing event every 3 seconds
     private const int TypingTimeoutMs = 5000; // Clear typing after 5 seconds of inactivity
     private System.Timers.Timer? _typingCleanupTimer;
@@ -115,10 +107,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private ThreadViewModel? _currentThread;
     private double _threadPanelWidth = 400;
 
-    // Nickname editing state
-    private bool _isEditingNickname;
-    private CommunityMemberResponse? _editingNicknameMember;
-    private string _editingNickname = string.Empty;
+    // Members list ViewModel (encapsulates member operations and nickname editing)
+    private MembersListViewModel? _membersListViewModel;
 
     // Server feature flags
     private readonly bool _isGifsEnabled;
@@ -169,7 +159,31 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         Channels = new ObservableCollection<ChannelResponse>();
         Messages = new ObservableCollection<MessageResponse>();
         Members = new ObservableCollection<CommunityMemberResponse>();
-        DMMessages = new ObservableCollection<DirectMessageResponse>();
+
+        // Create the inline DM ViewModel
+        _dmContent = new DMContentViewModel(
+            apiClient,
+            signalR,
+            auth.UserId,
+            error => ErrorMessage = error);
+
+        // Forward IsOpen changes to IsViewingDM property changed notification
+        _dmContent.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(DMContentViewModel.IsOpen))
+            {
+                this.RaisePropertyChanged(nameof(IsViewingDM));
+            }
+        };
+
+        // Create the members list ViewModel
+        _membersListViewModel = new MembersListViewModel(
+            apiClient,
+            auth.UserId,
+            Members,
+            () => SelectedCommunity?.Id ?? Guid.Empty,
+            member => StartDMWithMember(member),
+            error => ErrorMessage = error);
 
         // Commands
         LogoutCommand = ReactiveCommand.Create(_onLogout);
@@ -214,34 +228,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // Thread commands
         OpenThreadCommand = ReactiveCommand.CreateFromTask<MessageResponse>(OpenThreadAsync);
         CloseThreadCommand = ReactiveCommand.Create(CloseThread);
-
-        // Member commands
-        StartDMCommand = ReactiveCommand.Create<CommunityMemberResponse>(StartDMWithMember);
-        PromoteToAdminCommand = ReactiveCommand.CreateFromTask<CommunityMemberResponse>(PromoteToAdminAsync);
-        DemoteToMemberCommand = ReactiveCommand.CreateFromTask<CommunityMemberResponse>(DemoteToMemberAsync);
-        TransferOwnershipCommand = ReactiveCommand.CreateFromTask<CommunityMemberResponse>(TransferOwnershipAsync);
-
-        // Nickname commands
-        ChangeMyNicknameCommand = ReactiveCommand.Create(StartEditMyNickname);
-        ChangeMemberNicknameCommand = ReactiveCommand.Create<CommunityMemberResponse>(StartEditMemberNickname);
-        SaveNicknameCommand = ReactiveCommand.CreateFromTask(SaveNicknameAsync);
-        CancelNicknameEditCommand = ReactiveCommand.Create(CancelNicknameEdit);
-
-        // Inline DM commands
-        var canSendDMMessage = this.WhenAnyValue(
-            x => x.DMMessageInput,
-            x => x.DMRecipientId,
-            x => x.IsLoading,
-            (message, recipientId, isLoading) =>
-                !string.IsNullOrWhiteSpace(message) &&
-                recipientId.HasValue &&
-                !isLoading);
-        SendDMMessageCommand = ReactiveCommand.CreateFromTask(SendDMMessageAsync, canSendDMMessage);
-        CloseDMCommand = ReactiveCommand.Create(CloseDM);
-        StartEditDMMessageCommand = ReactiveCommand.Create<DirectMessageResponse>(StartEditDMMessage);
-        SaveDMMessageEditCommand = ReactiveCommand.CreateFromTask(SaveDMMessageEditAsync);
-        CancelEditDMMessageCommand = ReactiveCommand.Create(CancelEditDMMessage);
-        DeleteDMMessageCommand = ReactiveCommand.CreateFromTask<DirectMessageResponse>(DeleteDMMessageAsync);
 
         // Voice commands
         CreateVoiceChannelCommand = ReactiveCommand.CreateFromTask(CreateVoiceChannelAsync, canCreateChannel);
@@ -791,42 +777,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             }
         });
 
-        // DM SignalR handlers
-        _signalR.DirectMessageReceived += message => Dispatcher.UIThread.Post(() =>
-        {
-            // Clear typing indicator for this user since they sent a message
-            var typingUser = _dmTypingUsers.FirstOrDefault(t => t.UserId == message.SenderId);
-            if (typingUser != null)
-            {
-                _dmTypingUsers.Remove(typingUser);
-                this.RaisePropertyChanged(nameof(DMTypingIndicatorText));
-                this.RaisePropertyChanged(nameof(IsDMTyping));
-            }
-
-            // If this message is from/to the current DM recipient
-            if (DMRecipientId.HasValue &&
-                (message.SenderId == DMRecipientId.Value || message.RecipientId == DMRecipientId.Value))
-            {
-                if (!DMMessages.Any(m => m.Id == message.Id))
-                    DMMessages.Add(message);
-            }
-        });
-
-        _signalR.DirectMessageEdited += message => Dispatcher.UIThread.Post(() =>
-        {
-            var index = DMMessages.ToList().FindIndex(m => m.Id == message.Id);
-            if (index >= 0)
-                DMMessages[index] = message;
-        });
-
-        _signalR.DirectMessageDeleted += e => Dispatcher.UIThread.Post(() =>
-        {
-            var message = DMMessages.FirstOrDefault(m => m.Id == e.MessageId);
-            if (message is not null)
-                DMMessages.Remove(message);
-        });
-
-        // Typing indicator events
+        // Typing indicator events (DM typing is handled by DMContentViewModel)
         _signalR.UserTyping += e => Dispatcher.UIThread.Post(() =>
         {
             // Only show typing for the currently selected channel
@@ -841,20 +792,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             }
         });
 
-        _signalR.DMUserTyping += e => Dispatcher.UIThread.Post(() =>
-        {
-            // Only show typing for the current DM recipient
-            if (DMRecipientId.HasValue && e.UserId == DMRecipientId.Value)
-            {
-                var existing = _dmTypingUsers.FirstOrDefault(t => t.UserId == e.UserId);
-                if (existing != null)
-                    _dmTypingUsers.Remove(existing);
-                _dmTypingUsers.Add(new TypingUser(e.UserId, e.Username, DateTime.UtcNow));
-                this.RaisePropertyChanged(nameof(DMTypingIndicatorText));
-                this.RaisePropertyChanged(nameof(IsDMTyping));
-            }
-        });
-
         // Set up typing cleanup timer
         _typingCleanupTimer = new System.Timers.Timer(1000); // Check every second
         _typingCleanupTimer.Elapsed += (s, e) => Dispatcher.UIThread.Post(CleanupExpiredTypingIndicators);
@@ -865,23 +802,18 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     {
         var now = DateTime.UtcNow;
         var expiredChannel = _typingUsers.Where(t => (now - t.LastTypingAt).TotalMilliseconds > TypingTimeoutMs).ToList();
-        var expiredDM = _dmTypingUsers.Where(t => (now - t.LastTypingAt).TotalMilliseconds > TypingTimeoutMs).ToList();
 
         foreach (var user in expiredChannel)
             _typingUsers.Remove(user);
-        foreach (var user in expiredDM)
-            _dmTypingUsers.Remove(user);
 
         if (expiredChannel.Count > 0)
         {
             this.RaisePropertyChanged(nameof(TypingIndicatorText));
             this.RaisePropertyChanged(nameof(IsAnyoneTyping));
         }
-        if (expiredDM.Count > 0)
-        {
-            this.RaisePropertyChanged(nameof(DMTypingIndicatorText));
-            this.RaisePropertyChanged(nameof(IsDMTyping));
-        }
+
+        // Also cleanup DM typing indicators in the DMContentViewModel
+        _dmContent?.CleanupExpiredTypingIndicators();
     }
 
     private async Task OnCommunitySelectedAsync()
@@ -929,7 +861,16 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public ObservableCollection<ChannelResponse> Channels { get; }
     public ObservableCollection<MessageResponse> Messages { get; }
     public ObservableCollection<CommunityMemberResponse> Members { get; }
-    public ObservableCollection<DirectMessageResponse> DMMessages { get; }
+
+    /// <summary>
+    /// The ViewModel for the inline DM content area.
+    /// </summary>
+    public DMContentViewModel? DMContent => _dmContent;
+
+    /// <summary>
+    /// The ViewModel for the members list component.
+    /// </summary>
+    public MembersListViewModel? MembersList => _membersListViewModel;
 
     /// <summary>
     /// Returns members sorted with the current user first.
@@ -987,17 +928,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         }
     }
 
-    public bool IsDMTyping => _dmTypingUsers.Count > 0;
-
-    public string DMTypingIndicatorText
-    {
-        get
-        {
-            if (_dmTypingUsers.Count == 0) return string.Empty;
-            return $"{_dmTypingUsers[0].Username} is typing...";
-        }
-    }
-
     // Mention autocomplete properties
     public bool IsMentionPopupOpen
     {
@@ -1046,49 +976,16 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref _threadPanelWidth, Math.Max(280, Math.Min(600, value)));
     }
 
-    // Nickname editing properties
-    public bool IsEditingNickname
-    {
-        get => _isEditingNickname;
-        set => this.RaiseAndSetIfChanged(ref _isEditingNickname, value);
-    }
-
-    public CommunityMemberResponse? EditingNicknameMember
-    {
-        get => _editingNicknameMember;
-        set => this.RaiseAndSetIfChanged(ref _editingNicknameMember, value);
-    }
-
-    public string EditingNickname
-    {
-        get => _editingNickname;
-        set => this.RaiseAndSetIfChanged(ref _editingNickname, value);
-    }
-
-    public bool IsEditingMyNickname => IsEditingNickname && EditingNicknameMember?.UserId == _auth.UserId;
-
     public bool IsLoading
     {
         get => _isLoading;
         set => this.RaiseAndSetIfChanged(ref _isLoading, value);
     }
 
-    public bool IsDMLoading
-    {
-        get => _isDMLoading;
-        set => this.RaiseAndSetIfChanged(ref _isDMLoading, value);
-    }
-
     public bool IsMessagesLoading
     {
         get => _isMessagesLoading;
         set => this.RaiseAndSetIfChanged(ref _isMessagesLoading, value);
-    }
-
-    public bool IsMemberOperationLoading
-    {
-        get => _isMemberOperationLoading;
-        set => this.RaiseAndSetIfChanged(ref _isMemberOperationLoading, value);
     }
 
     public string? ErrorMessage
@@ -1618,55 +1515,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
     public bool IsViewingVoiceChannel => SelectedVoiceChannelForViewing != null;
 
-    // Inline DM properties
-    public Guid? DMRecipientId
-    {
-        get => _dmRecipientId;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _dmRecipientId, value);
-            this.RaisePropertyChanged(nameof(IsViewingDM));
-        }
-    }
-
-    public string? DMRecipientName
-    {
-        get => _dmRecipientName;
-        set => this.RaiseAndSetIfChanged(ref _dmRecipientName, value);
-    }
-
-    public string DMMessageInput
-    {
-        get => _dmMessageInput;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _dmMessageInput, value);
-            // Send DM typing indicator (throttled)
-            if (!string.IsNullOrEmpty(value) && DMRecipientId.HasValue)
-            {
-                var now = DateTime.UtcNow;
-                if ((now - _lastDMTypingSent).TotalMilliseconds > TypingThrottleMs)
-                {
-                    _lastDMTypingSent = now;
-                    _ = _signalR.SendDMTypingAsync(DMRecipientId.Value);
-                }
-            }
-        }
-    }
-
-    public DirectMessageResponse? EditingDMMessage
-    {
-        get => _editingDMMessage;
-        set => this.RaiseAndSetIfChanged(ref _editingDMMessage, value);
-    }
-
-    public string EditingDMMessageContent
-    {
-        get => _editingDMMessageContent;
-        set => this.RaiseAndSetIfChanged(ref _editingDMMessageContent, value);
-    }
-
-    public bool IsViewingDM => DMRecipientId.HasValue;
+    /// <summary>
+    /// Returns true if the inline DM conversation is open.
+    /// </summary>
+    public bool IsViewingDM => _dmContent?.IsOpen ?? false;
 
     // Screen share picker properties
     public bool IsScreenSharePickerOpen
@@ -1880,22 +1732,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     // Thread commands
     public ReactiveCommand<MessageResponse, Unit> OpenThreadCommand { get; }
     public ReactiveCommand<Unit, Unit> CloseThreadCommand { get; }
-    public ReactiveCommand<CommunityMemberResponse, Unit> StartDMCommand { get; }
-    public ReactiveCommand<CommunityMemberResponse, Unit> PromoteToAdminCommand { get; }
-    public ReactiveCommand<CommunityMemberResponse, Unit> DemoteToMemberCommand { get; }
-    public ReactiveCommand<CommunityMemberResponse, Unit> TransferOwnershipCommand { get; }
-    public ReactiveCommand<Unit, Unit> ChangeMyNicknameCommand { get; }
-    public ReactiveCommand<CommunityMemberResponse, Unit> ChangeMemberNicknameCommand { get; }
-    public ReactiveCommand<Unit, Unit> SaveNicknameCommand { get; }
-    public ReactiveCommand<Unit, Unit> CancelNicknameEditCommand { get; }
-
-    // Inline DM commands
-    public ReactiveCommand<Unit, Unit> SendDMMessageCommand { get; }
-    public ReactiveCommand<Unit, Unit> CloseDMCommand { get; }
-    public ReactiveCommand<DirectMessageResponse, Unit> StartEditDMMessageCommand { get; }
-    public ReactiveCommand<Unit, Unit> SaveDMMessageEditCommand { get; }
-    public ReactiveCommand<Unit, Unit> CancelEditDMMessageCommand { get; }
-    public ReactiveCommand<DirectMessageResponse, Unit> DeleteDMMessageCommand { get; }
 
     // Voice commands
     public ReactiveCommand<Unit, Unit> CreateVoiceChannelCommand { get; }
@@ -1914,305 +1750,11 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
     private void StartDMWithMember(CommunityMemberResponse member)
     {
-        // Don't DM yourself
-        if (member.UserId == _auth.UserId) return;
-
-        // Open DM inline instead of navigating away
-        DMRecipientId = member.UserId;
-        DMRecipientName = member.Username;
-        DMMessageInput = string.Empty;
-
         // Clear voice channel viewing when opening DM
         SelectedVoiceChannelForViewing = null;
 
-        // Load messages asynchronously
-        _ = LoadDMMessagesAsync();
-    }
-
-    private async Task LoadDMMessagesAsync()
-    {
-        if (!DMRecipientId.HasValue) return;
-
-        IsDMLoading = true;
-        try
-        {
-            var result = await _apiClient.GetDirectMessagesAsync(DMRecipientId.Value);
-            if (result.Success && result.Data is not null)
-            {
-                DMMessages.Clear();
-                foreach (var message in result.Data)
-                    DMMessages.Add(message);
-            }
-
-            // Mark conversation as read
-            await _apiClient.MarkConversationAsReadAsync(DMRecipientId.Value);
-        }
-        finally
-        {
-            IsDMLoading = false;
-        }
-    }
-
-    private async Task SendDMMessageAsync()
-    {
-        if (!DMRecipientId.HasValue || string.IsNullOrWhiteSpace(DMMessageInput)) return;
-
-        var content = DMMessageInput;
-        DMMessageInput = string.Empty;
-
-        var result = await _apiClient.SendDirectMessageAsync(DMRecipientId.Value, content);
-        if (result.Success && result.Data is not null)
-        {
-            DMMessages.Add(result.Data);
-        }
-        else
-        {
-            ErrorMessage = result.Error;
-            DMMessageInput = content; // Restore message on failure
-        }
-    }
-
-    private void CloseDM()
-    {
-        DMRecipientId = null;
-        DMRecipientName = null;
-        DMMessageInput = string.Empty;
-        DMMessages.Clear();
-        EditingDMMessage = null;
-        EditingDMMessageContent = string.Empty;
-    }
-
-    private void StartEditDMMessage(DirectMessageResponse message)
-    {
-        if (message.SenderId != UserId) return;
-
-        EditingDMMessage = message;
-        EditingDMMessageContent = message.Content;
-    }
-
-    private void CancelEditDMMessage()
-    {
-        EditingDMMessage = null;
-        EditingDMMessageContent = string.Empty;
-    }
-
-    private async Task SaveDMMessageEditAsync()
-    {
-        if (EditingDMMessage is null || string.IsNullOrWhiteSpace(EditingDMMessageContent))
-            return;
-
-        IsDMLoading = true;
-        try
-        {
-            var result = await _apiClient.UpdateDirectMessageAsync(EditingDMMessage.Id, EditingDMMessageContent.Trim());
-
-            if (result.Success && result.Data is not null)
-            {
-                var index = DMMessages.ToList().FindIndex(m => m.Id == EditingDMMessage.Id);
-                if (index >= 0)
-                    DMMessages[index] = result.Data;
-
-                EditingDMMessage = null;
-                EditingDMMessageContent = string.Empty;
-            }
-            else
-            {
-                ErrorMessage = result.Error;
-            }
-        }
-        finally
-        {
-            IsDMLoading = false;
-        }
-    }
-
-    private async Task DeleteDMMessageAsync(DirectMessageResponse message)
-    {
-        IsDMLoading = true;
-        try
-        {
-            var result = await _apiClient.DeleteDirectMessageAsync(message.Id);
-
-            if (result.Success)
-            {
-                DMMessages.Remove(message);
-            }
-            else
-            {
-                ErrorMessage = result.Error;
-            }
-        }
-        finally
-        {
-            IsDMLoading = false;
-        }
-    }
-
-    private async Task PromoteToAdminAsync(CommunityMemberResponse member)
-    {
-        if (SelectedCommunity is null || !CanManageMembers) return;
-
-        // Can't change owner or self
-        if (member.Role == UserRole.Owner || member.UserId == _auth.UserId) return;
-
-        IsMemberOperationLoading = true;
-        try
-        {
-            var result = await _apiClient.UpdateMemberRoleAsync(SelectedCommunity.Id, member.UserId, UserRole.Admin);
-            if (result.Success && result.Data is not null)
-            {
-                // Update the member in the list
-                var index = Members.ToList().FindIndex(m => m.UserId == member.UserId);
-                if (index >= 0)
-                    Members[index] = result.Data;
-            }
-            else
-            {
-                ErrorMessage = result.Error;
-            }
-        }
-        finally
-        {
-            IsMemberOperationLoading = false;
-        }
-    }
-
-    private async Task DemoteToMemberAsync(CommunityMemberResponse member)
-    {
-        if (SelectedCommunity is null || !CanManageMembers) return;
-
-        // Can't change owner or self
-        if (member.Role == UserRole.Owner || member.UserId == _auth.UserId) return;
-
-        IsMemberOperationLoading = true;
-        try
-        {
-            var result = await _apiClient.UpdateMemberRoleAsync(SelectedCommunity.Id, member.UserId, UserRole.Member);
-            if (result.Success && result.Data is not null)
-            {
-                // Update the member in the list
-                var index = Members.ToList().FindIndex(m => m.UserId == member.UserId);
-                if (index >= 0)
-                    Members[index] = result.Data;
-            }
-            else
-            {
-                ErrorMessage = result.Error;
-            }
-        }
-        finally
-        {
-            IsMemberOperationLoading = false;
-        }
-    }
-
-    private async Task TransferOwnershipAsync(CommunityMemberResponse member)
-    {
-        if (SelectedCommunity is null || !CanManageMembers) return;
-
-        // Can't transfer to yourself or to the current owner
-        if (member.UserId == _auth.UserId || member.Role == UserRole.Owner) return;
-
-        IsMemberOperationLoading = true;
-        try
-        {
-            var result = await _apiClient.TransferOwnershipAsync(SelectedCommunity.Id, member.UserId);
-            if (result.Success)
-            {
-                // Reload members to get updated roles
-                var membersResult = await _apiClient.GetMembersAsync(SelectedCommunity.Id);
-                if (membersResult.Success && membersResult.Data is not null)
-                {
-                    Members.Clear();
-                    foreach (var m in membersResult.Data)
-                        Members.Add(m);
-                    this.RaisePropertyChanged(nameof(SortedMembers));
-
-                    // Update current user's role
-                    var currentMember = membersResult.Data.FirstOrDefault(m => m.UserId == _auth.UserId);
-                    CurrentUserRole = currentMember?.Role;
-                }
-            }
-            else
-            {
-                ErrorMessage = result.Error;
-            }
-        }
-        finally
-        {
-            IsMemberOperationLoading = false;
-        }
-    }
-
-    private void StartEditMyNickname()
-    {
-        if (SelectedCommunity is null) return;
-
-        var myMember = Members.FirstOrDefault(m => m.UserId == _auth.UserId);
-        if (myMember is null) return;
-
-        EditingNicknameMember = myMember;
-        EditingNickname = myMember.DisplayNameOverride ?? string.Empty;
-        IsEditingNickname = true;
-    }
-
-    private void StartEditMemberNickname(CommunityMemberResponse member)
-    {
-        if (SelectedCommunity is null || !CanManageMembers) return;
-
-        EditingNicknameMember = member;
-        EditingNickname = member.DisplayNameOverride ?? string.Empty;
-        IsEditingNickname = true;
-    }
-
-    private void CancelNicknameEdit()
-    {
-        IsEditingNickname = false;
-        EditingNicknameMember = null;
-        EditingNickname = string.Empty;
-    }
-
-    private async Task SaveNicknameAsync()
-    {
-        if (SelectedCommunity is null || EditingNicknameMember is null) return;
-
-        IsMemberOperationLoading = true;
-        try
-        {
-            // Use null if nickname is empty to clear it
-            var nickname = string.IsNullOrWhiteSpace(EditingNickname) ? null : EditingNickname.Trim();
-
-            ApiResult<CommunityMemberResponse> result;
-            if (EditingNicknameMember.UserId == _auth.UserId)
-            {
-                result = await _apiClient.UpdateMyNicknameAsync(SelectedCommunity.Id, nickname);
-            }
-            else
-            {
-                result = await _apiClient.UpdateMemberNicknameAsync(SelectedCommunity.Id, EditingNicknameMember.UserId, nickname);
-            }
-
-            if (result.Success && result.Data is not null)
-            {
-                // Update the member in the list
-                var index = Members.ToList().FindIndex(m => m.UserId == EditingNicknameMember.UserId);
-                if (index >= 0)
-                {
-                    Members[index] = result.Data;
-                    this.RaisePropertyChanged(nameof(SortedMembers));
-                }
-
-                CancelNicknameEdit();
-            }
-            else
-            {
-                ErrorMessage = result.Error;
-            }
-        }
-        finally
-        {
-            IsMemberOperationLoading = false;
-        }
+        // Delegate to DMContentViewModel
+        _dmContent?.OpenConversation(member.UserId, member.Username);
     }
 
     private async Task LoadCommunitiesAsync()
@@ -2295,10 +1837,12 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 foreach (var member in membersResult.Data)
                     Members.Add(member);
                 this.RaisePropertyChanged(nameof(SortedMembers));
+                _membersListViewModel?.NotifyMembersChanged();
 
                 // Set current user's role
                 var currentMember = membersResult.Data.FirstOrDefault(m => m.UserId == _auth.UserId);
                 CurrentUserRole = currentMember?.Role;
+                _membersListViewModel?.UpdateCurrentUserRole(currentMember?.Role);
             }
         }
         finally
