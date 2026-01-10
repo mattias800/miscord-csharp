@@ -299,12 +299,43 @@ class ScreenCapturer: NSObject, SCStreamDelegate, SCStreamOutput {
         }
     }
 
-    /// Converts any input audio format to 16-bit stereo (sample rate preserved from ScreenCaptureKit)
-    /// ScreenCaptureKit handles resampling via streamConfig.sampleRate = 48000
+    private var normalizeLogCount = 0
+    private var audioIsInterleaved = true  // Set by detectAudioFormat
+
+    /// Converts any input audio format to 16-bit stereo (no resampling - trust ScreenCaptureKit)
+    /// Handles both interleaved and planar (non-interleaved) audio formats
     private func normalizeAudio(pointer: UnsafeMutablePointer<Int8>, length: Int, isFloat: Bool, bitsPerSample: Int, channels: Int, inputSampleRate: Int) -> Data {
         let bytesPerSample = bitsPerSample / 8
-        let bytesPerFrame = bytesPerSample * channels
-        let frameCount = length / bytesPerFrame
+
+        // For planar audio: each channel is stored separately
+        // For interleaved audio: channels are interleaved [L0,R0,L1,R1,...]
+        let frameCount: Int
+        let planarPlaneSize: Int
+
+        if audioIsInterleaved {
+            let bytesPerFrame = bytesPerSample * channels
+            frameCount = length / bytesPerFrame
+            planarPlaneSize = 0  // Not used for interleaved
+        } else {
+            // Planar: total length / channels = bytes per plane
+            // bytes per plane / bytesPerSample = samples per channel = frameCount
+            planarPlaneSize = length / channels
+            frameCount = planarPlaneSize / bytesPerSample
+        }
+
+        // Log to file for diagnostics (first 10 calls)
+        normalizeLogCount += 1
+        if normalizeLogCount <= 10 {
+            writeLog("normalizeAudio #\(normalizeLogCount):")
+            writeLog("  length=\(length), bitsPerSample=\(bitsPerSample), channels=\(channels)")
+            writeLog("  isInterleaved=\(audioIsInterleaved), frameCount=\(frameCount)")
+            if !audioIsInterleaved {
+                writeLog("  planarPlaneSize=\(planarPlaneSize)")
+            }
+            writeLog("  isFloat=\(isFloat), inputSampleRate=\(inputSampleRate)")
+        }
+
+        guard frameCount > 0 else { return Data() }
 
         // Output: 16-bit stereo = 4 bytes per frame
         var output = Data(count: frameCount * 4)
@@ -315,14 +346,20 @@ class ScreenCapturer: NSObject, SCStreamDelegate, SCStreamOutput {
             let outPtr = outBuffer.baseAddress!.assumingMemoryBound(to: Int16.self)
 
             for i in 0..<frameCount {
-                let srcByteOffset = i * bytesPerFrame
-
-                // Read and mix all channels to stereo
                 var leftSum: Float = 0
                 var rightSum: Float = 0
 
                 for ch in 0..<channels {
-                    let chOffset = srcByteOffset + ch * bytesPerSample
+                    // Calculate byte offset based on interleaved vs planar
+                    let chOffset: Int
+                    if audioIsInterleaved {
+                        // Interleaved: [L0,R0,L1,R1,...] - samples for each frame are adjacent
+                        chOffset = i * bytesPerSample * channels + ch * bytesPerSample
+                    } else {
+                        // Planar: [L0,L1,L2,...,Ln,R0,R1,R2,...,Rn] - each channel in its own block
+                        chOffset = ch * planarPlaneSize + i * bytesPerSample
+                    }
+
                     var sample: Float = 0
 
                     if isFloat && bitsPerSample == 32 {
@@ -370,13 +407,13 @@ class ScreenCapturer: NSObject, SCStreamDelegate, SCStreamOutput {
 
     private func detectAudioFormat(from sampleBuffer: CMSampleBuffer) {
         guard let formatDesc = CMSampleBufferGetFormatDescription(sampleBuffer) else {
-            fputs("MiscordCapture: No audio format description available\n", stderr)
+            writeLog("ERROR: No audio format description available")
             return
         }
 
         // Get the Audio Stream Basic Description
         guard let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(formatDesc)?.pointee else {
-            fputs("MiscordCapture: Could not get ASBD from format description\n", stderr)
+            writeLog("ERROR: Could not get ASBD from format description")
             return
         }
 
@@ -384,9 +421,13 @@ class ScreenCapturer: NSObject, SCStreamDelegate, SCStreamOutput {
         audioSampleRate = UInt32(asbd.mSampleRate)
         audioChannels = UInt8(asbd.mChannelsPerFrame)
 
-        // Check if it's float format
+        // Check format flags
         let isFloat = (asbd.mFormatFlags & kAudioFormatFlagIsFloat) != 0
+        let isPacked = (asbd.mFormatFlags & kAudioFormatFlagIsPacked) != 0
+        let isInterleaved = (asbd.mFormatFlags & kAudioFormatFlagIsNonInterleaved) == 0
+        let isBigEndian = (asbd.mFormatFlags & kAudioFormatFlagIsBigEndian) != 0
         audioIsFloat = isFloat
+        audioIsInterleaved = isInterleaved
 
         // Calculate bits per sample
         audioBitsPerSample = UInt8(asbd.mBitsPerChannel)
@@ -396,11 +437,42 @@ class ScreenCapturer: NSObject, SCStreamDelegate, SCStreamOutput {
 
         audioFormatDetected = true
 
+        // Log to file for diagnostics
+        writeLog("Audio format: \(audioSampleRate)Hz, \(audioBitsPerSample)-bit, \(audioChannels)ch, \(isFloat ? "float" : "int")")
+        writeLog("  bytesPerFrame=\(audioBytesPerSample), packed=\(isPacked), interleaved=\(isInterleaved), bigEndian=\(isBigEndian)")
+        writeLog("  formatID=\(asbd.mFormatID), formatFlags=0x\(String(asbd.mFormatFlags, radix: 16))")
+
+        // Calculate expected vs actual bytes per frame
+        let expectedBytesPerFrame = (Int(audioBitsPerSample) / 8) * Int(audioChannels)
+        if audioBytesPerSample != expectedBytesPerFrame {
+            writeLog("  WARNING: bytesPerFrame mismatch! expected=\(expectedBytesPerFrame), actual=\(audioBytesPerSample)")
+            writeLog("  This may indicate 24-bit audio in 32-bit containers or other padding")
+        }
+
+        // Also log to stderr for backwards compatibility
         fputs("MiscordCapture: Audio format detected - \(audioSampleRate)Hz, \(audioBitsPerSample)-bit, \(audioChannels) ch, \(isFloat ? "float" : "int"), \(audioBytesPerSample) bytes/frame\n", stderr)
 
         // Warn if ScreenCaptureKit didn't honor our sample rate request
         if audioSampleRate != 48000 {
-            fputs("MiscordCapture: WARNING - Requested 48000Hz but got \(audioSampleRate)Hz. Audio may need resampling.\n", stderr)
+            writeLog("WARNING: Requested 48000Hz but got \(audioSampleRate)Hz - will resample")
+            fputs("MiscordCapture: WARNING - Requested 48000Hz but got \(audioSampleRate)Hz. Audio will be resampled.\n", stderr)
+        }
+    }
+
+    /// Write to log file for diagnostics (separate from audio stream)
+    private func writeLog(_ message: String) {
+        let logPath = "/tmp/miscord_audio.log"
+        let line = "\(message)\n"
+        guard let data = line.data(using: .utf8) else { return }
+
+        if FileManager.default.fileExists(atPath: logPath) {
+            if let handle = FileHandle(forWritingAtPath: logPath) {
+                handle.seekToEndOfFile()
+                handle.write(data)
+                handle.closeFile()
+            }
+        } else {
+            FileManager.default.createFile(atPath: logPath, contents: data)
         }
     }
 
