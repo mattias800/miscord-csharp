@@ -16,4 +16,7 @@ public interface IMessageService
     // Thread methods
     Task<ThreadResponse> GetThreadAsync(Guid parentMessageId, Guid currentUserId, int page = 1, int pageSize = 50, CancellationToken cancellationToken = default);
     Task<MessageResponse> CreateThreadReplyAsync(Guid parentMessageId, Guid authorId, string content, Guid? replyToId = null, CancellationToken cancellationToken = default);
+
+    // Search
+    Task<MessageSearchResponse> SearchMessagesAsync(Guid communityId, Guid currentUserId, string query, Guid? channelId = null, Guid? authorId = null, int take = 25, CancellationToken cancellationToken = default);
 }

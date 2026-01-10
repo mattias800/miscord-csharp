@@ -908,6 +908,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public string Email => _auth.Email;
     public Guid UserId => _auth.UserId;
     public ISettingsStore SettingsStore => _settingsStore;
+    public IApiClient ApiClient => _apiClient;
     public string BaseUrl => _baseUrl;
 
     public ObservableCollection<CommunityResponse> Communities { get; }

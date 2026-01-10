@@ -198,3 +198,20 @@ public record MessagePinnedEvent(
     string? PinnedByUsername,
     string? PinnedByEffectiveDisplayName
 );
+
+/// <summary>
+/// A search result item containing a message and its channel context
+/// </summary>
+public record MessageSearchResult(
+    MessageResponse Message,
+    string ChannelName
+);
+
+/// <summary>
+/// Response from message search containing results and metadata
+/// </summary>
+public record MessageSearchResponse(
+    List<MessageSearchResult> Results,
+    int TotalCount,
+    string Query
+);

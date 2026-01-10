@@ -15,15 +15,18 @@ public class ChannelsController : ControllerBase
 {
     private readonly IChannelService _channelService;
     private readonly ICommunityMemberService _memberService;
+    private readonly IMessageService _messageService;
     private readonly IHubContext<MiscordHub> _hubContext;
 
     public ChannelsController(
         IChannelService channelService,
         ICommunityMemberService memberService,
+        IMessageService messageService,
         IHubContext<MiscordHub> hubContext)
     {
         _channelService = channelService;
         _memberService = memberService;
+        _messageService = messageService;
         _hubContext = hubContext;
     }
 
@@ -192,6 +195,29 @@ public class ChannelsController : ControllerBase
         {
             return NotFound(new { error = ex.Message });
         }
+    }
+
+    [HttpGet("search")]
+    public async Task<ActionResult<MessageSearchResponse>> SearchMessages(
+        Guid communityId,
+        [FromQuery] string q,
+        [FromQuery] Guid? channelId = null,
+        [FromQuery] Guid? authorId = null,
+        [FromQuery] int take = 25,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = GetCurrentUserId();
+        if (userId is null) return Unauthorized();
+
+        if (!await _memberService.IsMemberAsync(communityId, userId.Value, cancellationToken))
+            return Forbid();
+
+        if (string.IsNullOrWhiteSpace(q))
+            return BadRequest(new { error = "Search query is required" });
+
+        var results = await _messageService.SearchMessagesAsync(
+            communityId, userId.Value, q, channelId, authorId, take, cancellationToken);
+        return Ok(results);
     }
 
     private Guid? GetCurrentUserId()

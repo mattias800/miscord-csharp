@@ -27,13 +27,20 @@ public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
 
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
-        // Handle Cmd+K (Mac) or Ctrl+K (Windows/Linux) for quick switcher
         var cmdOrCtrl = OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
-        if (e.Key == Key.K && e.KeyModifiers == cmdOrCtrl)
+
+        // Handle Cmd+K or Cmd+T (Mac) / Ctrl+K or Ctrl+T (Windows/Linux) for quick switcher
+        if ((e.Key == Key.K || e.Key == Key.T) && e.KeyModifiers == cmdOrCtrl)
         {
-            // Find the MainAppView in the visual tree and open its quick switcher
             var mainAppView = this.FindDescendantOfType<MainAppView>();
             mainAppView?.OpenQuickSwitcher();
+            e.Handled = true;
+        }
+        // Handle Cmd+F (Mac) or Ctrl+F (Windows/Linux) for message search
+        else if (e.Key == Key.F && e.KeyModifiers == cmdOrCtrl)
+        {
+            var mainAppView = this.FindDescendantOfType<MainAppView>();
+            mainAppView?.OpenMessageSearch();
             e.Handled = true;
         }
     }

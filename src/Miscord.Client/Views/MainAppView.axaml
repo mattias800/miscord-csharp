@@ -395,6 +395,14 @@
             <controls:QuickSwitcherContent x:Name="QuickSwitcherContent"/>
         </Popup>
 
+        <!-- Message Search Popup (Cmd+F / Ctrl+F) -->
+        <Popup x:Name="MessageSearchPopup"
+               IsLightDismissEnabled="True"
+               Placement="Center"
+               PlacementTarget="{Binding $parent[Grid]}">
+            <controls:MessageSearchContent x:Name="MessageSearchContent"/>
+        </Popup>
+
         <!-- Image Lightbox Overlay -->
         <controls:ImageLightbox Grid.ColumnSpan="4"
                                 Attachment="{Binding LightboxImage}"

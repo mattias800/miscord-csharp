@@ -67,6 +67,9 @@ public interface IApiClient
     Task<ApiResult<ThreadResponse>> GetThreadAsync(Guid parentMessageId, int page = 1, int pageSize = 50);
     Task<ApiResult<MessageResponse>> CreateThreadReplyAsync(Guid parentMessageId, string content, Guid? replyToId = null);
 
+    // Search
+    Task<ApiResult<MessageSearchResponse>> SearchMessagesAsync(Guid communityId, string query, Guid? channelId = null, Guid? authorId = null, int take = 25);
+
     // Members
     Task<ApiResult<List<CommunityMemberResponse>>> GetMembersAsync(Guid communityId);
     Task<ApiResult<CommunityMemberResponse>> GetMemberAsync(Guid communityId, Guid userId);

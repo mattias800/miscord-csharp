@@ -155,6 +155,41 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         }
     }
 
+    /// <summary>
+    /// Opens the message search popup and initializes its ViewModel.
+    /// </summary>
+    public void OpenMessageSearch()
+    {
+        if (ViewModel?.SelectedCommunity == null) return;
+
+        var messageSearchVm = new MessageSearchViewModel(
+            ViewModel.ApiClient,
+            ViewModel.SelectedCommunity.Id,
+            OnMessageSearchResultSelected,
+            () => MessageSearchPopup.IsOpen = false);
+
+        MessageSearchContent.ViewModel = messageSearchVm;
+        MessageSearchPopup.IsOpen = true;
+    }
+
+    /// <summary>
+    /// Called when a message search result is selected.
+    /// </summary>
+    private void OnMessageSearchResultSelected(Services.MessageSearchResult result)
+    {
+        MessageSearchPopup.IsOpen = false;
+
+        if (ViewModel == null) return;
+
+        // Find and select the channel containing the message
+        var channel = ViewModel.Channels.FirstOrDefault(c => c.Id == result.Message.ChannelId);
+        if (channel != null)
+        {
+            ViewModel.SelectChannelCommand.Execute(channel).Subscribe();
+            // TODO: Scroll to the specific message in the channel
+        }
+    }
+
     // Called when clicking a member in the members list - opens DMs
     private void OnMemberClicked(object? sender, Services.CommunityMemberResponse member)
     {

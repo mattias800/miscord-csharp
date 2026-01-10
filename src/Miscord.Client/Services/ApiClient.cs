@@ -453,6 +453,17 @@ public class ApiClient : IApiClient
         return await PostAsync<SendMessageRequest, MessageResponse>($"/api/messages/{parentMessageId}/replies", request);
     }
 
+    // Search methods
+    public async Task<ApiResult<MessageSearchResponse>> SearchMessagesAsync(Guid communityId, string query, Guid? channelId = null, Guid? authorId = null, int take = 25)
+    {
+        var url = $"/api/communities/{communityId}/channels/search?q={Uri.EscapeDataString(query)}&take={take}";
+        if (channelId.HasValue)
+            url += $"&channelId={channelId.Value}";
+        if (authorId.HasValue)
+            url += $"&authorId={authorId.Value}";
+        return await GetAsync<MessageSearchResponse>(url);
+    }
+
     // Member methods
     public async Task<ApiResult<List<CommunityMemberResponse>>> GetMembersAsync(Guid communityId)
     {

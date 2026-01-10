@@ -371,4 +371,62 @@ public sealed class MessageService : IMessageService
             m.LastReplyAt
         );
     }
+
+    public async Task<MessageSearchResponse> SearchMessagesAsync(
+        Guid communityId,
+        Guid currentUserId,
+        string query,
+        Guid? channelId = null,
+        Guid? authorId = null,
+        int take = 25,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return new MessageSearchResponse(new List<MessageSearchResult>(), 0, query);
+        }
+
+        var queryLower = query.ToLower();
+
+        // Get all channels in the community that the user has access to
+        var communityChannelIds = await _db.Channels
+            .Where(c => c.CommunityId == communityId && c.Type == ChannelType.Text)
+            .Select(c => c.Id)
+            .ToListAsync(cancellationToken);
+
+        // Build the search query
+        var messagesQuery = _db.Messages
+            .Include(m => m.Author)
+            .Include(m => m.Channel)
+            .Include(m => m.Attachments)
+            .Where(m => communityChannelIds.Contains(m.ChannelId))
+            .Where(m => m.Content.ToLower().Contains(queryLower));
+
+        // Apply optional filters
+        if (channelId.HasValue)
+        {
+            messagesQuery = messagesQuery.Where(m => m.ChannelId == channelId.Value);
+        }
+
+        if (authorId.HasValue)
+        {
+            messagesQuery = messagesQuery.Where(m => m.AuthorId == authorId.Value);
+        }
+
+        // Get total count for metadata
+        var totalCount = await messagesQuery.CountAsync(cancellationToken);
+
+        // Get results ordered by recency
+        var messages = await messagesQuery
+            .OrderByDescending(m => m.CreatedAt)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        var results = messages.Select(m => new MessageSearchResult(
+            ToMessageResponse(m, currentUserId),
+            m.Channel.Name
+        )).ToList();
+
+        return new MessageSearchResponse(results, totalCount, query);
+    }
 }
