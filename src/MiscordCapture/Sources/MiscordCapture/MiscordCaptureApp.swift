@@ -79,6 +79,9 @@ struct Capture: AsyncParsableCommand {
     @Flag(name: .long, inversion: .prefixedNo, help: "Exclude audio from current process (default: true)")
     var excludeSelf = true
 
+    @Option(name: .long, help: "Bundle ID of app to exclude from audio capture")
+    var excludeApp: String?
+
     func validate() throws {
         let sourceCount = [display != nil, window != nil, app != nil].filter { $0 }.count
         if sourceCount == 0 {
@@ -115,7 +118,8 @@ struct Capture: AsyncParsableCommand {
             height: height,
             fps: fps,
             captureAudio: audio,
-            excludeCurrentProcessAudio: excludeSelf
+            excludeCurrentProcessAudio: excludeSelf,
+            excludeAppBundleId: excludeApp
         )
 
         // Log to stderr so it doesn't interfere with video output

@@ -186,13 +186,13 @@
                                                 </Border>
                                             </StackPanel>
 
-                                            <!-- Center: Volume slider for streams with audio -->
+                                            <!-- Center: Volume slider for remote streams with audio -->
                                             <StackPanel Grid.Column="1"
                                                         Orientation="Horizontal"
                                                         Spacing="4"
                                                         HorizontalAlignment="Center"
                                                         VerticalAlignment="Center"
-                                                        IsVisible="{Binding HasAudio}">
+                                                        IsVisible="{Binding ShowVolumeSlider}">
                                                 <TextBlock Text="🔊"
                                                            Foreground="#b9bbbe"
                                                            FontSize="11"

@@ -370,11 +370,11 @@
                                     VerticalAlignment="Center"
                                     Orientation="Horizontal"
                                     Spacing="16">
-                            <!-- Volume slider for stream audio -->
+                            <!-- Volume slider for remote stream audio -->
                             <StackPanel Orientation="Horizontal"
                                         Spacing="8"
                                         VerticalAlignment="Center"
-                                        IsVisible="{Binding FullscreenStream.HasAudio}">
+                                        IsVisible="{Binding FullscreenStream.ShowVolumeSlider}">
                                 <TextBlock Text="🔊"
                                            Foreground="White"
                                            FontSize="14"

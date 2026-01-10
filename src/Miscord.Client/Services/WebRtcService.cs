@@ -209,6 +209,9 @@ public class WebRtcService : IWebRtcService
     // The track's SSRC is detected by the server via payload type 112
     private MediaStreamTrack? _screenAudioTrack;
     private uint _screenAudioSsrc;
+    private bool _screenAudioFirstPacket = true;  // Track first packet for RTP marker bit
+    private int _screenAudioDiagCount;  // Diagnostic counter for logging
+    private int _screenAudioEncodeCount;  // Diagnostic counter for encoding
 
     private Guid? _currentChannelId;
     private Guid _localUserId;
@@ -1086,6 +1089,7 @@ public class WebRtcService : IWebRtcService
 
         // Handle incoming RTP packets (audio and video from server)
         // Track video RTP for stream type detection (PT 96 = camera, PT 97 = screen)
+        int screenAudioPacketCount = 0;
         _serverConnection.OnRtpPacketReceived += (rep, media, rtpPkt) =>
         {
             if (media == SDPMediaTypesEnum.audio && !_isDeafened && _audioMixer != null)
@@ -1093,31 +1097,40 @@ public class WebRtcService : IWebRtcService
                 var ssrc = rtpPkt.Header.SyncSource;
                 var payloadType = rtpPkt.Header.PayloadType;
 
-                // Check if this is screen audio (PT 112) - only play if watching the user's screen share
+                // Check if this is screen audio (PT 112) - only play if watching any screen share
+                // Note: We can't use SSRC to identify the sender because the server's forwarding
+                // changes the SSRC. Instead, we play PT 112 audio if we're watching any screen share.
                 if (payloadType == 112)
                 {
-                    // Screen audio - check if we're watching this user's screen share
-                    if (_screenAudioSsrcToUserMap.TryGetValue(ssrc, out var screenUserId))
+                    screenAudioPacketCount++;
+
+                    // Check if we're watching any screen share
+                    Guid? watchedUserId = null;
+                    lock (_watchingScreenShareUserIds)
                     {
-                        lock (_watchingScreenShareUserIds)
+                        if (_watchingScreenShareUserIds.Count == 0)
                         {
-                            if (!_watchingScreenShareUserIds.Contains(screenUserId))
-                            {
-                                // Not watching this user's screen share, skip the audio
-                                return;
-                            }
+                            // Not watching any screen share, skip screen audio
+                            return;
                         }
-                        // We're watching - play the screen audio with user's volume
-                        _audioMixer.ProcessAudioPacket(
-                            ssrc,
-                            screenUserId,
-                            rtpPkt.Header.SequenceNumber,
-                            rtpPkt.Header.Timestamp,
-                            payloadType,
-                            rtpPkt.Header.MarkerBit == 1,
-                            rtpPkt.Payload);
+                        // Use the first watched user for volume control
+                        // (if watching multiple, they all get the same volume for now)
+                        watchedUserId = _watchingScreenShareUserIds.First();
                     }
-                    // Unknown screen audio SSRC - skip until we get the mapping
+
+                    if (screenAudioPacketCount <= 5 || screenAudioPacketCount % 500 == 0)
+                    {
+                        Console.WriteLine($"WebRTC: Playing screen audio packet #{screenAudioPacketCount}, size={rtpPkt.Payload.Length}");
+                    }
+
+                    _audioMixer.ProcessAudioPacket(
+                        ssrc,
+                        watchedUserId,
+                        rtpPkt.Header.SequenceNumber,
+                        rtpPkt.Header.Timestamp,
+                        payloadType,
+                        rtpPkt.Header.MarkerBit == 1,
+                        rtpPkt.Payload);
                     return;
                 }
 
@@ -1763,10 +1776,17 @@ public class WebRtcService : IWebRtcService
                     // Get Opus format from encoder's supported formats
                     var opusFormat = _screenAudioEncoder.SupportedFormats.FirstOrDefault(f => f.FormatName == "OPUS");
                     _screenAudioTimestamp = 0;
+                    _screenAudioFirstPacket = true;  // Reset for new stream
                     if (!string.IsNullOrEmpty(opusFormat.FormatName))
                     {
                         _screenAudioFormat = opusFormat;
-                        Console.WriteLine($"WebRTC: Screen audio encoder initialized ({opusFormat.FormatName} {opusFormat.ClockRate}Hz)");
+                        Console.WriteLine($"WebRTC: Screen audio encoder initialized ({opusFormat.FormatName} {opusFormat.ClockRate}Hz, {opusFormat.ChannelCount} ch)");
+
+                        // Verify we're encoding at 48kHz (standard for Opus)
+                        if (opusFormat.ClockRate != 48000)
+                        {
+                            Console.WriteLine($"WebRTC: WARNING - Screen audio encoder is {opusFormat.ClockRate}Hz, expected 48000Hz!");
+                        }
                     }
                     else
                     {
@@ -2003,55 +2023,198 @@ public class WebRtcService : IWebRtcService
         if (captureAudio)
         {
             args.Add("--audio");
-            args.Add("--exclude-self");  // Don't capture our own app's audio
+            args.Add("--exclude-self");  // Don't capture MiscordCapture's own audio
+
+            // Exclude Miscord.Client's audio to prevent capturing other users' voices
+            // Try to get the bundle ID - for .NET apps this may be the process name or a custom ID
+            var bundleId = GetAppBundleId();
+            if (!string.IsNullOrEmpty(bundleId))
+            {
+                // Quote the bundle ID in case it contains spaces
+                args.Add($"--exclude-app \"{bundleId}\"");
+                Console.WriteLine($"WebRTC: Will exclude audio from app: {bundleId}");
+            }
         }
 
         return string.Join(" ", args);
     }
 
     /// <summary>
+    /// Gets the bundle identifier for the current app.
+    /// On macOS, this is used to exclude our app's audio from screen capture.
+    /// </summary>
+    private string? GetAppBundleId()
+    {
+        if (!OperatingSystem.IsMacOS()) return null;
+
+        try
+        {
+            // For .NET apps, use the process name as a fallback
+            // ScreenCaptureKit can find apps by bundle ID or we match by process name
+            var processName = System.Diagnostics.Process.GetCurrentProcess().ProcessName;
+
+            // If running from IDE/dotnet run, process name is typically "dotnet"
+            // In that case, we can't reliably exclude ourselves
+            if (processName == "dotnet")
+            {
+                Console.WriteLine("WebRTC: Running via 'dotnet' - cannot determine bundle ID to exclude");
+                return null;
+            }
+
+            // Use the process name - ScreenCaptureKit might match by app name
+            // For a published app, this would be "Miscord.Client" or similar
+            return processName;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Reads audio packets from MiscordCapture's stderr.
     /// Audio format: 16-byte header (magic + sampleCount + timestamp) followed by PCM data.
+    /// Note: stderr may also contain log messages, so we need to scan for the magic number.
     /// </summary>
     private void ScreenAudioLoop(CancellationToken token)
     {
         Console.WriteLine("WebRTC: Screen audio loop starting");
         var audioPacketCount = 0;
+        var skippedBytes = 0;
 
         try
         {
             var stream = _screenCaptureProcess?.StandardError.BaseStream;
             if (stream == null) return;
 
-            var headerBuffer = new byte[16];
+            // Ring buffer for scanning - we need at least 4 bytes to check for magic
+            var scanBuffer = new byte[4];
+            var scanIndex = 0;
+            var headerBuffer = new byte[24];  // Version 2 header: 4+1+1+1+1+4+4+8 = 24 bytes
 
             while (!token.IsCancellationRequested && _screenCaptureProcess != null && !_screenCaptureProcess.HasExited)
             {
-                // Read header (16 bytes: 4 magic + 4 sampleCount + 8 timestamp)
-                var headerRead = 0;
-                while (headerRead < 16 && !token.IsCancellationRequested)
+                // Scan for magic number byte-by-byte
+                // This handles log messages mixed with audio data on stderr
+                bool foundMagic = false;
+                while (!foundMagic && !token.IsCancellationRequested)
                 {
-                    var read = stream.Read(headerBuffer, headerRead, 16 - headerRead);
+                    // Read one byte at a time into scan buffer
+                    var b = stream.ReadByte();
+                    if (b < 0) break; // EOF
+
+                    // Shift buffer and add new byte
+                    scanBuffer[0] = scanBuffer[1];
+                    scanBuffer[1] = scanBuffer[2];
+                    scanBuffer[2] = scanBuffer[3];
+                    scanBuffer[3] = (byte)b;
+                    scanIndex++;
+
+                    // Need at least 4 bytes before checking
+                    if (scanIndex < 4) continue;
+
+                    // Check for magic number (little-endian: 0x4D434150 = "MCAP")
+                    var magic = BitConverter.ToUInt32(scanBuffer, 0);
+                    if (magic == MiscordCaptureAudioMagic)
+                    {
+                        foundMagic = true;
+                        // Copy magic to header buffer
+                        Array.Copy(scanBuffer, 0, headerBuffer, 0, 4);
+                    }
+                    else if (scanIndex > 4)
+                    {
+                        skippedBytes++;
+                    }
+                }
+
+                if (!foundMagic) break;
+
+                // Read bytes 4-7 to determine header version
+                // Header v1 (16 bytes): magic(4) + sampleCount(4) + timestamp(8)
+                // Header v2 (24 bytes): magic(4) + version(1) + bitsPerSample(1) + channels(1) + isFloat(1) + sampleCount(4) + sampleRate(4) + timestamp(8)
+                var peekBytes = new byte[4];
+                var peekRead = 0;
+                while (peekRead < 4)
+                {
+                    var r = stream.Read(peekBytes, peekRead, 4 - peekRead);
+                    if (r == 0) break;
+                    peekRead += r;
+                }
+                if (peekRead < 4) break;
+                Array.Copy(peekBytes, 0, headerBuffer, 4, 4);
+
+                // V2 header has: version=2, bitsPerSample=16 or 32, channels=1-8, isFloat=0 or 1
+                // V1 header has: sampleCount at bytes 4-7 (typically 960-2000 for 20ms audio)
+                var byte4 = peekBytes[0];
+                var byte5 = peekBytes[1];
+                var byte6 = peekBytes[2];
+                var byte7 = peekBytes[3];
+
+                // Detect v2: version==2, reasonable bitsPerSample (16 or 32), reasonable channels (1-8)
+                bool isV2Header = byte4 == 2 && (byte5 == 16 || byte5 == 32) && byte6 >= 1 && byte6 <= 8;
+
+                if (audioPacketCount == 0)
+                {
+                    Console.WriteLine($"WebRTC: Audio header bytes 4-7: [{byte4}, {byte5}, {byte6}, {byte7}], detected as {(isV2Header ? "v2" : "v1")}");
+                }
+                int headerSize = isV2Header ? 24 : 16;
+
+                // We already have bytes 0-7 (magic + first 4 bytes), read the rest
+                var headerRead = 8;
+                while (headerRead < headerSize && !token.IsCancellationRequested)
+                {
+                    var read = stream.Read(headerBuffer, headerRead, headerSize - headerRead);
                     if (read == 0) break;
                     headerRead += read;
                 }
 
-                if (headerRead < 16) break;
+                if (headerRead < headerSize) break;
 
-                // Check magic number
-                var magic = BitConverter.ToUInt32(headerBuffer, 0);
-                if (magic != MiscordCaptureAudioMagic)
+                uint sampleCount;
+                uint sampleRate;
+                byte bitsPerSample;
+                byte channels;
+                bool isFloat;
+                ulong timestamp;
+
+                if (isV2Header)
                 {
-                    // Not an audio packet - might be log output, skip this byte and try again
-                    // In practice, we should buffer and scan for the magic
+                    // V2 header with format info
+                    bitsPerSample = headerBuffer[5];
+                    channels = headerBuffer[6];
+                    isFloat = headerBuffer[7] != 0;
+                    sampleCount = BitConverter.ToUInt32(headerBuffer, 8);
+                    sampleRate = BitConverter.ToUInt32(headerBuffer, 12);
+                    timestamp = BitConverter.ToUInt64(headerBuffer, 16);
+                }
+                else
+                {
+                    // V1 header - assume 16-bit stereo at 48kHz (old format)
+                    sampleCount = BitConverter.ToUInt32(headerBuffer, 4);
+                    timestamp = BitConverter.ToUInt64(headerBuffer, 8);
+                    bitsPerSample = 16;
+                    channels = 2;
+                    isFloat = false;
+                    sampleRate = 48000;
+
+                    if (audioPacketCount == 0)
+                    {
+                        Console.WriteLine("WebRTC: Detected v1 audio header format - assuming 16-bit stereo 48kHz. Rebuild MiscordCapture for proper format detection.");
+                    }
+                }
+
+                // Sanity check - audio buffers shouldn't be huge
+                if (sampleCount > 48000 * 10) // More than 10 seconds of audio
+                {
+                    Console.WriteLine($"WebRTC: Invalid audio sample count {sampleCount}, skipping");
+                    scanIndex = 0; // Reset scan
                     continue;
                 }
 
-                var sampleCount = BitConverter.ToUInt32(headerBuffer, 4);
-                var timestamp = BitConverter.ToUInt64(headerBuffer, 8);
-
-                // Read audio data (16-bit stereo = 4 bytes per sample)
-                var audioSize = (int)(sampleCount * 4);
+                // Calculate bytes per frame from header format info
+                var bytesPerSample = bitsPerSample / 8;
+                var bytesPerFrame = bytesPerSample * channels;
+                var audioSize = (int)(sampleCount * bytesPerFrame);
                 var audioBuffer = new byte[audioSize];
 
                 var audioRead = 0;
@@ -2067,11 +2230,14 @@ public class WebRtcService : IWebRtcService
                 audioPacketCount++;
                 if (audioPacketCount <= 5 || audioPacketCount % 100 == 0)
                 {
-                    Console.WriteLine($"WebRTC: Screen audio packet {audioPacketCount}, samples={sampleCount}, ts={timestamp}");
+                    Console.WriteLine($"WebRTC: Screen audio packet {audioPacketCount}, samples={sampleCount}, {sampleRate}Hz, {bitsPerSample}-bit, {channels}ch, {(isFloat ? "float" : "int")}, skipped={skippedBytes} bytes");
                 }
 
+                // Reset for next packet
+                scanIndex = 0;
+
                 // Process and send screen audio (resample, encode, transmit)
-                ProcessScreenShareAudio(audioBuffer, sampleCount);
+                ProcessScreenShareAudio(audioBuffer, sampleCount, sampleRate, bitsPerSample, channels, isFloat);
             }
         }
         catch (Exception ex)
@@ -2082,14 +2248,15 @@ public class WebRtcService : IWebRtcService
             }
         }
 
-        Console.WriteLine($"WebRTC: Screen audio loop ended after {audioPacketCount} packets");
+        Console.WriteLine($"WebRTC: Screen audio loop ended after {audioPacketCount} packets, skipped {skippedBytes} bytes");
     }
 
     /// <summary>
-    /// Processes screen share audio: encodes 48kHz stereo PCM to Opus and sends via dedicated screen audio track.
+    /// Processes screen share audio: encodes audio to Opus and sends via dedicated screen audio track.
     /// Uses SendRtpRaw with screen audio SSRC to keep it separate from microphone audio.
+    /// MiscordCapture normalizes all audio to 48kHz 16-bit stereo before sending.
     /// </summary>
-    private void ProcessScreenShareAudio(byte[] pcmData, uint sampleCount)
+    private void ProcessScreenShareAudio(byte[] pcmData, uint sampleCount, uint sampleRate, byte bitsPerSample, byte channelCount, bool isFloat)
     {
         if (_serverConnection == null || _screenAudioEncoder == null || !_screenAudioFormat.HasValue || pcmData.Length == 0) return;
         if (_screenAudioSsrc == 0)
@@ -2100,54 +2267,79 @@ public class WebRtcService : IWebRtcService
 
         var format = _screenAudioFormat.Value;
 
-        // Input: 48kHz stereo 16-bit PCM (4 bytes per frame: 2 channels × 2 bytes per sample)
-        // Output: Opus at 48kHz stereo
+        // Input: 48kHz 16-bit stereo from MiscordCapture (normalized at capture stage)
+        // Output: Opus at 48kHz MONO for compatibility with the standard voice codec path
 
-        // Convert byte array to short array for Opus encoder
-        // Each stereo frame = 4 bytes (2 bytes left + 2 bytes right)
-        int totalSamples = (int)(sampleCount * ScreenAudioChannels); // Interleaved stereo samples
-        var pcmSamples = new short[totalSamples];
+        // Mix stereo to mono
+        int frameCount = (int)sampleCount;
+        var monoSamples = new short[frameCount];
 
-        for (int i = 0; i < totalSamples && i * 2 + 1 < pcmData.Length; i++)
+        for (int i = 0; i < frameCount && (i * 4 + 3) < pcmData.Length; i++)
         {
-            // Read as little-endian 16-bit
-            pcmSamples[i] = (short)(pcmData[i * 2] | (pcmData[i * 2 + 1] << 8));
+            // Read stereo pair (little-endian Int16)
+            short left = (short)(pcmData[i * 4] | (pcmData[i * 4 + 1] << 8));
+            short right = (short)(pcmData[i * 4 + 2] | (pcmData[i * 4 + 3] << 8));
+            // Mix to mono
+            monoSamples[i] = (short)((left + right) / 2);
         }
 
-        // Process in 20ms chunks (960 samples per channel at 48kHz = 1920 interleaved samples)
-        const int samplesPerChannel = ScreenAudioSampleRate * AudioPacketDurationMs / 1000;  // 960
-        const int samplesPerPacket = samplesPerChannel * ScreenAudioChannels;                // 1920
+        // Diagnostic: Log sample values and peak level for first few packets
+        _screenAudioDiagCount++;
+        if (_screenAudioDiagCount <= 3)
+        {
+            // Find peak sample value
+            short peak = 0;
+            for (int i = 0; i < Math.Min(100, monoSamples.Length); i++)
+            {
+                if (Math.Abs(monoSamples[i]) > Math.Abs(peak)) peak = monoSamples[i];
+            }
+            Console.WriteLine($"WebRTC: Screen audio diag #{_screenAudioDiagCount}: {frameCount} frames @ {sampleRate}Hz {bitsPerSample}-bit {channelCount}ch -> {frameCount} mono, peak={peak}");
+        }
+
+        // Process in 20ms chunks (960 mono samples at 48kHz)
+        const int samplesPerPacket = ScreenAudioSampleRate * AudioPacketDurationMs / 1000;  // 960
 
         // Screen audio uses payload type 112 to distinguish from microphone audio (PT 111)
         // Both use Opus codec but server routes them differently
         const int ScreenAudioPayloadType = 112;
 
         int offset = 0;
-        while (offset + samplesPerPacket <= pcmSamples.Length)
+        while (offset + samplesPerPacket <= monoSamples.Length)
         {
-            // Extract one packet's worth of samples
+            // Extract one packet's worth of mono samples
             var packetSamples = new short[samplesPerPacket];
-            Array.Copy(pcmSamples, offset, packetSamples, 0, samplesPerPacket);
+            Array.Copy(monoSamples, offset, packetSamples, 0, samplesPerPacket);
 
             try
             {
-                // Encode to Opus
+                // Encode to Opus (mono)
                 var opusData = _screenAudioEncoder.EncodeAudio(packetSamples, format);
 
                 if (opusData != null && opusData.Length > 0)
                 {
+                    // Diagnostic: Log encoded size for first few packets
+                    _screenAudioEncodeCount++;
+                    if (_screenAudioEncodeCount <= 5)
+                    {
+                        Console.WriteLine($"WebRTC: Screen audio encode #{_screenAudioEncodeCount}: 960 samples -> {opusData.Length} bytes Opus");
+                    }
+
                     // Send screen audio with payload type 112 to distinguish from mic audio (PT 111)
                     // The server will detect PT 112 and track it as screen audio SSRC
+                    // Marker bit: 1 only for first packet (start of talk spurt), 0 for subsequent
+                    var markerBit = _screenAudioFirstPacket ? 1 : 0;
+                    _screenAudioFirstPacket = false;
+
                     _serverConnection.SendRtpRaw(
                         SDPMediaTypesEnum.audio,
                         opusData,
                         _screenAudioTimestamp,
-                        1,  // Marker bit (1 for each audio packet)
+                        markerBit,
                         ScreenAudioPayloadType);
 
-                    // RTP timestamp increments by samples-per-channel at 48kHz
+                    // RTP timestamp increments by samples at 48kHz
                     // For 20ms at 48kHz: 960 samples
-                    _screenAudioTimestamp += (uint)samplesPerChannel;
+                    _screenAudioTimestamp += (uint)samplesPerPacket;
                 }
             }
             catch (Exception ex)
@@ -2158,7 +2350,6 @@ public class WebRtcService : IWebRtcService
             offset += samplesPerPacket;
         }
     }
-
     private void ScreenCaptureLoop(CancellationToken token, int width, int height, int fps)
     {
         // NV12: 1.5 bytes per pixel (Y plane + UV plane at half resolution)

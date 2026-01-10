@@ -79,9 +79,10 @@ public class VideoStreamViewModel : ReactiveObject
     public bool ShowWatchButton => IsRemoteScreenShare && !IsWatching;
 
     /// <summary>
-    /// Whether to show video content (bitmap or placeholder). True when watching or for non-screen shares.
+    /// Whether to show video content (bitmap or placeholder).
+    /// True for local streams (always), or remote streams when watching.
     /// </summary>
-    public bool ShowVideoContent => IsWatching;
+    public bool ShowVideoContent => !IsRemoteScreenShare || IsWatching;
 
     /// <summary>
     /// Whether to show loading indicator. True when watching a screen share but no frames received yet.
@@ -141,8 +142,18 @@ public class VideoStreamViewModel : ReactiveObject
     public bool HasAudio
     {
         get => _hasAudio;
-        set => this.RaiseAndSetIfChanged(ref _hasAudio, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _hasAudio, value);
+            this.RaisePropertyChanged(nameof(ShowVolumeSlider));
+        }
     }
+
+    /// <summary>
+    /// Whether to show the volume slider. Only for remote streams with audio.
+    /// Local user doesn't need volume control on their own streams.
+    /// </summary>
+    public bool ShowVolumeSlider => HasAudio && UserId != _localUserId;
 
     /// <summary>
     /// Volume level for this stream's audio (0.0 to 2.0, where 1.0 = 100%).

@@ -52,11 +52,17 @@ public interface IUserAudioMixer : IAsyncDisposable
 public class UserAudioMixer : IUserAudioMixer
 {
     private readonly ConcurrentDictionary<Guid, float> _userVolumes = new();
-    private readonly AudioEncoder _audioEncoder = new(includeOpus: true);  // Enable Opus support
+    private readonly AudioEncoder _audioEncoder = new(includeOpus: true);  // Enable Opus support for mic audio
     private SDL2AudioEndPoint? _audioOutput;
     private float _masterVolume = 1.0f;
     private const float DefaultVolume = 1.0f;
     private const float MaxVolume = 2.0f; // 200%
+
+    // Separate encoder and output for screen audio to avoid Opus decoder state corruption
+    // The Opus codec is stateful - sharing a decoder between mic and screen audio corrupts both
+    private readonly AudioEncoder _screenAudioEncoder = new(includeOpus: true);
+    private SDL2AudioEndPoint? _screenAudioOutput;
+    private int _screenAudioRecvCount;  // Diagnostic counter
 
     // G.711 mu-law decode table (256 entries)
     private static readonly short[] MuLawDecodeTable = GenerateMuLawDecodeTable();
@@ -76,11 +82,8 @@ public class UserAudioMixer : IUserAudioMixer
 
         try
         {
-            _audioOutput = new SDL2AudioEndPoint(outputDevice ?? string.Empty, _audioEncoder);
-            await _audioOutput.StartAudioSink();
-
-            // Get Opus format from encoder's supported formats (48kHz)
-            // Fall back to PCMU if Opus not available
+            // Get Opus format FIRST (48kHz) - must set format BEFORE starting audio sink
+            // so SDL2 opens the device at the correct sample rate
             var supportedFormats = _audioEncoder.SupportedFormats;
             var opusFormat = supportedFormats.FirstOrDefault(f => f.FormatName == "OPUS");
             var pcmuFormat = supportedFormats.FirstOrDefault(f => f.FormatName == "PCMU");
@@ -95,10 +98,33 @@ public class UserAudioMixer : IUserAudioMixer
                 _currentFormat = pcmuFormat;
             }
 
+            // Initialize mic audio output - set format BEFORE starting
+            _audioOutput = new SDL2AudioEndPoint(outputDevice ?? string.Empty, _audioEncoder);
             if (_currentFormat.HasValue)
             {
                 _audioOutput.SetAudioSinkFormat(_currentFormat.Value);
-                Console.WriteLine($"UserAudioMixer: Started with output device '{outputDevice ?? "(default)"}', format: {_currentFormat.Value.FormatName} ({_currentFormat.Value.ClockRate}Hz)");
+            }
+            await _audioOutput.StartAudioSink();
+
+            // Initialize separate screen audio output with its own encoder/decoder
+            // This prevents Opus decoder state corruption between mic and screen audio
+            _screenAudioOutput = new SDL2AudioEndPoint(outputDevice ?? string.Empty, _screenAudioEncoder);
+            if (_currentFormat.HasValue)
+            {
+                _screenAudioOutput.SetAudioSinkFormat(_currentFormat.Value);
+            }
+            await _screenAudioOutput.StartAudioSink();
+
+            if (_currentFormat.HasValue)
+            {
+                Console.WriteLine($"UserAudioMixer: Started mic audio output '{outputDevice ?? "(default)"}', format: {_currentFormat.Value.FormatName} ({_currentFormat.Value.ClockRate}Hz, {_currentFormat.Value.ChannelCount} ch)");
+                Console.WriteLine($"UserAudioMixer: Started screen audio output (separate decoder) with same format");
+
+                // Verify we're using 48kHz for Opus
+                if (_currentFormat.Value.FormatName == "OPUS" && _currentFormat.Value.ClockRate != 48000)
+                {
+                    Console.WriteLine($"UserAudioMixer: WARNING - Opus should use 48kHz but format is {_currentFormat.Value.ClockRate}Hz!");
+                }
             }
             else
             {
@@ -124,6 +150,27 @@ public class UserAudioMixer : IUserAudioMixer
         // Screen audio (PT 112) and mic audio (PT 111) both use Opus codec
         // Remap PT 112 to PT 111 so the audio sink can decode it
         var outputPayloadType = payloadType == OpusScreenPayloadType ? OpusMicPayloadType : payloadType;
+
+        // Screen audio uses a completely separate audio output with its own Opus decoder
+        // This prevents decoder state corruption when mic and screen audio are interleaved
+        if (payloadType == OpusScreenPayloadType)
+        {
+            if (_screenAudioOutput == null)
+            {
+                Console.WriteLine("UserAudioMixer: Screen audio output is NULL!");
+                return;
+            }
+
+            // Diagnostic: Log first few screen audio packets received
+            _screenAudioRecvCount++;
+            if (_screenAudioRecvCount <= 5)
+            {
+                Console.WriteLine($"UserAudioMixer: Screen audio #{_screenAudioRecvCount}, size={payload.Length}, ssrc={ssrc}, ts={timestamp}, seq={seqNum}");
+            }
+
+            _screenAudioOutput.GotAudioRtp(null!, ssrc, seqNum, timestamp, outputPayloadType, marker, payload);
+            return;
+        }
 
         // Determine volume to apply
         float volume = _masterVolume;
@@ -242,11 +289,25 @@ public class UserAudioMixer : IUserAudioMixer
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"UserAudioMixer: Error stopping - {ex.Message}");
+                Console.WriteLine($"UserAudioMixer: Error stopping mic audio - {ex.Message}");
             }
             _audioOutput = null;
-            Console.WriteLine("UserAudioMixer: Stopped");
         }
+
+        if (_screenAudioOutput != null)
+        {
+            try
+            {
+                await _screenAudioOutput.CloseAudioSink();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"UserAudioMixer: Error stopping screen audio - {ex.Message}");
+            }
+            _screenAudioOutput = null;
+        }
+
+        Console.WriteLine("UserAudioMixer: Stopped");
     }
 
     public async ValueTask DisposeAsync()

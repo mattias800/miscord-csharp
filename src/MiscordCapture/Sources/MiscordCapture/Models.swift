@@ -42,28 +42,46 @@ struct CaptureConfig {
     let fps: Int
     let captureAudio: Bool
     let excludeCurrentProcessAudio: Bool
+    let excludeAppBundleId: String?  // Bundle ID of app to exclude from audio capture
 }
 
 // MARK: - Output Protocol
 
 /// Protocol marker for video/audio output streams
 /// Video: BGR24 raw frames to stdout
-/// Audio: PCM S16LE 48kHz stereo to stderr (interleaved with log messages using a header)
+/// Audio: PCM to stderr (interleaved with log messages using a header with format info)
 struct AudioPacketHeader {
     static let magic: UInt32 = 0x4D434150  // "MCAP" in ASCII
+    static let version: UInt8 = 2  // Version 2 includes format info
+
     let sampleCount: UInt32
     let timestamp: UInt64
+    let sampleRate: UInt32      // e.g., 48000, 96000
+    let bitsPerSample: UInt8    // e.g., 16, 32
+    let channels: UInt8         // e.g., 1, 2
+    let isFloat: UInt8          // 0 = integer PCM, 1 = float PCM
 
     var data: Data {
         var header = Data()
         var magic = Self.magic
+        var version = Self.version
         var samples = sampleCount
         var ts = timestamp
-        header.append(Data(bytes: &magic, count: 4))
-        header.append(Data(bytes: &samples, count: 4))
-        header.append(Data(bytes: &ts, count: 8))
+        var rate = sampleRate
+        var bits = bitsPerSample
+        var ch = channels
+        var floatFlag = isFloat
+
+        header.append(Data(bytes: &magic, count: 4))      // 0-3: magic
+        header.append(Data(bytes: &version, count: 1))    // 4: version
+        header.append(Data(bytes: &bits, count: 1))       // 5: bits per sample
+        header.append(Data(bytes: &ch, count: 1))         // 6: channels
+        header.append(Data(bytes: &floatFlag, count: 1))  // 7: isFloat
+        header.append(Data(bytes: &samples, count: 4))    // 8-11: sample count
+        header.append(Data(bytes: &rate, count: 4))       // 12-15: sample rate
+        header.append(Data(bytes: &ts, count: 8))         // 16-23: timestamp
         return header
     }
 
-    static let size = 16
+    static let size = 24  // Updated size: 4+1+1+1+1+4+4+8 = 24 bytes
 }

@@ -216,28 +216,69 @@ public class SfuChannelManager : IDisposable
     private int _cameraVideoPacketCount;
     private int _screenVideoPacketCount;
 
+    private int _screenAudioPacketCount;
+
     private void OnAudioRtpReceivedFromSession(SfuSession sender, RTPPacket packet)
     {
-        _audioPacketCount++;
-        if (_audioPacketCount <= 5 || _audioPacketCount % 1000 == 0)
-        {
-            _logger.LogInformation("Audio RTP {Count} from {UserId}, size={Size}, forwarding to {OtherCount} sessions",
-                _audioPacketCount, sender.UserId, packet.Payload.Length, _sessions.Count - 1);
-        }
+        var payloadType = packet.Header.PayloadType;
+        var isScreenAudio = payloadType == 112;
 
-        // Forward raw RTP to all OTHER sessions (not back to sender)
-        foreach (var session in _sessions.Values)
+        if (isScreenAudio)
         {
-            if (session.UserId != sender.UserId &&
-                session.ConnectionState == RTCPeerConnectionState.connected)
+            _screenAudioPacketCount++;
+            // Screen audio (PT 112) - only forward to users watching this sender's screen share
+            var viewers = GetScreenShareViewers(sender.UserId);
+            if (viewers.Count == 0)
             {
-                try
+                // No one is watching this screen share, skip forwarding
+                return;
+            }
+
+            if (_screenAudioPacketCount <= 5 || _screenAudioPacketCount % 1000 == 0)
+            {
+                _logger.LogInformation("Screen audio RTP {Count} from {UserId}, forwarding to {ViewerCount} viewers",
+                    _screenAudioPacketCount, sender.UserId, viewers.Count);
+            }
+
+            foreach (var session in _sessions.Values)
+            {
+                if (viewers.Contains(session.UserId) &&
+                    session.ConnectionState == RTCPeerConnectionState.connected)
                 {
-                    session.ForwardAudioRtpRaw(packet);
+                    try
+                    {
+                        session.ForwardAudioRtpRaw(packet);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to forward screen audio to session {UserId}", session.UserId);
+                    }
                 }
-                catch (Exception ex)
+            }
+        }
+        else
+        {
+            // Microphone audio - forward to all other sessions
+            _audioPacketCount++;
+            if (_audioPacketCount <= 5 || _audioPacketCount % 1000 == 0)
+            {
+                _logger.LogInformation("Mic audio RTP {Count} from {UserId}, size={Size}, forwarding to {OtherCount} sessions",
+                    _audioPacketCount, sender.UserId, packet.Payload.Length, _sessions.Count - 1);
+            }
+
+            foreach (var session in _sessions.Values)
+            {
+                if (session.UserId != sender.UserId &&
+                    session.ConnectionState == RTCPeerConnectionState.connected)
                 {
-                    _logger.LogWarning(ex, "Failed to forward audio to session {UserId}", session.UserId);
+                    try
+                    {
+                        session.ForwardAudioRtpRaw(packet);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to forward audio to session {UserId}", session.UserId);
+                    }
                 }
             }
         }

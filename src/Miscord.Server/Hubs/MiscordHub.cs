@@ -746,7 +746,16 @@ public class MiscordHub : Hub
         _logger.LogInformation("User {ViewerId} started watching {StreamerId}'s screen share in channel {ChannelId}",
             userId.Value, streamerUserId, channelId);
 
-        await Task.CompletedTask;
+        // Send the streamer's screen audio SSRC to the viewer (if they have one)
+        // This is needed because the viewer might have missed the initial broadcast
+        var streamerSession = _sfuService.GetSession(channelId, streamerUserId);
+        if (streamerSession?.ScreenAudioSsrc != null)
+        {
+            await Clients.Caller.SendAsync("UserScreenAudioSsrcMapped",
+                new ScreenAudioSsrcMappingEvent(channelId, streamerUserId, streamerSession.ScreenAudioSsrc.Value));
+            _logger.LogDebug("Sent screen audio SSRC {Ssrc} for streamer {StreamerId} to viewer {ViewerId}",
+                streamerSession.ScreenAudioSsrc.Value, streamerUserId, userId.Value);
+        }
     }
 
     /// <summary>
