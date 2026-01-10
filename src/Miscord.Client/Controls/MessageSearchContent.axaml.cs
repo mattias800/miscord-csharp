@@ -1,12 +1,9 @@
-using System.Reactive;
-using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Threading;
 using Miscord.Client.Services;
 using Miscord.Client.ViewModels;
-using ReactiveUI;
 
 namespace Miscord.Client.Controls;
 
@@ -24,8 +21,6 @@ public partial class MessageSearchContent : UserControl
     {
         InitializeComponent();
 
-        SearchCommand = ReactiveCommand.CreateFromTask(ExecuteSearchAsync);
-
         // Focus search input when control is attached
         AttachedToVisualTree += OnAttachedToVisualTree;
         KeyDown += OnKeyDown;
@@ -35,16 +30,6 @@ public partial class MessageSearchContent : UserControl
     {
         get => GetValue(ViewModelProperty);
         set => SetValue(ViewModelProperty, value);
-    }
-
-    public ICommand SearchCommand { get; }
-
-    private async Task ExecuteSearchAsync()
-    {
-        if (ViewModel != null)
-        {
-            await ViewModel.SearchAsync();
-        }
     }
 
     private void OnAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
@@ -60,7 +45,7 @@ public partial class MessageSearchContent : UserControl
         }
     }
 
-    private async void OnKeyDown(object? sender, KeyEventArgs e)
+    private void OnKeyDown(object? sender, KeyEventArgs e)
     {
         if (ViewModel is null) return;
 
@@ -80,10 +65,6 @@ public partial class MessageSearchContent : UserControl
                 if (ViewModel.Results.Count > 0)
                 {
                     ViewModel.SelectCurrent();
-                }
-                else
-                {
-                    await ViewModel.SearchAsync();
                 }
                 e.Handled = true;
                 break;

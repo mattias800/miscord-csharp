@@ -70,24 +70,11 @@
             MaxHeight="500">
         <DockPanel>
             <!-- Search Input -->
-            <Border DockPanel.Dock="Top" Padding="16,16,16,8">
-                <Grid ColumnDefinitions="*,Auto">
-                    <TextBox x:Name="SearchInput"
-                             Grid.Column="0"
-                             Classes="search-input"
-                             Watermark="Search messages..."
-                             Text="{Binding ViewModel.SearchQuery, RelativeSource={RelativeSource AncestorType=controls:MessageSearchContent}, Mode=TwoWay}"/>
-                    <Button Grid.Column="1"
-                            Margin="8,0,0,0"
-                            Background="#5865f2"
-                            Foreground="White"
-                            Padding="16,8"
-                            CornerRadius="4"
-                            Command="{Binding SearchCommand, RelativeSource={RelativeSource AncestorType=controls:MessageSearchContent}}"
-                            IsEnabled="{Binding !ViewModel.IsLoading, RelativeSource={RelativeSource AncestorType=controls:MessageSearchContent}}">
-                        <TextBlock Text="Search"/>
-                    </Button>
-                </Grid>
+            <Border DockPanel.Dock="Top" Padding="16">
+                <TextBox x:Name="SearchInput"
+                         Classes="search-input"
+                         Watermark="Search messages..."
+                         Text="{Binding ViewModel.SearchQuery, RelativeSource={RelativeSource AncestorType=controls:MessageSearchContent}, Mode=TwoWay}"/>
             </Border>
 
             <!-- Status / Loading -->
@@ -114,7 +101,7 @@
                         <Border Background="#202225" CornerRadius="3" Padding="4,2">
                             <TextBlock Text="Enter" Foreground="#72767d" FontSize="11"/>
                         </Border>
-                        <TextBlock Text="search" Foreground="#72767d" FontSize="11" VerticalAlignment="Center"/>
+                        <TextBlock Text="select" Foreground="#72767d" FontSize="11" VerticalAlignment="Center"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="4">
                         <Border Background="#202225" CornerRadius="3" Padding="4,2">
@@ -130,7 +117,8 @@
                        Foreground="#72767d"
                        FontSize="14"
                        HorizontalAlignment="Center"
-                       Margin="0,20"
+                       Margin="16,20"
+                       Padding="16,0"
                        IsVisible="{Binding ViewModel.ShowNoResults, RelativeSource={RelativeSource AncestorType=controls:MessageSearchContent}}"/>
 
             <!-- Results List -->

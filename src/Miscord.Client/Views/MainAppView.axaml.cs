@@ -175,7 +175,7 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
     /// <summary>
     /// Called when a message search result is selected.
     /// </summary>
-    private void OnMessageSearchResultSelected(Services.MessageSearchResult result)
+    private async void OnMessageSearchResultSelected(Services.MessageSearchResult result)
     {
         MessageSearchPopup.IsOpen = false;
 
@@ -186,7 +186,10 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         if (channel != null)
         {
             ViewModel.SelectChannelCommand.Execute(channel).Subscribe();
-            // TODO: Scroll to the specific message in the channel
+
+            // Wait for messages to load and layout to complete, then scroll to message
+            await Task.Delay(300);
+            ChatArea?.ScrollToMessage(result.Message.Id);
         }
     }
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
+using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -663,6 +664,33 @@ public partial class ChatAreaView : UserControl
     public void FocusMessageInput()
     {
         MessageInputBox?.Focus();
+    }
+
+    /// <summary>
+    /// Scrolls to a specific message by its ID.
+    /// </summary>
+    public void ScrollToMessage(Guid messageId)
+    {
+        if (Messages == null) return;
+
+        // Find the index of the message
+        var messages = Messages.ToList();
+        var index = messages.FindIndex(m => m.Id == messageId);
+        if (index < 0) return;
+
+        // Delay to allow layout to complete after channel switch
+        Dispatcher.UIThread.Post(() =>
+        {
+            // Get the container for this index
+            var container = MessagesList.ContainerFromIndex(index);
+            if (container is Control control)
+            {
+                // Scroll the item into view
+                control.BringIntoView();
+
+                // Flash highlight effect could be added here
+            }
+        }, DispatcherPriority.Background);
     }
 
     #endregion

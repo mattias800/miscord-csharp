@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Reactive.Linq;
 using Miscord.Client.Services;
 using ReactiveUI;
 
@@ -7,12 +8,13 @@ namespace Miscord.Client.ViewModels;
 /// <summary>
 /// ViewModel for the message search modal.
 /// </summary>
-public class MessageSearchViewModel : ViewModelBase
+public class MessageSearchViewModel : ViewModelBase, IDisposable
 {
     private readonly IApiClient _apiClient;
     private readonly Guid _communityId;
     private readonly Action<MessageSearchResult> _onResultSelected;
     private readonly Action _onClose;
+    private readonly IDisposable _searchSubscription;
 
     private string _searchQuery = string.Empty;
     private bool _isLoading;
@@ -30,6 +32,12 @@ public class MessageSearchViewModel : ViewModelBase
         _communityId = communityId;
         _onResultSelected = onResultSelected;
         _onClose = onClose;
+
+        // Auto-search with 1 second debounce
+        _searchSubscription = this.WhenAnyValue(x => x.SearchQuery)
+            .Throttle(TimeSpan.FromSeconds(1))
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(async _ => await SearchAsync());
     }
 
     /// <summary>
@@ -192,4 +200,9 @@ public class MessageSearchViewModel : ViewModelBase
     /// Close the search modal.
     /// </summary>
     public void Close() => _onClose();
+
+    public void Dispose()
+    {
+        _searchSubscription.Dispose();
+    }
 }
