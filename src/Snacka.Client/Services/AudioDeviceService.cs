@@ -13,8 +13,9 @@ public interface IAudioDeviceService : IDisposable
 
     bool IsTestingInput { get; }
     bool IsLoopbackEnabled { get; }
+    float CurrentAgcGain { get; }
 
-    Task StartInputTestAsync(string? deviceName, Action<float> onRmsUpdate);
+    Task StartInputTestAsync(string? deviceName, Action<float> onRmsUpdate, Action<float>? onAgcUpdate = null);
     void SetLoopbackEnabled(bool enabled, string? outputDevice);
     Task StopTestAsync();
 }
@@ -51,6 +52,7 @@ public class AudioDeviceService : IAudioDeviceService
 
     // AGC for microphone test (mirrors WebRtcService AGC)
     private float _testAgcGain = 1.0f;
+    private Action<float>? _onAgcUpdate;
     private const float AgcTargetRms = 6000f;
     private const float AgcMinGain = 1.0f;
     private const float AgcMaxGain = 16.0f;
@@ -60,6 +62,7 @@ public class AudioDeviceService : IAudioDeviceService
     private const float BaselineInputBoost = 4.0f;
 
     public bool IsTestingInput => _testAudioSource != null;
+    public float CurrentAgcGain => _testAgcGain;
     public bool IsLoopbackEnabled => _isLoopbackEnabled;
 
     public AudioDeviceService(ISettingsStore? settingsStore = null)
@@ -231,7 +234,7 @@ public class AudioDeviceService : IAudioDeviceService
         }
     }
 
-    public async Task StartInputTestAsync(string? deviceName, Action<float> onRmsUpdate)
+    public async Task StartInputTestAsync(string? deviceName, Action<float> onRmsUpdate, Action<float>? onAgcUpdate = null)
     {
         // Stop any existing test
         await StopTestAsync();
@@ -240,6 +243,7 @@ public class AudioDeviceService : IAudioDeviceService
         _testAgcGain = 1.0f;
 
         _onRmsUpdate = onRmsUpdate;
+        _onAgcUpdate = onAgcUpdate;
         _testCts = new CancellationTokenSource();
 
         try
@@ -357,6 +361,7 @@ public class AudioDeviceService : IAudioDeviceService
         }
 
         _onRmsUpdate = null;
+        _onAgcUpdate = null;
         _isLoopbackEnabled = false;
         Console.WriteLine("AudioDeviceService: Stopped input test");
     }
@@ -388,6 +393,9 @@ public class AudioDeviceService : IAudioDeviceService
                 _testAgcGain += (desiredGain - _testAgcGain) * AgcAttackCoeff;
             else
                 _testAgcGain += (desiredGain - _testAgcGain) * AgcReleaseCoeff;
+
+            // Notify listener of AGC change
+            _onAgcUpdate?.Invoke(_testAgcGain);
         }
 
         // Step 3: Calculate total gain = baseline boost * AGC * manual adjustment

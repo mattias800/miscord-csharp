@@ -194,7 +194,47 @@
                                     ToolTip.Tip="Gate Threshold"/>
                         </Grid>
 
-                        <TextBlock Text="Speak into your microphone. The bar turns green when above the gate threshold (red line)."
+                        <!-- AGC Status -->
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="AUTO GAIN"
+                                           FontSize="11"
+                                           Foreground="{StaticResource Foreground3Brush}"/>
+                                <Border Background="{StaticResource Content2Brush}"
+                                        CornerRadius="4"
+                                        Padding="6,2">
+                                    <TextBlock Text="{Binding AgcStatus}"
+                                               FontSize="10"
+                                               FontWeight="SemiBold"
+                                               Foreground="{StaticResource PrimaryBrush}"/>
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding AgcGainDisplay}"
+                                       FontSize="11"
+                                       Foreground="{StaticResource Foreground2Brush}"/>
+                        </Grid>
+
+                        <Grid Height="8">
+                            <!-- AGC background bar -->
+                            <Border Background="{StaticResource BackgroundBrush}"
+                                    CornerRadius="4"
+                                    HorizontalAlignment="Stretch"/>
+
+                            <!-- AGC level indicator -->
+                            <Border CornerRadius="4"
+                                    HorizontalAlignment="Left"
+                                    Width="{Binding AgcBoostPercent, Converter={x:Static conv:AudioLevelToWidthConverter.Instance}, ConverterParameter=300}">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
+                                        <GradientStop Color="#3b82f6" Offset="0"/>
+                                        <GradientStop Color="#8b5cf6" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                            </Border>
+                        </Grid>
+
+                        <TextBlock Text="Speak into your microphone. Auto gain adjusts automatically to keep your voice at a consistent level."
                                    FontSize="12"
                                    Foreground="{StaticResource Foreground3Brush}"
                                    TextWrapping="Wrap"/>

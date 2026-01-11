@@ -21,6 +21,7 @@ public class AudioSettingsViewModel : ViewModelBase
     private bool _gateEnabled;
     private bool _isRefreshingDevices; // Flag to prevent binding feedback during refresh
     private bool _isLoadingDevices;
+    private float _agcGain = 1.0f;
 
     public AudioSettingsViewModel(ISettingsStore settingsStore, IAudioDeviceService audioDeviceService)
     {
@@ -176,6 +177,35 @@ public class AudioSettingsViewModel : ViewModelBase
     // Is the current input level above the gate threshold?
     public bool IsAboveGate => !_gateEnabled || _inputLevel >= _gateThreshold;
 
+    // AGC gain (1.0 to 16.0)
+    public float AgcGain
+    {
+        get => _agcGain;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _agcGain, value);
+            this.RaisePropertyChanged(nameof(AgcGainDisplay));
+            this.RaisePropertyChanged(nameof(AgcBoostPercent));
+            this.RaisePropertyChanged(nameof(AgcStatus));
+        }
+    }
+
+    // Display string for AGC gain (e.g., "2.3x")
+    public string AgcGainDisplay => $"{_agcGain:F1}x";
+
+    // AGC boost as percentage (0-100 where 100 = max boost)
+    // AGC goes from 1x to 16x, so we map that to 0-100%
+    public float AgcBoostPercent => Math.Min(100f, (_agcGain - 1f) / 15f * 100f);
+
+    // Status text based on AGC level
+    public string AgcStatus => _agcGain switch
+    {
+        < 1.5f => "Normal",
+        < 4f => "Boosting",
+        < 8f => "High boost",
+        _ => "Max boost"
+    };
+
     public bool IsLoadingDevices
     {
         get => _isLoadingDevices;
@@ -239,17 +269,23 @@ public class AudioSettingsViewModel : ViewModelBase
             IsTestingMicrophone = false;
             IsLoopbackEnabled = false;
             InputLevel = 0;
+            AgcGain = 1.0f;
         }
         else
         {
             try
             {
+                AgcGain = 1.0f; // Reset AGC display
                 await _audioDeviceService.StartInputTestAsync(
                     _selectedInputDevice,
                     level => Dispatcher.UIThread.Post(() =>
                     {
                         // Level already has gain applied by AudioDeviceService
                         InputLevel = level;
+                    }),
+                    agcGain => Dispatcher.UIThread.Post(() =>
+                    {
+                        AgcGain = agcGain;
                     })
                 );
                 IsTestingMicrophone = true;
@@ -267,6 +303,7 @@ public class AudioSettingsViewModel : ViewModelBase
         await _audioDeviceService.StopTestAsync();
         IsLoopbackEnabled = false;
         InputLevel = 0;
+        AgcGain = 1.0f;
 
         try
         {
@@ -276,6 +313,10 @@ public class AudioSettingsViewModel : ViewModelBase
                 {
                     // Level already has gain applied by AudioDeviceService
                     InputLevel = level;
+                }),
+                agcGain => Dispatcher.UIThread.Post(() =>
+                {
+                    AgcGain = agcGain;
                 })
             );
 
