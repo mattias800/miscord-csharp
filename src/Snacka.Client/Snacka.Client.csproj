@@ -13,6 +13,8 @@
     <FileVersion>0.1.1</FileVersion>
     <!-- Application icon (Windows) -->
     <ApplicationIcon>snacka.ico</ApplicationIcon>
+    <!-- Windows application manifest for NativeControlHost and DPI awareness -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <!-- Avalonia assets -->
