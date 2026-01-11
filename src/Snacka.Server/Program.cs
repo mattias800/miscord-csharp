@@ -1,5 +1,7 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Snacka.Server.Data;
@@ -15,6 +17,103 @@ builder.Services.Configure<JwtSettings>(
 
 var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()
     ?? throw new InvalidOperationException("JWT settings are not configured.");
+
+// SECURITY: Get JWT secret from environment variable, with fallback for development only
+var jwtSecretFromEnv = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
+var jwtSecretFromConfig = jwtSettings.SecretKey;
+
+if (!string.IsNullOrEmpty(jwtSecretFromEnv))
+{
+    // Use environment variable (preferred for production)
+    jwtSettings.SecretKey = jwtSecretFromEnv;
+}
+else if (string.IsNullOrEmpty(jwtSecretFromConfig))
+{
+    if (builder.Environment.IsDevelopment())
+    {
+        // Generate a random secret for development only
+        jwtSettings.SecretKey = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+        Console.WriteLine("WARNING: Using auto-generated JWT secret for development. Set JWT_SECRET_KEY environment variable for production.");
+    }
+    else
+    {
+        throw new InvalidOperationException(
+            "JWT secret key is not configured. Set the JWT_SECRET_KEY environment variable.");
+    }
+}
+
+if (jwtSettings.SecretKey.Length < 32)
+{
+    throw new InvalidOperationException("JWT secret key must be at least 32 characters long.");
+}
+
+// SECURITY: Configure rate limiting to prevent brute force attacks
+builder.Services.AddRateLimiter(options =>
+{
+    // Reject requests that exceed rate limits with 429 Too Many Requests
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Login: 10 attempts per minute per IP (allows typos, prevents brute force)
+    options.AddPolicy("login", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0 // Don't queue, reject immediately
+            }));
+
+    // Register: 5 attempts per hour per IP (prevents mass account creation)
+    options.AddPolicy("register", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromHours(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            }));
+
+    // Refresh token: 30 attempts per minute per IP (more generous for automated refresh)
+    options.AddPolicy("refresh", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            }));
+
+    // General API rate limit: 100 requests per minute per IP (for other endpoints)
+    options.AddPolicy("api", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 100,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            }));
+
+    // Log when rate limits are exceeded
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        var logger = context.HttpContext.RequestServices.GetService<ILogger<Program>>();
+        logger?.LogWarning("Rate limit exceeded for {IP} on {Path}",
+            context.HttpContext.Connection.RemoteIpAddress,
+            context.HttpContext.Request.Path);
+
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        await context.HttpContext.Response.WriteAsync(
+            "Too many requests. Please try again later.", cancellationToken);
+    };
+});
 
 // Add database context - Use SQLite for local development, PostgreSQL for production
 var useSqlite = builder.Configuration.GetValue<bool>("UseSqlite", true);
@@ -108,15 +207,36 @@ builder.Services.AddOpenApi();
 // Add SignalR
 builder.Services.AddSignalR();
 
-// Add CORS for development
+// Configure CORS - restrict to configured origins in production
+var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>();
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    if (builder.Environment.IsDevelopment() || allowedOrigins == null || allowedOrigins.Length == 0)
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
-    });
+        // Development mode: allow all origins but log a warning
+        options.AddPolicy("AllowConfigured", policy =>
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
+        });
+        if (!builder.Environment.IsDevelopment())
+        {
+            Console.WriteLine("WARNING: CORS is configured to allow all origins. Set AllowedOrigins in appsettings.json for production.");
+        }
+    }
+    else
+    {
+        // Production mode: restrict to configured origins
+        options.AddPolicy("AllowConfigured", policy =>
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials();
+        });
+    }
 });
 
 var app = builder.Build();
@@ -177,7 +297,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseCors("AllowAll");
+app.UseCors("AllowConfigured");
+app.UseRateLimiter();
 
 // Serve static files (setup wizard, etc.)
 app.UseStaticFiles();

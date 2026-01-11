@@ -177,13 +177,21 @@ public class AttachmentsController : ControllerBase
 /// </summary>
 [ApiController]
 [Route("api/attachments")]
+[Authorize]
 public class AttachmentFilesController : ControllerBase
 {
+    private readonly SnackaDbContext _db;
     private readonly IFileStorageService _fileStorage;
+    private readonly ILogger<AttachmentFilesController> _logger;
 
-    public AttachmentFilesController(IFileStorageService fileStorage)
+    public AttachmentFilesController(
+        SnackaDbContext db,
+        IFileStorageService fileStorage,
+        ILogger<AttachmentFilesController> logger)
     {
+        _db = db;
         _fileStorage = fileStorage;
+        _logger = logger;
     }
 
     /// <summary>
@@ -192,11 +200,41 @@ public class AttachmentFilesController : ControllerBase
     [HttpGet("{storedFileName}")]
     public async Task<IActionResult> GetFile(string storedFileName, CancellationToken ct)
     {
+        var userId = GetCurrentUserId();
+        if (userId is null) return Unauthorized();
+
+        // Find the attachment and verify the user has access
+        var attachment = await _db.MessageAttachments
+            .Include(a => a.Message)
+            .ThenInclude(m => m.Channel)
+            .FirstOrDefaultAsync(a => a.StoredFileName == storedFileName, ct);
+
+        if (attachment?.Message?.Channel is null)
+            return NotFound();
+
+        // Check if user is a member of the community containing this attachment
+        var isMember = await _db.UserCommunities
+            .AnyAsync(uc => uc.UserId == userId &&
+                           uc.CommunityId == attachment.Message.Channel.CommunityId, ct);
+
+        if (!isMember)
+        {
+            _logger.LogWarning("User {UserId} attempted to access attachment {FileName} without membership",
+                userId, storedFileName);
+            return Forbid();
+        }
+
         var result = await _fileStorage.GetFileAsync(storedFileName, ct);
 
         if (result is null)
             return NotFound();
 
         return File(result.Stream, result.ContentType);
+    }
+
+    private Guid? GetCurrentUserId()
+    {
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(userIdClaim, out var userId) ? userId : null;
     }
 }

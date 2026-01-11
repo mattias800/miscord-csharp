@@ -2,6 +2,8 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using Snacka.Server.Data;
 using Snacka.Server.DTOs;
 using Snacka.Server.Hubs;
 using Snacka.Server.Services;
@@ -13,13 +15,16 @@ namespace Snacka.Server.Controllers;
 [Authorize]
 public class DirectMessagesController : ControllerBase
 {
+    private readonly SnackaDbContext _db;
     private readonly IDirectMessageService _directMessageService;
     private readonly IHubContext<SnackaHub> _hubContext;
 
     public DirectMessagesController(
+        SnackaDbContext db,
         IDirectMessageService directMessageService,
         IHubContext<SnackaHub> hubContext)
     {
+        _db = db;
         _directMessageService = directMessageService;
         _hubContext = hubContext;
     }
@@ -114,10 +119,22 @@ public class DirectMessagesController : ControllerBase
 
         try
         {
+            // SECURITY: Get message info BEFORE deletion to notify only the participants
+            var message = await _db.DirectMessages
+                .AsNoTracking()
+                .Where(m => m.Id == id)
+                .Select(m => new { m.SenderId, m.RecipientId })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (message is null)
+                return NotFound(new { error = "Message not found." });
+
             await _directMessageService.DeleteMessageAsync(id, userId.Value, cancellationToken);
 
-            // Notify via SignalR
-            await _hubContext.Clients.All.SendAsync("DirectMessageDeleted", id, cancellationToken);
+            // Notify only the two participants (not all users)
+            await _hubContext.Clients
+                .Users(message.SenderId.ToString(), message.RecipientId.ToString())
+                .SendAsync("DirectMessageDeleted", id, cancellationToken);
 
             return NoContent();
         }

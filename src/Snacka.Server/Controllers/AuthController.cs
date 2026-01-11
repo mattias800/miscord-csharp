@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Snacka.Server.DTOs;
 using Snacka.Server.Services;
@@ -16,6 +17,7 @@ public class AuthController : ControllerBase
     public AuthController(IAuthService authService) => _authService = authService;
 
     [HttpPost("register")]
+    [EnableRateLimiting("register")]
     public async Task<ActionResult<AuthResponse>> Register(
         [FromBody] RegisterRequest request,
         CancellationToken cancellationToken)
@@ -32,6 +34,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("login")]
     public async Task<ActionResult<AuthResponse>> Login(
         [FromBody] LoginRequest request,
         CancellationToken cancellationToken)
@@ -48,6 +51,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("refresh")]
+    [EnableRateLimiting("refresh")]
     public async Task<ActionResult<AuthResponse>> Refresh(
         [FromBody] RefreshTokenRequest request,
         CancellationToken cancellationToken)

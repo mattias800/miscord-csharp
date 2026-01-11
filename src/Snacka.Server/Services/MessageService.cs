@@ -30,8 +30,14 @@ public sealed class MessageService : IMessageService
         return messages.Select(m => ToMessageResponse(m, currentUserId)).Reverse();
     }
 
+    private const int MaxMessageLength = 4000;
+
     public async Task<MessageResponse> SendMessageAsync(Guid channelId, Guid authorId, string content, Guid? replyToId = null, CancellationToken cancellationToken = default)
     {
+        // SECURITY: Validate message content length
+        if (content.Length > MaxMessageLength)
+            throw new InvalidOperationException($"Message cannot exceed {MaxMessageLength} characters.");
+
         var author = await _db.Users.FindAsync([authorId], cancellationToken)
             ?? throw new InvalidOperationException("User not found.");
 
@@ -65,6 +71,10 @@ public sealed class MessageService : IMessageService
 
     public async Task<MessageResponse> UpdateMessageAsync(Guid messageId, Guid userId, string content, CancellationToken cancellationToken = default)
     {
+        // SECURITY: Validate message content length
+        if (content.Length > MaxMessageLength)
+            throw new InvalidOperationException($"Message cannot exceed {MaxMessageLength} characters.");
+
         var message = await _db.Messages
             .Include(m => m.Author)
             .FirstOrDefaultAsync(m => m.Id == messageId, cancellationToken)

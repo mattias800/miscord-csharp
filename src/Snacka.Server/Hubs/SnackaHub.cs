@@ -226,6 +226,14 @@ public class SnackaHub : Hub
         var userId = GetUserId();
         if (userId is null) return;
 
+        // SECURITY: Verify users share at least one community (basic relationship check)
+        if (!await DoUsersShareCommunityAsync(userId.Value, recipientUserId))
+        {
+            _logger.LogWarning("User {UserId} attempted to send DM typing to {RecipientId} without shared community",
+                userId.Value, recipientUserId);
+            return;
+        }
+
         var user = await _db.Users.FindAsync(userId.Value);
         if (user is null) return;
 
@@ -731,6 +739,48 @@ public class SnackaHub : Hub
         return membership?.Role;
     }
 
+    /// <summary>
+    /// Gets the voice channel ID where a user is currently participating.
+    /// Returns null if user is not in any voice channel.
+    /// </summary>
+    private async Task<Guid?> GetUserVoiceChannelAsync(Guid userId)
+    {
+        var participant = await _db.VoiceParticipants
+            .Where(p => p.UserId == userId)
+            .Select(p => p.ChannelId)
+            .FirstOrDefaultAsync();
+        return participant == Guid.Empty ? null : participant;
+    }
+
+    /// <summary>
+    /// Checks if two users are in the same voice channel.
+    /// </summary>
+    private async Task<bool> AreUsersInSameVoiceChannelAsync(Guid userId1, Guid userId2)
+    {
+        var channels = await _db.VoiceParticipants
+            .Where(p => p.UserId == userId1 || p.UserId == userId2)
+            .Select(p => new { p.UserId, p.ChannelId })
+            .ToListAsync();
+
+        var user1Channel = channels.FirstOrDefault(c => c.UserId == userId1)?.ChannelId;
+        var user2Channel = channels.FirstOrDefault(c => c.UserId == userId2)?.ChannelId;
+
+        return user1Channel.HasValue && user2Channel.HasValue && user1Channel == user2Channel;
+    }
+
+    /// <summary>
+    /// Checks if two users share at least one community.
+    /// </summary>
+    private async Task<bool> DoUsersShareCommunityAsync(Guid userId1, Guid userId2)
+    {
+        var user1Communities = _db.UserCommunities
+            .Where(uc => uc.UserId == userId1)
+            .Select(uc => uc.CommunityId);
+
+        return await _db.UserCommunities
+            .AnyAsync(uc => uc.UserId == userId2 && user1Communities.Contains(uc.CommunityId));
+    }
+
     // ==================== Screen Share Watching Methods ====================
 
     /// <summary>
@@ -784,11 +834,14 @@ public class SnackaHub : Hub
         var userId = GetUserId();
         if (userId is null) return;
 
-        // Get the channel to find its community
-        var channel = await _db.Channels
-            .FirstOrDefaultAsync(c => c.Id == message.ChannelId);
-
-        if (channel is null) return;
+        // SECURITY: Verify user is in the voice channel they're trying to annotate
+        var userChannelId = await GetUserVoiceChannelAsync(userId.Value);
+        if (userChannelId != message.ChannelId)
+        {
+            _logger.LogWarning("User {UserId} attempted to annotate channel {ChannelId} without being in it",
+                userId.Value, message.ChannelId);
+            return;
+        }
 
         // Broadcast annotation to all users in the voice channel
         await Clients.Group($"voice:{message.ChannelId}")
@@ -805,6 +858,15 @@ public class SnackaHub : Hub
     {
         var userId = GetUserId();
         if (userId is null) return;
+
+        // SECURITY: Verify user is in the voice channel
+        var userChannelId = await GetUserVoiceChannelAsync(userId.Value);
+        if (userChannelId != channelId)
+        {
+            _logger.LogWarning("User {UserId} attempted to clear annotations in channel {ChannelId} without being in it",
+                userId.Value, channelId);
+            return;
+        }
 
         var clearMessage = new AnnotationMessage
         {
@@ -827,6 +889,14 @@ public class SnackaHub : Hub
         var userId = GetUserId();
         if (userId is null) return;
 
+        // SECURITY: Verify both users are in the same voice channel
+        if (!await AreUsersInSameVoiceChannelAsync(userId.Value, targetUserId))
+        {
+            _logger.LogWarning("User {UserId} attempted WebRTC offer to {TargetUserId} without being in same voice channel",
+                userId.Value, targetUserId);
+            return;
+        }
+
         string? targetConnectionId;
         lock (Lock)
         {
@@ -846,6 +916,14 @@ public class SnackaHub : Hub
         var userId = GetUserId();
         if (userId is null) return;
 
+        // SECURITY: Verify both users are in the same voice channel
+        if (!await AreUsersInSameVoiceChannelAsync(userId.Value, targetUserId))
+        {
+            _logger.LogWarning("User {UserId} attempted WebRTC answer to {TargetUserId} without being in same voice channel",
+                userId.Value, targetUserId);
+            return;
+        }
+
         string? targetConnectionId;
         lock (Lock)
         {
@@ -864,6 +942,14 @@ public class SnackaHub : Hub
     {
         var userId = GetUserId();
         if (userId is null) return;
+
+        // SECURITY: Verify both users are in the same voice channel
+        if (!await AreUsersInSameVoiceChannelAsync(userId.Value, targetUserId))
+        {
+            _logger.LogWarning("User {UserId} attempted to send ICE candidate to {TargetUserId} without being in same voice channel",
+                userId.Value, targetUserId);
+            return;
+        }
 
         string? targetConnectionId;
         lock (Lock)
