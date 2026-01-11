@@ -214,7 +214,16 @@ public class ApiClient : IApiClient
     {
         if (string.IsNullOrEmpty(_baseUrl))
             return null;
-        return $"{_baseUrl}/api/users/{userId}/avatar";
+
+        var url = $"{_baseUrl}/api/auth/{userId}/avatar";
+
+        // Append access token for authenticated image loading
+        if (!string.IsNullOrEmpty(_authToken))
+        {
+            url = $"{url}?access_token={Uri.EscapeDataString(_authToken)}";
+        }
+
+        return url;
     }
 
     private static string GetContentType(string fileName)

@@ -134,7 +134,7 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero
     };
 
-    // Allow JWT tokens to be passed in query string for SignalR and attachments
+    // Allow JWT tokens to be passed in query string for SignalR, attachments, and avatars
     // This enables <img> tags to load authenticated images via ?access_token=xxx
     options.Events = new JwtBearerEvents
     {
@@ -143,7 +143,9 @@ builder.Services.AddAuthentication(options =>
             var accessToken = context.Request.Query["access_token"];
             var path = context.HttpContext.Request.Path;
             if (!string.IsNullOrEmpty(accessToken) &&
-                (path.StartsWithSegments("/hubs") || path.StartsWithSegments("/api/attachments")))
+                (path.StartsWithSegments("/hubs") ||
+                 path.StartsWithSegments("/api/attachments") ||
+                 path.Value?.Contains("/avatar") == true))
             {
                 context.Token = accessToken;
             }

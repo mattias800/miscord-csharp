@@ -252,8 +252,13 @@ public class UsersController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Get a user's avatar image.
+    /// Requires authentication but not community membership - avatars are visible to all logged-in users.
+    /// Authentication via query string (?access_token=xxx) is supported for img tags.
+    /// </summary>
     [HttpGet("{userId:guid}/avatar")]
-    [AllowAnonymous]
+    [Authorize]
     public async Task<ActionResult> GetUserAvatar(Guid userId, CancellationToken cancellationToken)
     {
         try
