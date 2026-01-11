@@ -351,7 +351,7 @@
                                                     <MenuItem IsVisible="{Binding !IsCurrentUser}">
                                                         <MenuItem.Header>
                                                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                                                <Slider Width="120" Minimum="0" Maximum="200"
+                                                                <Slider Width="120" Minimum="0" Maximum="300"
                                                                         Value="{Binding VolumePercent}"
                                                                         VerticalAlignment="Center"/>
                                                                 <TextBlock Text="{Binding VolumePercent, StringFormat={}{0}%}"

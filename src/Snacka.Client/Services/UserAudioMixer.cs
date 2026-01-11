@@ -56,7 +56,7 @@ public class UserAudioMixer : IUserAudioMixer
     private SDL2AudioEndPoint? _audioOutput;
     private float _masterVolume = 1.0f;
     private const float DefaultVolume = 1.0f;
-    private const float MaxVolume = 2.0f; // 200%
+    private const float MaxVolume = 3.0f; // 300% - matches input gain range
 
     // Separate encoder and output for screen audio to avoid Opus decoder state corruption
     // The Opus codec is stateful - sharing a decoder between mic and screen audio corrupts both

@@ -17,7 +17,7 @@ public class UserSettings
     public string? AudioOutputDevice { get; set; } // null = default device
     public float InputVolume { get; set; } = 1.0f;
     public float OutputVolume { get; set; } = 1.0f;
-    public float InputGain { get; set; } = 1.0f;   // 0.0 to 3.0 (0% to 300%)
+    public float InputGain { get; set; } = 1.0f;   // 0.0 to 3.0 (0% to 300%), manual adjustment on top of AGC
     public float GateThreshold { get; set; } = 0.02f; // 0.0 to 0.5 (normalized RMS threshold)
     public bool GateEnabled { get; set; } = true;
 
@@ -31,7 +31,7 @@ public class UserSettings
     // Video settings
     public string? VideoDevice { get; set; }  // null = default/first camera
 
-    // Per-user volume settings (key: UserId as string, value: volume 0.0-2.0)
+    // Per-user volume settings (key: UserId as string, value: volume 0.0-3.0)
     public Dictionary<string, float> UserVolumes { get; set; } = new();
 
     // Quick Switcher recent items

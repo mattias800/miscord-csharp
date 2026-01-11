@@ -194,7 +194,7 @@
                                                            VerticalAlignment="Center"/>
                                                 <Slider Width="70"
                                                         Minimum="0"
-                                                        Maximum="200"
+                                                        Maximum="300"
                                                         Value="{Binding VolumePercent}"
                                                         VerticalAlignment="Center"/>
                                                 <TextBlock Text="{Binding VolumePercent, StringFormat={}{0}%}"

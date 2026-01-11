@@ -463,7 +463,7 @@
                                            VerticalAlignment="Center"/>
                                 <Slider Width="100"
                                         Minimum="0"
-                                        Maximum="200"
+                                        Maximum="300"
                                         Value="{Binding FullscreenStream.VolumePercent}"
                                         VerticalAlignment="Center"/>
                                 <TextBlock Text="{Binding FullscreenStream.VolumePercent, StringFormat={}{0}%}"

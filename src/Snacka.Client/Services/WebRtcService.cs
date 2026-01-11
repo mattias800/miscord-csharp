@@ -226,6 +226,16 @@ public class WebRtcService : IWebRtcService
     private const int SpeakingTimeoutMs = 200; // Time before speaking state turns off
     private const int SpeakingCheckIntervalMs = 50;
 
+    // Automatic Gain Control (AGC) for consistent microphone levels
+    private float _agcGain = 1.0f;                    // Current AGC gain multiplier
+    private const float AgcTargetRms = 6000f;         // Target RMS level (~-15dB from max)
+    private const float AgcMinGain = 1.0f;            // Don't reduce below unity (let gate handle silence)
+    private const float AgcMaxGain = 16.0f;           // Max 16x boost
+    private const float AgcAttackCoeff = 0.1f;        // Fast attack (10% per frame) to catch loud sounds
+    private const float AgcReleaseCoeff = 0.005f;     // Slow release (0.5% per frame) for natural sound
+    private const float AgcSilenceThreshold = 200f;   // RMS below this is considered silence (don't adjust)
+    private const float BaselineInputBoost = 4.0f;    // 4x baseline boost before AGC
+
     public Guid? CurrentChannelId => _currentChannelId;
     public Guid? CurrentUserId => _localUserId == Guid.Empty ? null : _localUserId;
     public VoiceConnectionStatus ConnectionStatus => _connectionStatus;
@@ -437,30 +447,70 @@ public class WebRtcService : IWebRtcService
     {
         if (_isMuted || sample.Length == 0) return;
 
-        // Get gain and gate settings
-        var gain = _settingsStore?.Settings.InputGain ?? 1.0f;
+        // Get user settings
+        var manualGain = _settingsStore?.Settings.InputGain ?? 1.0f;
         var gateEnabled = _settingsStore?.Settings.GateEnabled ?? true;
         var gateThreshold = _settingsStore?.Settings.GateThreshold ?? 0.02f;
 
-        // Calculate RMS (Root Mean Square) for voice activity detection
-        // Apply gain during calculation and modify samples in-place
+        // Step 1: Calculate input RMS before any processing
         double sumOfSquares = 0;
         for (int i = 0; i < sample.Length; i++)
         {
-            // Apply gain to sample
-            var gainedSample = sample[i] * gain;
-            // Clamp to short range to prevent overflow
-            gainedSample = Math.Clamp(gainedSample, short.MinValue, short.MaxValue);
-            sample[i] = (short)gainedSample;
-            sumOfSquares += gainedSample * gainedSample;
+            sumOfSquares += (double)sample[i] * sample[i];
         }
-        double rms = Math.Sqrt(sumOfSquares / sample.Length);
+        float inputRms = (float)Math.Sqrt(sumOfSquares / sample.Length);
 
-        // Normalize RMS to 0-1 range (short.MaxValue = 32767)
-        double normalizedRms = Math.Min(1.0, rms / 10000.0);
+        // Step 2: Update AGC gain (only if not silence)
+        if (inputRms > AgcSilenceThreshold)
+        {
+            // Calculate desired gain to reach target RMS
+            float desiredGain = AgcTargetRms / inputRms;
+            desiredGain = Math.Clamp(desiredGain, AgcMinGain, AgcMaxGain);
+
+            // Smoothly adjust current gain toward desired gain
+            // Use fast attack (loud sounds) and slow release (quiet sounds)
+            if (desiredGain < _agcGain)
+            {
+                // Attack: getting quieter (loud input), adjust quickly
+                _agcGain += (desiredGain - _agcGain) * AgcAttackCoeff;
+            }
+            else
+            {
+                // Release: getting louder (quiet input), adjust slowly
+                _agcGain += (desiredGain - _agcGain) * AgcReleaseCoeff;
+            }
+        }
+
+        // Step 3: Calculate total gain = baseline boost * AGC * manual adjustment
+        // Manual gain is centered at 1.0 (100%), range 0-3 (0-300%)
+        // Values < 1.0 reduce volume, > 1.0 increase volume
+        float totalGain = BaselineInputBoost * _agcGain * manualGain;
+
+        // Step 4: Apply total gain to samples
+        for (int i = 0; i < sample.Length; i++)
+        {
+            float gainedSample = sample[i] * totalGain;
+            // Soft clipping to prevent harsh distortion on peaks
+            if (gainedSample > 30000f)
+                gainedSample = 30000f + (gainedSample - 30000f) * 0.1f;
+            else if (gainedSample < -30000f)
+                gainedSample = -30000f + (gainedSample + 30000f) * 0.1f;
+            // Final hard clamp
+            sample[i] = (short)Math.Clamp(gainedSample, short.MinValue, short.MaxValue);
+        }
+
+        // Step 5: Calculate output RMS for voice activity detection
+        sumOfSquares = 0;
+        for (int i = 0; i < sample.Length; i++)
+        {
+            sumOfSquares += (double)sample[i] * sample[i];
+        }
+        double outputRms = Math.Sqrt(sumOfSquares / sample.Length);
+
+        // Normalize RMS to 0-1 range for gate comparison
+        double normalizedRms = Math.Min(1.0, outputRms / 10000.0);
 
         // Apply gate: only consider as voice activity if above threshold
-        // Gate threshold is in 0-0.5 range, normalized RMS is 0-1
         var effectiveThreshold = gateEnabled ? gateThreshold : 0.0;
         var isAboveGate = normalizedRms > effectiveThreshold;
 
