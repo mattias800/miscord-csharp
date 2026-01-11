@@ -52,11 +52,10 @@
                 </StackPanel>
             </StackPanel>
 
-            <!-- Voice Controls (only show when connected) - no mute/deafen since they're in user panel -->
-            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8"
-                        IsVisible="{Binding IsVoiceConnected, RelativeSource={RelativeSource AncestorType=controls:VoiceConnectedPanelView}}">
-                <!-- Camera Button - green when on -->
-                <Panel>
+            <!-- Voice Controls -->
+            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
+                <!-- Camera Button - only show when connected, green when on -->
+                <Panel IsVisible="{Binding IsVoiceConnected, RelativeSource={RelativeSource AncestorType=controls:VoiceConnectedPanelView}}">
                     <Button Command="{Binding ToggleCameraCommand, RelativeSource={RelativeSource AncestorType=controls:VoiceConnectedPanelView}}"
                             Padding="8"
                             CornerRadius="4"
@@ -76,8 +75,8 @@
                         <ui:SymbolIcon Symbol="Video" Foreground="White" FontSize="16"/>
                     </Button>
                 </Panel>
-                <!-- Screen Share Button - green when sharing -->
-                <Panel>
+                <!-- Screen Share Button - only show when connected, green when sharing -->
+                <Panel IsVisible="{Binding IsVoiceConnected, RelativeSource={RelativeSource AncestorType=controls:VoiceConnectedPanelView}}">
                     <Button Command="{Binding ToggleScreenShareCommand, RelativeSource={RelativeSource AncestorType=controls:VoiceConnectedPanelView}}"
                             Padding="8"
                             CornerRadius="4"
@@ -107,6 +106,7 @@
                         <ui:SymbolIcon Symbol="Edit" Foreground="White" FontSize="16"/>
                     </ToggleButton>
                 </Panel>
+                <!-- Disconnect Button - always visible (works for both cancel and disconnect) -->
                 <Button Command="{Binding LeaveVoiceChannelCommand, RelativeSource={RelativeSource AncestorType=controls:VoiceConnectedPanelView}}"
                         Background="#ed4245"
                         Padding="8"
