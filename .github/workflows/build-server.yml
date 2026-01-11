@@ -9,6 +9,8 @@ on:
       - 'src/Snacka.WebRTC/**'
       - 'Dockerfile'
       - '.github/workflows/build-server.yml'
+    tags:
+      - 'v*'  # Tags always trigger, paths filter only applies to branches
   pull_request:
     branches: [master]
   workflow_dispatch:
@@ -47,6 +49,8 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix=
             type=raw,value=latest,enable={{is_default_branch}}
 
