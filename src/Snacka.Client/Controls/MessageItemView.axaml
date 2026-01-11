@@ -105,6 +105,7 @@
                             <DataTemplate>
                                 <controls:AttachmentPreview Attachment="{Binding}"
                                                            BaseUrl="{Binding BaseUrl, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
+                                                           AccessToken="{Binding AccessToken, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
                                                            ImageClicked="AttachmentPreview_ImageClicked"/>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>

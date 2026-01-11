@@ -25,6 +25,9 @@ public partial class ThreadPanelView : UserControl
     public static readonly StyledProperty<string?> BaseUrlProperty =
         AvaloniaProperty.Register<ThreadPanelView, string?>(nameof(BaseUrl));
 
+    public static readonly StyledProperty<string?> AccessTokenProperty =
+        AvaloniaProperty.Register<ThreadPanelView, string?>(nameof(AccessToken));
+
     public ThreadPanelView()
     {
         InitializeComponent();
@@ -46,6 +49,12 @@ public partial class ThreadPanelView : UserControl
     {
         get => GetValue(BaseUrlProperty);
         set => SetValue(BaseUrlProperty, value);
+    }
+
+    public string? AccessToken
+    {
+        get => GetValue(AccessTokenProperty);
+        set => SetValue(AccessTokenProperty, value);
     }
 
     // Events that bubble up to the parent

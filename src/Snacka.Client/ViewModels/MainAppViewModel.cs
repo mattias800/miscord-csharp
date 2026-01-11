@@ -965,6 +965,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public ISettingsStore SettingsStore => _settingsStore;
     public IApiClient ApiClient => _apiClient;
     public string BaseUrl => _baseUrl;
+    public string AccessToken => _auth.AccessToken;
 
     public ObservableCollection<CommunityResponse> Communities { get; }
     public ObservableCollection<ChannelResponse> Channels { get; }

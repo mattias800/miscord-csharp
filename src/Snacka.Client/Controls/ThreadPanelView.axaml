@@ -109,6 +109,7 @@
                             Reactions="{Binding Reactions}"
                             Attachments="{Binding Attachments}"
                             BaseUrl="{Binding BaseUrl, RelativeSource={RelativeSource AncestorType=controls:ThreadPanelView}}"
+                            AccessToken="{Binding AccessToken, RelativeSource={RelativeSource AncestorType=controls:ThreadPanelView}}"
                             StartEditMessageCommand="{Binding StartEditMessageCommand, RelativeSource={RelativeSource AncestorType=controls:ThreadPanelView}}"
                             DeleteMessageCommand="{Binding DeleteMessageCommand, RelativeSource={RelativeSource AncestorType=controls:ThreadPanelView}}"
                             ShowThreadIndicator="False"

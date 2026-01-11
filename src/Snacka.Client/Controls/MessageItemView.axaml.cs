@@ -73,6 +73,9 @@ public partial class MessageItemView : UserControl
     public static readonly StyledProperty<string?> BaseUrlProperty =
         AvaloniaProperty.Register<MessageItemView, string?>(nameof(BaseUrl));
 
+    public static readonly StyledProperty<string?> AccessTokenProperty =
+        AvaloniaProperty.Register<MessageItemView, string?>(nameof(AccessToken));
+
     // Command properties
     public static readonly StyledProperty<ICommand?> TogglePinCommandProperty =
         AvaloniaProperty.Register<MessageItemView, ICommand?>(nameof(TogglePinCommand));
@@ -201,6 +204,12 @@ public partial class MessageItemView : UserControl
     {
         get => GetValue(BaseUrlProperty);
         set => SetValue(BaseUrlProperty, value);
+    }
+
+    public string? AccessToken
+    {
+        get => GetValue(AccessTokenProperty);
+        set => SetValue(AccessTokenProperty, value);
     }
 
     // Commands

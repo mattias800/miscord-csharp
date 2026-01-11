@@ -83,6 +83,9 @@ public partial class ChatAreaView : UserControl
     public static readonly StyledProperty<string?> BaseUrlProperty =
         AvaloniaProperty.Register<ChatAreaView, string?>(nameof(BaseUrl));
 
+    public static readonly StyledProperty<string?> AccessTokenProperty =
+        AvaloniaProperty.Register<ChatAreaView, string?>(nameof(AccessToken));
+
     public static readonly StyledProperty<bool> IsEditingProperty =
         AvaloniaProperty.Register<ChatAreaView, bool>(nameof(IsEditing));
 
@@ -249,6 +252,12 @@ public partial class ChatAreaView : UserControl
     {
         get => GetValue(BaseUrlProperty);
         set => SetValue(BaseUrlProperty, value);
+    }
+
+    public string? AccessToken
+    {
+        get => GetValue(AccessTokenProperty);
+        set => SetValue(AccessTokenProperty, value);
     }
 
     public bool IsEditing

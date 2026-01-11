@@ -305,6 +305,7 @@
                                 IsPinned="{Binding IsPinned}"
                                 ReplyCount="{Binding ReplyCount}"
                                 BaseUrl="{Binding BaseUrl, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
+                                AccessToken="{Binding AccessToken, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
                                 TogglePinCommand="{Binding TogglePinCommand, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
                                 ReplyToMessageCommand="{Binding ReplyToMessageCommand, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
                                 StartEditMessageCommand="{Binding StartEditMessageCommand, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"

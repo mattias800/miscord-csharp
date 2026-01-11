@@ -51,6 +51,9 @@ public class AttachmentPreview : Border
     public static readonly StyledProperty<string?> BaseUrlProperty =
         AvaloniaProperty.Register<AttachmentPreview, string?>(nameof(BaseUrl));
 
+    public static readonly StyledProperty<string?> AccessTokenProperty =
+        AvaloniaProperty.Register<AttachmentPreview, string?>(nameof(AccessToken));
+
     public AttachmentResponse? Attachment
     {
         get => GetValue(AttachmentProperty);
@@ -61,6 +64,12 @@ public class AttachmentPreview : Border
     {
         get => GetValue(BaseUrlProperty);
         set => SetValue(BaseUrlProperty, value);
+    }
+
+    public string? AccessToken
+    {
+        get => GetValue(AccessTokenProperty);
+        set => SetValue(AccessTokenProperty, value);
     }
 
     /// <summary>
@@ -667,14 +676,30 @@ public class AttachmentPreview : Border
 
     private string GetFullUrl(string url)
     {
+        string fullUrl;
+
         if (url.StartsWith("http://") || url.StartsWith("https://"))
-            return url;
+        {
+            fullUrl = url;
+        }
+        else if (!string.IsNullOrEmpty(BaseUrl))
+        {
+            // Relative URL - prepend base URL
+            fullUrl = BaseUrl.TrimEnd('/') + url;
+        }
+        else
+        {
+            fullUrl = url;
+        }
 
-        // Relative URL - prepend base URL
-        if (!string.IsNullOrEmpty(BaseUrl))
-            return BaseUrl.TrimEnd('/') + url;
+        // Append access token for authenticated attachment downloads
+        if (!string.IsNullOrEmpty(AccessToken) && fullUrl.Contains("/api/attachments/"))
+        {
+            var separator = fullUrl.Contains('?') ? '&' : '?';
+            fullUrl = $"{fullUrl}{separator}access_token={Uri.EscapeDataString(AccessToken)}";
+        }
 
-        return url;
+        return fullUrl;
     }
 
     private static void LoadImageAsync(string url, Image imageControl)

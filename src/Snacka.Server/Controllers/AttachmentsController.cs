@@ -196,17 +196,44 @@ public class AttachmentFilesController : ControllerBase
 
     /// <summary>
     /// Download or view an attachment file.
-    /// Security: Uses unguessable UUID filenames (same approach as Discord, Slack).
-    /// This allows img tags to load attachments without Authorization headers.
+    /// Authentication via query string (?access_token=xxx) is supported for img tags.
+    /// User must be a member of the community where the attachment was uploaded.
     /// </summary>
-    [AllowAnonymous]
     [HttpGet("{storedFileName}")]
     public async Task<IActionResult> GetFile(string storedFileName, CancellationToken ct)
     {
-        // Validate filename format (should be a GUID-based name to prevent path traversal)
-        if (string.IsNullOrEmpty(storedFileName) || storedFileName.Contains("..") || storedFileName.Contains('/') || storedFileName.Contains('\\'))
+        var userId = GetCurrentUserId();
+        if (userId is null)
+            return Unauthorized();
+
+        // Validate filename format to prevent path traversal
+        if (string.IsNullOrEmpty(storedFileName) ||
+            storedFileName.Contains("..") ||
+            storedFileName.Contains('/') ||
+            storedFileName.Contains('\\'))
         {
             return BadRequest();
+        }
+
+        // Find the attachment and verify the user has access
+        var attachment = await _db.MessageAttachments
+            .Include(a => a.Message)
+            .ThenInclude(m => m.Channel)
+            .FirstOrDefaultAsync(a => a.StoredFileName == storedFileName, ct);
+
+        if (attachment?.Message?.Channel is null)
+            return NotFound();
+
+        // Check if user is a member of the community containing this attachment
+        var isMember = await _db.UserCommunities
+            .AnyAsync(uc => uc.UserId == userId &&
+                           uc.CommunityId == attachment.Message.Channel.CommunityId, ct);
+
+        if (!isMember)
+        {
+            _logger.LogWarning("User {UserId} attempted to access attachment {FileName} without community membership",
+                userId, storedFileName);
+            return Forbid();
         }
 
         var result = await _fileStorage.GetFileAsync(storedFileName, ct);
