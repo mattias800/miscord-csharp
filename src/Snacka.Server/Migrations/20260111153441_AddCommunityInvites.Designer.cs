@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Snacka.Server.Data;
 
@@ -10,9 +11,11 @@ using Snacka.Server.Data;
 namespace Snacka.Server.Migrations
 {
     [DbContext(typeof(SnackaDbContext))]
-    partial class SnackaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260111153441_AddCommunityInvites")]
+    partial class AddCommunityInvites
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.1");
