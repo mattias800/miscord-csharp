@@ -274,7 +274,7 @@ dotnet publish src/Snacka.Client/Snacka.Client.csproj \
 
 ### Docker Deployment (Server)
 
-The easiest way to deploy Snacka is using Docker Compose.
+The easiest way to deploy Snacka is using Docker Compose with pre-built images.
 
 #### Quick Start with Docker Compose
 
@@ -286,21 +286,21 @@ The easiest way to deploy Snacka is using Docker Compose.
 
 2. **Start the server:**
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
 3. **Check status:**
    ```bash
-   docker-compose ps
-   docker-compose logs -f
+   docker compose ps
+   docker compose logs -f
    ```
 
 4. **Stop the server:**
    ```bash
-   docker-compose down
+   docker compose down
    ```
 
-The database is persisted in a Docker volume (`snacka-data`).
+The database and uploads are persisted in Docker volumes (`snacka-data` and `snacka-uploads`).
 
 #### Using PostgreSQL (Recommended for Production)
 
@@ -312,7 +312,7 @@ USE_SQLITE=false
 POSTGRES_PASSWORD=your-secure-password
 
 # Start with PostgreSQL profile
-docker-compose --profile postgres up -d
+docker compose --profile postgres up -d
 ```
 
 This starts both the Snacka server and a PostgreSQL database container.
@@ -328,20 +328,62 @@ This starts both the Snacka server and a PostgreSQL database container.
 | `USE_SQLITE` | Use SQLite instead of PostgreSQL | true |
 | `POSTGRES_PASSWORD` | PostgreSQL password | snacka |
 | `TENOR_API_KEY` | Tenor GIF API key (optional) | *(empty)* |
+| `ALLOWED_ORIGIN` | CORS allowed origin | http://localhost:5117 |
 
-#### Manual Docker Build
+#### Using Pre-built Images
 
-If you prefer not to use docker-compose:
+The docker-compose.yml is configured to use pre-built images from GitHub Container Registry:
 
 ```bash
-# Build the image
-docker build -t snacka-server .
+# Pull latest image
+docker pull ghcr.io/mattias800/snacka:latest
 
-# Run the container
-docker run -d -p 5117:5117 \
+# Run with docker compose
+docker compose up -d
+```
+
+#### Building Locally
+
+If you prefer to build locally instead of using pre-built images, edit `docker-compose.yml`:
+
+```yaml
+services:
+  snacka-server:
+    # Comment out the image line
+    # image: ghcr.io/mattias800/snacka:latest
+    # Uncomment the build section
+    build:
+      context: .
+      dockerfile: Dockerfile
+```
+
+Then build and run:
+
+```bash
+docker compose build
+docker compose up -d
+```
+
+#### Manual Docker Run
+
+If you prefer not to use docker compose:
+
+```bash
+# Using pre-built image
+docker run -d -p 5117:8080 \
   --name snacka-server \
   -e Jwt__SecretKey=your-secret-key-at-least-32-characters \
   -v snacka-data:/app/data \
+  -v snacka-uploads:/app/uploads \
+  ghcr.io/mattias800/snacka:latest
+
+# Or build and run locally
+docker build -t snacka-server .
+docker run -d -p 5117:8080 \
+  --name snacka-server \
+  -e Jwt__SecretKey=your-secret-key-at-least-32-characters \
+  -v snacka-data:/app/data \
+  -v snacka-uploads:/app/uploads \
   snacka-server
 ```
 

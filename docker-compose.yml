@@ -1,13 +1,14 @@
-version: '3.8'
-
 services:
   snacka-server:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # Use pre-built image from GitHub Container Registry
+    # To build locally instead, comment out 'image' and uncomment 'build'
+    image: ghcr.io/mattias800/snacka:latest
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
     container_name: snacka-server
     ports:
-      - "5117:5117"
+      - "5117:8080"
     environment:
       # Database - set to false to use PostgreSQL
       - UseSqlite=${USE_SQLITE:-true}
@@ -26,25 +27,25 @@ services:
       # Tenor GIF API (optional - enables GIF picker)
       - Tenor__ApiKey=${TENOR_API_KEY:-}
       - Tenor__ClientKey=snacka
+      # CORS - Add your client origins here for production
+      - AllowedOrigins__0=${ALLOWED_ORIGIN:-http://localhost:5117}
       # Logging
       - Logging__LogLevel__Default=Information
       - Logging__LogLevel__Microsoft.AspNetCore=Warning
     volumes:
-      # Persist SQLite database (when using SQLite)
+      # Persist SQLite database
       - snacka-data:/app/data
-    depends_on:
-      postgres:
-        condition: service_healthy
-        required: false
+      # Persist uploaded files (attachments, avatars)
+      - snacka-uploads:/app/uploads
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5117/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
 
-  # PostgreSQL database (optional - enable by setting USE_SQLITE=false)
+  # PostgreSQL database (optional - enable with: docker compose --profile postgres up)
   postgres:
     image: postgres:16-alpine
     container_name: snacka-postgres
@@ -66,6 +67,8 @@ services:
 
 volumes:
   snacka-data:
+    driver: local
+  snacka-uploads:
     driver: local
   postgres-data:
     driver: local
