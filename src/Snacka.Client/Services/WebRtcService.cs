@@ -1276,6 +1276,13 @@ public class WebRtcService : IWebRtcService
 
         // Create and send answer
         var answer = _serverConnection.createAnswer();
+        if (answer == null)
+        {
+            Console.WriteLine("WebRTC SFU: Failed to create answer - createAnswer() returned null");
+            UpdateConnectionStatus(VoiceConnectionStatus.Disconnected);
+            return;
+        }
+
         await _serverConnection.setLocalDescription(answer);
 
         Console.WriteLine($"WebRTC SFU: Sending answer to server");
