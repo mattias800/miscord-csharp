@@ -13,9 +13,17 @@ on:
       - 'installers/**'
       - '.github/workflows/build-client.yml'
     tags:
-      - 'v*'
+      - 'v*'  # Tags always trigger, paths filter only applies to branches
   pull_request:
     branches: [master]
+    paths:
+      - 'src/Snacka.Client/**'
+      - 'src/Snacka.Shared/**'
+      - 'src/Snacka.WebRTC/**'
+      - 'src/SnackaCapture/**'
+      - 'src/SnackaMetalRenderer/**'
+      - 'installers/**'
+      - '.github/workflows/build-client.yml'
   workflow_dispatch:
     inputs:
       create_release:
