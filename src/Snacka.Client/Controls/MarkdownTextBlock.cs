@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Snacka.Client.Services;
+using System.Threading.Tasks;
 
 namespace Snacka.Client.Controls;
 
@@ -63,23 +64,62 @@ public class MarkdownTextBlock : StackPanel
         {
             // Check if any inline is a LinkRun
             var linkRuns = textBlock.Inlines.OfType<LinkRun>().ToList();
-            if (linkRuns.Count == 1)
+            if (linkRuns.Count == 0)
+                return;
+
+            // Get the clicked URL
+            string? url = linkRuns.Count == 1
+                ? linkRuns[0].Url
+                : GetClickedLinkUrl(textBlock, e.GetPosition(textBlock), linkRuns);
+
+            if (string.IsNullOrEmpty(url))
+                return;
+
+            var point = e.GetCurrentPoint(textBlock);
+
+            // Right-click: show context menu
+            if (point.Properties.IsRightButtonPressed)
             {
-                // Single link in the text block - open it
-                MarkdownParser.OpenUrl(linkRuns[0].Url);
+                ShowLinkContextMenu(textBlock, url, e.GetPosition(textBlock));
                 e.Handled = true;
             }
-            else if (linkRuns.Count > 1)
+            // Left-click: open link
+            else if (point.Properties.IsLeftButtonPressed)
             {
-                // Multiple links - try to determine which one was clicked
-                // For now, we'll use a simple heuristic based on position
-                var url = GetClickedLinkUrl(textBlock, e.GetPosition(textBlock), linkRuns);
-                if (!string.IsNullOrEmpty(url))
-                {
-                    MarkdownParser.OpenUrl(url);
-                    e.Handled = true;
-                }
+                MarkdownParser.OpenUrl(url);
+                e.Handled = true;
             }
+        }
+    }
+
+    /// <summary>
+    /// Shows a context menu for a link with Open and Copy options.
+    /// </summary>
+    private void ShowLinkContextMenu(Control target, string url, Point position)
+    {
+        var contextMenu = new ContextMenu();
+
+        var openItem = new MenuItem { Header = "Open link" };
+        openItem.Click += (_, _) => MarkdownParser.OpenUrl(url);
+
+        var copyItem = new MenuItem { Header = "Copy link" };
+        copyItem.Click += async (_, _) => await CopyToClipboard(url);
+
+        contextMenu.Items.Add(openItem);
+        contextMenu.Items.Add(copyItem);
+
+        contextMenu.Open(target);
+    }
+
+    /// <summary>
+    /// Copies text to the system clipboard.
+    /// </summary>
+    private async Task CopyToClipboard(string text)
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel?.Clipboard != null)
+        {
+            await topLevel.Clipboard.SetTextAsync(text);
         }
     }
 

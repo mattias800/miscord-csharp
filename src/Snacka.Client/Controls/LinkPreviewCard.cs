@@ -7,6 +7,7 @@ using Avalonia.Media.Imaging;
 using Snacka.Client.Services;
 using Snacka.Shared.Models;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace Snacka.Client.Controls;
 
@@ -57,21 +58,69 @@ public class LinkPreviewCard : Border
     {
         base.OnPointerPressed(e);
 
-        if (Preview?.Url != null)
+        if (Preview?.Url == null)
+            return;
+
+        var point = e.GetCurrentPoint(this);
+
+        // Right-click: show context menu
+        if (point.Properties.IsRightButtonPressed)
         {
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = Preview.Url,
-                    UseShellExecute = true
-                });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Failed to open URL: {ex.Message}");
-            }
+            ShowLinkContextMenu(Preview.Url);
             e.Handled = true;
+        }
+        // Left-click: open link
+        else if (point.Properties.IsLeftButtonPressed)
+        {
+            OpenUrl(Preview.Url);
+            e.Handled = true;
+        }
+    }
+
+    private void OpenUrl(string url)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to open URL: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Shows a context menu for a link with Open and Copy options.
+    /// </summary>
+    private void ShowLinkContextMenu(string url)
+    {
+        var contextMenu = new ContextMenu();
+
+        var openItem = new MenuItem { Header = "Open link" };
+        openItem.Click += (_, _) => OpenUrl(url);
+
+        var copyItem = new MenuItem { Header = "Copy link" };
+        copyItem.Click += async (_, _) => await CopyToClipboard(url);
+
+        contextMenu.Items.Add(openItem);
+        contextMenu.Items.Add(copyItem);
+
+        contextMenu.Open(this);
+    }
+
+    /// <summary>
+    /// Copies text to the system clipboard.
+    /// </summary>
+    private async Task CopyToClipboard(string text)
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel?.Clipboard != null)
+        {
+            await topLevel.Clipboard.SetTextAsync(text);
         }
     }
 
