@@ -82,27 +82,56 @@ public class AudioDeviceService : IAudioDeviceService
     private static bool _sdl2Initialized;
     private static readonly object _sdl2InitLock = new();
 
-    // SDL2 library paths to try on macOS
-    private static readonly string[] Sdl2Paths =
+    // Get platform-specific SDL2 library paths
+    private static string[] GetSdl2Paths()
     {
-        "/opt/homebrew/lib/libSDL2.dylib",      // Apple Silicon Homebrew
-        "/usr/local/lib/libSDL2.dylib",         // Intel Homebrew
-        "/usr/lib/libSDL2.dylib",               // System
-        "libSDL2.dylib",                        // Current directory / PATH
-        "SDL2"                                  // Let system find it
-    };
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return new[]
+            {
+                "SDL2.dll",                                                    // Current directory / PATH
+                Path.Combine(AppContext.BaseDirectory, "SDL2.dll"),            // App directory
+                Path.Combine(AppContext.BaseDirectory, "runtimes", "win-x64", "native", "SDL2.dll"),
+            };
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            return new[]
+            {
+                "/opt/homebrew/lib/libSDL2.dylib",      // Apple Silicon Homebrew
+                "/usr/local/lib/libSDL2.dylib",         // Intel Homebrew
+                "/usr/lib/libSDL2.dylib",               // System
+                "libSDL2.dylib",                        // Current directory / PATH
+                "SDL2",                                 // Let system find it
+            };
+        }
+        else // Linux
+        {
+            return new[]
+            {
+                "libSDL2-2.0.so.0",                              // Common versioned name
+                "libSDL2.so",                                    // Unversioned
+                "/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0",    // Debian/Ubuntu x64
+                "/usr/lib64/libSDL2-2.0.so.0",                   // Fedora/RHEL x64
+                "/usr/lib/libSDL2-2.0.so.0",                     // Generic
+                "SDL2",                                          // Let system find it
+            };
+        }
+    }
 
     private static IntPtr ResolveSdl2(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
     {
         if (libraryName == "SDL2" || libraryName == "libSDL2" || libraryName == "SDL2.dll")
         {
-            foreach (var path in Sdl2Paths)
+            foreach (var path in GetSdl2Paths())
             {
                 if (NativeLibrary.TryLoad(path, out var handle))
                 {
+                    Console.WriteLine($"AudioDeviceService: Loaded SDL2 from: {path}");
                     return handle;
                 }
             }
+            Console.WriteLine("AudioDeviceService: Failed to load SDL2 from any known path");
         }
         return IntPtr.Zero;
     }

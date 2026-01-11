@@ -1,0 +1,85 @@
+name: Test Audio Device Enumeration
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'src/Snacka.Client/Services/AudioDeviceService.cs'
+      - 'tools/AudioEnumTest/**'
+      - '.github/workflows/test-audio-enum.yml'
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '9.0.x'
+
+jobs:
+  test-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Build AudioEnumTest
+        run: |
+          dotnet build tools/AudioEnumTest -c Release
+
+      - name: Run AudioEnumTest
+        run: |
+          dotnet run --project tools/AudioEnumTest -c Release
+        continue-on-error: true
+
+      - name: Build Snacka.Client (verify compilation)
+        run: |
+          dotnet build src/Snacka.Client -c Release
+
+  test-macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install SDL2
+        run: brew install sdl2
+
+      - name: Build AudioEnumTest
+        run: |
+          dotnet build tools/AudioEnumTest -c Release
+
+      - name: Run AudioEnumTest
+        run: |
+          dotnet run --project tools/AudioEnumTest -c Release
+        continue-on-error: true
+
+  test-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install SDL2
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsdl2-dev
+
+      - name: Build AudioEnumTest
+        run: |
+          dotnet build tools/AudioEnumTest -c Release
+
+      - name: Run AudioEnumTest
+        run: |
+          dotnet run --project tools/AudioEnumTest -c Release
+        continue-on-error: true
