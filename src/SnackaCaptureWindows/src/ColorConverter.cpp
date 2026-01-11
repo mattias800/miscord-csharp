@@ -84,29 +84,21 @@ bool GpuColorConverter::CreateVideoProcessor(ID3D11Device* device) {
     }
 
     // Configure color space conversion
-    m_videoContext->VideoProcessorSetStreamColorSpace(m_videoProcessor.Get(), 0,
-        []() {
-            D3D11_VIDEO_PROCESSOR_COLOR_SPACE cs = {};
-            cs.Usage = 0;  // 0 = playback, 1 = video processing
-            cs.RGB_Range = 0;  // 0 = full range (0-255), 1 = studio range (16-235)
-            cs.YCbCr_Matrix = 1;  // 0 = BT.601, 1 = BT.709
-            cs.YCbCr_xvYCC = 0;
-            cs.Nominal_Range = D3D11_VIDEO_PROCESSOR_NOMINAL_RANGE_0_255;
-            return cs;
-        }()
-    );
+    D3D11_VIDEO_PROCESSOR_COLOR_SPACE inputColorSpace = {};
+    inputColorSpace.Usage = 0;  // 0 = playback, 1 = video processing
+    inputColorSpace.RGB_Range = 0;  // 0 = full range (0-255), 1 = studio range (16-235)
+    inputColorSpace.YCbCr_Matrix = 1;  // 0 = BT.601, 1 = BT.709
+    inputColorSpace.YCbCr_xvYCC = 0;
+    inputColorSpace.Nominal_Range = D3D11_VIDEO_PROCESSOR_NOMINAL_RANGE_0_255;
+    m_videoContext->VideoProcessorSetStreamColorSpace(m_videoProcessor.Get(), 0, &inputColorSpace);
 
-    m_videoContext->VideoProcessorSetOutputColorSpace(m_videoProcessor.Get(),
-        []() {
-            D3D11_VIDEO_PROCESSOR_COLOR_SPACE cs = {};
-            cs.Usage = 0;
-            cs.RGB_Range = 1;  // Studio range for NV12 output
-            cs.YCbCr_Matrix = 1;  // BT.709
-            cs.YCbCr_xvYCC = 0;
-            cs.Nominal_Range = D3D11_VIDEO_PROCESSOR_NOMINAL_RANGE_16_235;
-            return cs;
-        }()
-    );
+    D3D11_VIDEO_PROCESSOR_COLOR_SPACE outputColorSpace = {};
+    outputColorSpace.Usage = 0;
+    outputColorSpace.RGB_Range = 1;  // Studio range for NV12 output
+    outputColorSpace.YCbCr_Matrix = 1;  // BT.709
+    outputColorSpace.YCbCr_xvYCC = 0;
+    outputColorSpace.Nominal_Range = D3D11_VIDEO_PROCESSOR_NOMINAL_RANGE_16_235;
+    m_videoContext->VideoProcessorSetOutputColorSpace(m_videoProcessor.Get(), &outputColorSpace);
 
     return true;
 }

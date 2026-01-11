@@ -8,6 +8,7 @@
 #include <wrl/client.h>
 #include <atomic>
 #include <functional>
+#include <memory>
 
 // Windows.Graphics.Capture requires WinRT
 #include <winrt/Windows.Foundation.h>
