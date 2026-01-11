@@ -1009,6 +1009,13 @@ public class WebRtcService : IWebRtcService
     /// </summary>
     private async Task ProcessSfuOfferAsync(Guid channelId, string sdp)
     {
+        // Validate SDP parameter
+        if (string.IsNullOrEmpty(sdp))
+        {
+            Console.WriteLine($"WebRTC: Error - SFU offer has null or empty SDP for channel {channelId}");
+            UpdateConnectionStatus(VoiceConnectionStatus.Disconnected);
+            return;
+        }
 
         Console.WriteLine($"WebRTC: Received SFU offer for channel {channelId}");
 
@@ -1084,7 +1091,10 @@ public class WebRtcService : IWebRtcService
         _serverConnection.OnVideoFormatsNegotiated += formats =>
         {
             Console.WriteLine($"WebRTC SFU: Video formats negotiated: {string.Join(", ", formats.Select(f => f.FormatName))}");
-            _videoCodec = formats.First().Codec;
+            if (formats != null && formats.Any())
+            {
+                _videoCodec = formats.First().Codec;
+            }
         };
 
         // Handle incoming RTP packets (audio and video from server)
@@ -1272,10 +1282,31 @@ public class WebRtcService : IWebRtcService
             type = RTCSdpType.offer,
             sdp = sdp
         };
-        _serverConnection.setRemoteDescription(remoteDesc);
+
+        try
+        {
+            _serverConnection.setRemoteDescription(remoteDesc);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"WebRTC SFU: Failed to set remote description: {ex.Message}");
+            UpdateConnectionStatus(VoiceConnectionStatus.Disconnected);
+            return;
+        }
 
         // Create and send answer
-        var answer = _serverConnection.createAnswer();
+        RTCSessionDescriptionInit? answer;
+        try
+        {
+            answer = _serverConnection.createAnswer();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"WebRTC SFU: Failed to create answer: {ex.Message}");
+            UpdateConnectionStatus(VoiceConnectionStatus.Disconnected);
+            return;
+        }
+
         if (answer == null)
         {
             Console.WriteLine("WebRTC SFU: Failed to create answer - createAnswer() returned null");
@@ -1283,7 +1314,23 @@ public class WebRtcService : IWebRtcService
             return;
         }
 
-        await _serverConnection.setLocalDescription(answer);
+        if (string.IsNullOrEmpty(answer.sdp))
+        {
+            Console.WriteLine("WebRTC SFU: Failed to create answer - answer.sdp is null or empty");
+            UpdateConnectionStatus(VoiceConnectionStatus.Disconnected);
+            return;
+        }
+
+        try
+        {
+            await _serverConnection.setLocalDescription(answer);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"WebRTC SFU: Failed to set local description: {ex.Message}");
+            UpdateConnectionStatus(VoiceConnectionStatus.Disconnected);
+            return;
+        }
 
         Console.WriteLine($"WebRTC SFU: Sending answer to server");
         await _signalR.SendSfuAnswerAsync(channelId, answer.sdp);
