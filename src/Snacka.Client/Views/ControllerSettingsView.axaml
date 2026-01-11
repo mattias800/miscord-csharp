@@ -34,8 +34,8 @@
 
                 <Grid ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto">
                     <ComboBox Grid.Column="0"
-                              ItemsSource="{Binding AvailableControllers}"
-                              SelectedItem="{Binding SelectedController}"
+                              ItemsSource="{Binding ControllerItems}"
+                              SelectedItem="{Binding SelectedControllerItem}"
                               HorizontalAlignment="Stretch"
                               Background="{StaticResource Content1Brush}"
                               Foreground="{StaticResource ForegroundBrush}"
@@ -44,10 +44,10 @@
                               Padding="14,10"
                               MinHeight="44">
                         <ComboBox.ItemTemplate>
-                            <DataTemplate x:DataType="services:ControllerDevice">
+                            <DataTemplate x:DataType="vm:ControllerDeviceItem">
                                 <StackPanel>
-                                    <TextBlock Text="{Binding Name}" Foreground="{StaticResource ForegroundBrush}"/>
-                                    <TextBlock Text="{Binding Manufacturer}"
+                                    <TextBlock Text="{Binding DisplayName}" Foreground="{StaticResource ForegroundBrush}"/>
+                                    <TextBlock Text="{Binding DisplayManufacturer}"
                                                Foreground="{StaticResource Foreground3Brush}"
                                                FontSize="11"/>
                                 </StackPanel>

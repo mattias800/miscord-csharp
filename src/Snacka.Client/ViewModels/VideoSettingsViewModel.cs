@@ -36,8 +36,8 @@ public class VideoSettingsViewModel : ViewModelBase
         // Load saved selection
         _selectedVideoDevice = _settingsStore.Settings.VideoDevice;
 
-        // Add default option immediately so UI has something to show
-        VideoDevices.Add(new VideoDeviceItem(null, "Default"));
+        // Add "None" option immediately so UI has something to show
+        VideoDevices.Add(new VideoDeviceItem(null, "None"));
     }
 
     /// <summary>
@@ -113,8 +113,8 @@ public class VideoSettingsViewModel : ViewModelBase
             // Update collection on UI thread
             VideoDevices.Clear();
 
-            // Add default option
-            VideoDevices.Add(new VideoDeviceItem(null, "Default"));
+            // Add "None" option
+            VideoDevices.Add(new VideoDeviceItem(null, "None"));
 
             // Add available devices
             foreach (var device in devices)

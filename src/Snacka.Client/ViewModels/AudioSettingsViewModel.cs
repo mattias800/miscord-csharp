@@ -42,8 +42,8 @@ public class AudioSettingsViewModel : ViewModelBase
         _gateEnabled = _settingsStore.Settings.GateEnabled;
 
         // Add default options immediately so UI has something to show
-        InputDevices.Add(new AudioDeviceItem(null, "Default"));
-        OutputDevices.Add(new AudioDeviceItem(null, "Default"));
+        InputDevices.Add(new AudioDeviceItem(null, "System default"));
+        OutputDevices.Add(new AudioDeviceItem(null, "System default"));
     }
 
     /// <summary>
@@ -206,8 +206,8 @@ public class AudioSettingsViewModel : ViewModelBase
             OutputDevices.Clear();
 
             // Add default option
-            InputDevices.Add(new AudioDeviceItem(null, "Default"));
-            OutputDevices.Add(new AudioDeviceItem(null, "Default"));
+            InputDevices.Add(new AudioDeviceItem(null, "System default"));
+            OutputDevices.Add(new AudioDeviceItem(null, "System default"));
 
             // Add available devices
             foreach (var device in inputDevices)
