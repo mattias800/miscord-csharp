@@ -2,7 +2,6 @@
 
 A self-hosted communication platform - like Discord, but you own your data.
 
-<!-- Screenshot: Main app view with voice channel -->
 ![Snacka Screenshot](docs/screenshots/main-app.png)
 
 ## What is Snacka?
@@ -19,22 +18,16 @@ Whether you're setting up a private space for friends, a team communication hub,
 - **GIF Picker** - Search and share GIFs with Tenor integration
 - **File Sharing** - Share images, audio files, and documents
 
-<!-- Screenshot: Chat with GIF picker -->
-
 ### Voice & Video
 - **Voice Channels** - Crystal-clear voice chat with WebRTC
 - **Webcam Streaming** - Share your camera in voice channels
 - **Screen Sharing** - Present your screen to others
 
-<!-- Screenshot: Voice channel with participants -->
-
 ### Server Management
 - **Communities** - Create and manage multiple communities
 - **Channels** - Organize with text and voice channels
 - **Roles & Permissions** - Owner, Admin, and Member roles
-- **Invite System** - Invite users to your communities
-
-<!-- Screenshot: Server settings or channel list -->
+- **Invite System** - Share invite links to bring friends to your server
 
 ### Cross-Platform
 - **Windows** - Native installer with automatic updates
@@ -55,30 +48,13 @@ See the [Releases](https://github.com/mattias800/snacka/releases) page for all v
 
 ## Self-Hosting
 
-Snacka is designed to be self-hosted. Run your own server with Docker:
+Snacka is designed to be self-hosted. You'll need:
+- A server or computer to run the Snacka server
+- Docker installed on that machine
 
-```bash
-# Clone the repository
-git clone https://github.com/mattias800/snacka.git
-cd snacka
+For setup instructions, see the [Deployment Guide](docs/DEPLOY.md).
 
-# Configure your server
-cp .env.example .env
-# Edit .env and set your JWT_SECRET_KEY and other settings
-
-# Start the server
-docker-compose up -d
-```
-
-Your server will be available at `http://localhost:5117`. Point your Snacka client to this address to connect.
-
-For detailed deployment instructions including production setup with HTTPS, see the [Deployment Guide](docs/DEPLOY.md).
-
-### Server Requirements
-
-- Docker and Docker Compose
-- 1GB RAM minimum (2GB recommended)
-- PostgreSQL (included in docker-compose)
+Once your server is running, share invite links with friends - they just need to download the client and paste the link to connect.
 
 ## Getting Help
 
