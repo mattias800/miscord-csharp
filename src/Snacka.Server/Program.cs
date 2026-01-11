@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.IdentityModel.Tokens;
 using Snacka.Server.Data;
 using Snacka.Server.Hubs;
@@ -115,14 +116,16 @@ if (useSqlite)
     var sqliteConnection = builder.Configuration.GetConnectionString("SqliteConnection")
         ?? "Data Source=snacka.db";
     builder.Services.AddDbContext<SnackaDbContext>(options =>
-        options.UseSqlite(sqliteConnection));
+        options.UseSqlite(sqliteConnection)
+            .ConfigureWarnings(w => w.Log(RelationalEventId.PendingModelChangesWarning)));
 }
 else
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
         ?? throw new InvalidOperationException("DefaultConnection is not configured.");
     builder.Services.AddDbContext<SnackaDbContext>(options =>
-        options.UseNpgsql(connectionString));
+        options.UseNpgsql(connectionString)
+            .ConfigureWarnings(w => w.Log(RelationalEventId.PendingModelChangesWarning)));
 }
 
 // Add authentication
