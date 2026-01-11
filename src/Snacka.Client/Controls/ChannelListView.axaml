@@ -418,59 +418,74 @@
                                                               IsVisible="{Binding IsCurrentUser}"/>
                                                 </ContextMenu>
                                             </Border.ContextMenu>
-                                            <!-- Username and status icons -->
-                                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                                <Ellipse Width="24" Height="24" Fill="{StaticResource Content3Brush}"/>
-                                                <TextBlock Text="{Binding Username}"
-                                                           Foreground="{Binding IsSpeaking, Converter={x:Static conv:SpeakingForegroundConverter.Instance}}"
-                                                           FontSize="13"
-                                                           VerticalAlignment="Center"/>
-                                                <!-- Self muted (red) - only show if self-muted but not server-muted -->
-                                                <ui:SymbolIcon Symbol="Mute"
-                                                           FontSize="10"
-                                                           Foreground="{StaticResource DangerBrush}"
-                                                           VerticalAlignment="Center"
-                                                           ToolTip.Tip="Muted">
-                                                    <ui:SymbolIcon.IsVisible>
-                                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
-                                                            <Binding Path="IsMuted"/>
-                                                            <Binding Path="!IsServerMuted"/>
-                                                        </MultiBinding>
-                                                    </ui:SymbolIcon.IsVisible>
-                                                </ui:SymbolIcon>
-                                                <!-- Server muted (orange) -->
-                                                <ui:SymbolIcon Symbol="Mute"
-                                                           FontSize="10"
-                                                           Foreground="{StaticResource WarningBrush}"
-                                                           VerticalAlignment="Center"
-                                                           ToolTip.Tip="Server Muted"
-                                                           IsVisible="{Binding IsServerMuted}"/>
-                                                <!-- Self deafened (red) - only show if self-deafened but not server-deafened -->
-                                                <ui:SymbolIcon Symbol="SpeakerMute"
-                                                           FontSize="10"
-                                                           Foreground="{StaticResource DangerBrush}"
-                                                           VerticalAlignment="Center"
-                                                           ToolTip.Tip="Deafened">
-                                                    <ui:SymbolIcon.IsVisible>
-                                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
-                                                            <Binding Path="IsDeafened"/>
-                                                            <Binding Path="!IsServerDeafened"/>
-                                                        </MultiBinding>
-                                                    </ui:SymbolIcon.IsVisible>
-                                                </ui:SymbolIcon>
-                                                <!-- Server deafened (orange) -->
-                                                <ui:SymbolIcon Symbol="SpeakerMute"
-                                                           FontSize="10"
-                                                           Foreground="{StaticResource WarningBrush}"
-                                                           VerticalAlignment="Center"
-                                                           ToolTip.Tip="Server Deafened"
-                                                           IsVisible="{Binding IsServerDeafened}"/>
-                                                <ui:SymbolIcon Symbol="Video"
-                                                           FontSize="10"
-                                                           Foreground="{StaticResource SuccessBrush}"
-                                                           VerticalAlignment="Center"
-                                                           IsVisible="{Binding IsCameraOn}"/>
-                                            </StackPanel>
+                                            <!-- Username, status icons, and LIVE tag -->
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <!-- Left: Avatar, username, and status icons -->
+                                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                                                    <Ellipse Width="24" Height="24" Fill="{StaticResource Content3Brush}"/>
+                                                    <TextBlock Text="{Binding Username}"
+                                                               Foreground="{Binding IsSpeaking, Converter={x:Static conv:SpeakingForegroundConverter.Instance}}"
+                                                               FontSize="13"
+                                                               VerticalAlignment="Center"/>
+                                                    <!-- Self muted (red) - only show if self-muted but not server-muted -->
+                                                    <ui:SymbolIcon Symbol="Mute"
+                                                               FontSize="10"
+                                                               Foreground="{StaticResource DangerBrush}"
+                                                               VerticalAlignment="Center"
+                                                               ToolTip.Tip="Muted">
+                                                        <ui:SymbolIcon.IsVisible>
+                                                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                                <Binding Path="IsMuted"/>
+                                                                <Binding Path="!IsServerMuted"/>
+                                                            </MultiBinding>
+                                                        </ui:SymbolIcon.IsVisible>
+                                                    </ui:SymbolIcon>
+                                                    <!-- Server muted (orange) -->
+                                                    <ui:SymbolIcon Symbol="Mute"
+                                                               FontSize="10"
+                                                               Foreground="{StaticResource WarningBrush}"
+                                                               VerticalAlignment="Center"
+                                                               ToolTip.Tip="Server Muted"
+                                                               IsVisible="{Binding IsServerMuted}"/>
+                                                    <!-- Self deafened (red) - only show if self-deafened but not server-deafened -->
+                                                    <ui:SymbolIcon Symbol="SpeakerMute"
+                                                               FontSize="10"
+                                                               Foreground="{StaticResource DangerBrush}"
+                                                               VerticalAlignment="Center"
+                                                               ToolTip.Tip="Deafened">
+                                                        <ui:SymbolIcon.IsVisible>
+                                                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                                <Binding Path="IsDeafened"/>
+                                                                <Binding Path="!IsServerDeafened"/>
+                                                            </MultiBinding>
+                                                        </ui:SymbolIcon.IsVisible>
+                                                    </ui:SymbolIcon>
+                                                    <!-- Server deafened (orange) -->
+                                                    <ui:SymbolIcon Symbol="SpeakerMute"
+                                                               FontSize="10"
+                                                               Foreground="{StaticResource WarningBrush}"
+                                                               VerticalAlignment="Center"
+                                                               ToolTip.Tip="Server Deafened"
+                                                               IsVisible="{Binding IsServerDeafened}"/>
+                                                    <ui:SymbolIcon Symbol="Video"
+                                                               FontSize="10"
+                                                               Foreground="{StaticResource SuccessBrush}"
+                                                               VerticalAlignment="Center"
+                                                               IsVisible="{Binding IsCameraOn}"/>
+                                                </StackPanel>
+                                                <!-- Right: LIVE tag when screen sharing -->
+                                                <Border Grid.Column="1"
+                                                        Background="#ed4245"
+                                                        CornerRadius="4"
+                                                        Padding="6,2"
+                                                        VerticalAlignment="Center"
+                                                        IsVisible="{Binding IsScreenSharing}">
+                                                    <TextBlock Text="LIVE"
+                                                               Foreground="White"
+                                                               FontSize="10"
+                                                               FontWeight="Bold"/>
+                                                </Border>
+                                            </Grid>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
