@@ -42,26 +42,77 @@
                 Background="#5865F2"
                 Padding="12,8"
                 IsVisible="{Binding ShowUpdateBanner}">
-            <Grid ColumnDefinitions="*,Auto,Auto">
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+                <!-- Update Available State -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
+                            IsVisible="{Binding IsUpdateAvailable}">
                     <TextBlock Text="&#x2728;" FontSize="16"/>
                     <TextBlock VerticalAlignment="Center" Foreground="White">
                         <Run Text="A new version is available:"/>
                         <Run Text="{Binding UpdateInfo.Version}" FontWeight="Bold"/>
-                        <Run Text="(you have"/>
-                        <Run Text="{Binding CurrentVersion}"/>
-                        <Run Text=")"/>
                     </TextBlock>
                 </StackPanel>
+
+                <!-- Downloading State -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center"
+                            IsVisible="{Binding IsUpdateDownloading}">
+                    <TextBlock Text="&#x2B07;" FontSize="16"/>
+                    <TextBlock Text="Downloading update..." Foreground="White" VerticalAlignment="Center"/>
+                    <ProgressBar Value="{Binding UpdateDownloadProgress}"
+                                 Minimum="0" Maximum="100"
+                                 Width="200" Height="8"
+                                 Foreground="White"
+                                 Background="#4752C4"/>
+                    <TextBlock Text="{Binding UpdateDownloadProgress, StringFormat='{}{0}%'}"
+                               Foreground="White" VerticalAlignment="Center" Width="40"/>
+                </StackPanel>
+
+                <!-- Ready to Install State -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
+                            IsVisible="{Binding IsUpdateReadyToInstall}">
+                    <TextBlock Text="&#x2705;" FontSize="16"/>
+                    <TextBlock VerticalAlignment="Center" Foreground="White">
+                        <Run Text="Update"/>
+                        <Run Text="{Binding UpdateInfo.Version}" FontWeight="Bold"/>
+                        <Run Text="downloaded. Restart to apply."/>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- Download Button (when update available) -->
                 <Button Grid.Column="1"
                         Content="Download"
-                        Command="{Binding OpenUpdatePage}"
+                        Command="{Binding DownloadUpdate}"
                         Background="#4752C4"
                         Foreground="White"
                         Padding="16,6"
                         Margin="8,0"
-                        CornerRadius="4"/>
+                        CornerRadius="4"
+                        IsVisible="{Binding IsUpdateAvailable}"/>
+
+                <!-- Restart Button (when downloaded) -->
+                <Button Grid.Column="1"
+                        Content="Restart Now"
+                        Command="{Binding RestartToUpdate}"
+                        Background="#43b581"
+                        Foreground="White"
+                        Padding="16,6"
+                        Margin="8,0"
+                        CornerRadius="4"
+                        IsVisible="{Binding IsUpdateReadyToInstall}"/>
+
+                <!-- View Release Notes link -->
                 <Button Grid.Column="2"
+                        Content="Release Notes"
+                        Command="{Binding OpenUpdatePage}"
+                        Background="Transparent"
+                        Foreground="White"
+                        Padding="8,6"
+                        Margin="0"
+                        FontSize="12"
+                        IsVisible="{Binding !IsUpdateDownloading}"/>
+
+                <!-- Dismiss Button -->
+                <Button Grid.Column="3"
                         Content="&#x2715;"
                         Command="{Binding DismissUpdateBanner}"
                         Background="Transparent"

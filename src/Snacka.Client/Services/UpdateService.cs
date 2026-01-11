@@ -1,6 +1,6 @@
-using System.Net.Http.Json;
 using System.Reflection;
-using System.Text.Json.Serialization;
+using Velopack;
+using Velopack.Sources;
 
 namespace Snacka.Client.Services;
 
@@ -9,14 +9,24 @@ namespace Snacka.Client.Services;
 /// </summary>
 public record UpdateInfo(
     string Version,
-    string ReleaseUrl,
     string? ReleaseNotes,
-    DateTime PublishedAt,
-    Dictionary<string, string> DownloadUrls
+    bool IsDownloaded
 );
 
 /// <summary>
-/// Service for checking GitHub releases for updates.
+/// Update state for UI binding.
+/// </summary>
+public enum UpdateState
+{
+    NoUpdate,
+    UpdateAvailable,
+    Downloading,
+    ReadyToInstall,
+    Error
+}
+
+/// <summary>
+/// Service for checking and applying updates using Velopack.
 /// </summary>
 public interface IUpdateService
 {
@@ -26,102 +36,121 @@ public interface IUpdateService
     Version CurrentVersion { get; }
 
     /// <summary>
+    /// Gets whether the app was installed via Velopack (vs running from source/dev).
+    /// </summary>
+    bool IsInstalled { get; }
+
+    /// <summary>
     /// Checks for updates and returns info if a newer version is available.
     /// </summary>
     Task<UpdateInfo?> CheckForUpdateAsync();
 
     /// <summary>
-    /// Opens the release page in the default browser.
+    /// Downloads the update in the background.
     /// </summary>
-    void OpenReleasePage(string url);
+    Task DownloadUpdateAsync(Action<int>? progressCallback = null);
+
+    /// <summary>
+    /// Applies the downloaded update and restarts the application.
+    /// </summary>
+    void ApplyUpdateAndRestart();
+
+    /// <summary>
+    /// Opens the releases page in the default browser.
+    /// </summary>
+    void OpenReleasesPage();
 }
 
 public class UpdateService : IUpdateService
 {
-    private readonly HttpClient _httpClient;
-    private const string GitHubApiUrl = "https://api.github.com/repos/mattias800/snacka/releases/latest";
+    private readonly UpdateManager? _updateManager;
+    private UpdateInfo? _cachedUpdate;
+    private const string GitHubRepoUrl = "https://github.com/mattias800/snacka";
     private const string GitHubReleasesUrl = "https://github.com/mattias800/snacka/releases";
 
-    public UpdateService(HttpClient? httpClient = null)
+    public UpdateService()
     {
-        _httpClient = httpClient ?? new HttpClient();
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Snacka-Client");
+        try
+        {
+            // GithubSource: repoUrl, accessToken (null for public), prerelease
+            var source = new GithubSource(GitHubRepoUrl, null, false);
+            _updateManager = new UpdateManager(source);
+            Console.WriteLine($"UpdateService: Initialized with Velopack. IsInstalled: {IsInstalled}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"UpdateService: Failed to initialize Velopack: {ex.Message}");
+            _updateManager = null;
+        }
     }
 
     public Version CurrentVersion
     {
         get
         {
+            // Try to get version from Velopack first
+            if (_updateManager?.IsInstalled == true)
+            {
+                try
+                {
+                    var veloVersion = _updateManager.CurrentVersion;
+                    if (veloVersion != null)
+                    {
+                        return new Version(veloVersion.Major, veloVersion.Minor, veloVersion.Patch);
+                    }
+                }
+                catch
+                {
+                    // Fall through to assembly version
+                }
+            }
+
+            // Fallback to assembly version
             var assembly = Assembly.GetExecutingAssembly();
             var version = assembly.GetName().Version;
             return version ?? new Version(0, 1, 0);
         }
     }
 
+    public bool IsInstalled => _updateManager?.IsInstalled ?? false;
+
     public async Task<UpdateInfo?> CheckForUpdateAsync()
     {
+        if (_updateManager == null)
+        {
+            Console.WriteLine("UpdateService: UpdateManager not available");
+            return null;
+        }
+
+        if (!IsInstalled)
+        {
+            Console.WriteLine("UpdateService: App not installed via Velopack, skipping update check");
+            return null;
+        }
+
         try
         {
             Console.WriteLine($"UpdateService: Checking for updates (current version: {CurrentVersion})");
 
-            var response = await _httpClient.GetAsync(GitHubApiUrl);
+            var updateInfo = await _updateManager.CheckForUpdatesAsync();
 
-            if (!response.IsSuccessStatusCode)
+            if (updateInfo == null)
             {
-                Console.WriteLine($"UpdateService: GitHub API returned {response.StatusCode}");
+                Console.WriteLine("UpdateService: No updates available");
+                _cachedUpdate = null;
                 return null;
             }
 
-            var release = await response.Content.ReadFromJsonAsync<GitHubRelease>();
+            var newVersion = updateInfo.TargetFullRelease.Version;
+            Console.WriteLine($"UpdateService: Update available: {newVersion}");
 
-            if (release == null)
-            {
-                Console.WriteLine("UpdateService: Failed to parse release info");
-                return null;
-            }
-
-            // Parse version from tag (remove 'v' prefix if present)
-            var tagVersion = release.TagName.TrimStart('v');
-            if (!Version.TryParse(tagVersion, out var latestVersion))
-            {
-                Console.WriteLine($"UpdateService: Failed to parse version from tag: {release.TagName}");
-                return null;
-            }
-
-            Console.WriteLine($"UpdateService: Latest version is {latestVersion}");
-
-            // Compare versions (only major.minor.build, ignore revision)
-            var currentComparable = new Version(CurrentVersion.Major, CurrentVersion.Minor, CurrentVersion.Build);
-            var latestComparable = new Version(latestVersion.Major, latestVersion.Minor, latestVersion.Build);
-
-            if (latestComparable <= currentComparable)
-            {
-                Console.WriteLine("UpdateService: Already on latest version");
-                return null;
-            }
-
-            Console.WriteLine($"UpdateService: Update available! {CurrentVersion} -> {latestVersion}");
-
-            // Build download URLs from assets
-            var downloadUrls = new Dictionary<string, string>();
-            foreach (var asset in release.Assets)
-            {
-                var name = asset.Name.ToLowerInvariant();
-                if (name.Contains("macos") || name.Contains("osx"))
-                    downloadUrls["macOS"] = asset.BrowserDownloadUrl;
-                else if (name.Contains("windows") || name.Contains("win"))
-                    downloadUrls["Windows"] = asset.BrowserDownloadUrl;
-                else if (name.Contains("linux"))
-                    downloadUrls["Linux"] = asset.BrowserDownloadUrl;
-            }
-
-            return new UpdateInfo(
-                Version: tagVersion,
-                ReleaseUrl: release.HtmlUrl,
-                ReleaseNotes: release.Body,
-                PublishedAt: release.PublishedAt,
-                DownloadUrls: downloadUrls
+            _cachedUpdate = new UpdateInfo(
+                Version: newVersion.ToString(),
+                ReleaseNotes: null, // Velopack doesn't provide release notes directly
+                IsDownloaded: false
             );
+
+            return _cachedUpdate;
         }
         catch (Exception ex)
         {
@@ -130,13 +159,72 @@ public class UpdateService : IUpdateService
         }
     }
 
-    public void OpenReleasePage(string url)
+    public async Task DownloadUpdateAsync(Action<int>? progressCallback = null)
+    {
+        if (_updateManager == null || !IsInstalled)
+        {
+            Console.WriteLine("UpdateService: Cannot download - not installed or manager unavailable");
+            return;
+        }
+
+        try
+        {
+            Console.WriteLine("UpdateService: Starting update download...");
+
+            var updateInfo = await _updateManager.CheckForUpdatesAsync();
+            if (updateInfo == null)
+            {
+                Console.WriteLine("UpdateService: No update to download");
+                return;
+            }
+
+            await _updateManager.DownloadUpdatesAsync(
+                updateInfo,
+                progress => progressCallback?.Invoke(progress)
+            );
+
+            Console.WriteLine("UpdateService: Download complete");
+
+            // Update cached info to mark as downloaded
+            if (_cachedUpdate != null)
+            {
+                _cachedUpdate = _cachedUpdate with { IsDownloaded = true };
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"UpdateService: Error downloading update: {ex.Message}");
+            throw;
+        }
+    }
+
+    public void ApplyUpdateAndRestart()
+    {
+        if (_updateManager == null || !IsInstalled)
+        {
+            Console.WriteLine("UpdateService: Cannot apply update - not installed or manager unavailable");
+            return;
+        }
+
+        try
+        {
+            Console.WriteLine("UpdateService: Applying update and restarting...");
+            _updateManager.ApplyUpdatesAndRestart(null);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"UpdateService: Error applying update: {ex.Message}");
+            throw;
+        }
+    }
+
+    public void OpenReleasesPage()
     {
         try
         {
             var psi = new System.Diagnostics.ProcessStartInfo
             {
-                FileName = url,
+                FileName = GitHubReleasesUrl,
                 UseShellExecute = true
             };
             System.Diagnostics.Process.Start(psi);
@@ -145,33 +233,5 @@ public class UpdateService : IUpdateService
         {
             Console.WriteLine($"UpdateService: Failed to open URL: {ex.Message}");
         }
-    }
-
-    // GitHub API response models
-    private class GitHubRelease
-    {
-        [JsonPropertyName("tag_name")]
-        public string TagName { get; set; } = "";
-
-        [JsonPropertyName("html_url")]
-        public string HtmlUrl { get; set; } = "";
-
-        [JsonPropertyName("body")]
-        public string? Body { get; set; }
-
-        [JsonPropertyName("published_at")]
-        public DateTime PublishedAt { get; set; }
-
-        [JsonPropertyName("assets")]
-        public List<GitHubAsset> Assets { get; set; } = new();
-    }
-
-    private class GitHubAsset
-    {
-        [JsonPropertyName("name")]
-        public string Name { get; set; } = "";
-
-        [JsonPropertyName("browser_download_url")]
-        public string BrowserDownloadUrl { get; set; } = "";
     }
 }

@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.ReactiveUI;
 using Snacka.Client.Services.HardwareVideo;
+using Velopack;
 
 namespace Snacka.Client;
 
@@ -16,6 +17,9 @@ public sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        // Velopack must be first - handles install/update hooks
+        VelopackApp.Build().Run();
+
         // Set VLC environment variables FIRST, before anything else loads
         SetupVlcEnvironment();
 

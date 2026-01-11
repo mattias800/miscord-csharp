@@ -145,6 +145,9 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      - name: Install Velopack CLI
+        run: dotnet tool install -g vpk
+
       - name: Build SnackaCaptureWindows
         run: |
           cd src/SnackaCaptureWindows
@@ -171,26 +174,23 @@ jobs:
           name: Snacka-Windows-x64-portable
           path: publish/
 
-      - name: Install Inno Setup
+      - name: Create Velopack release
         if: needs.version.outputs.is_release == 'true' || github.event.inputs.create_release == 'true'
         run: |
-          choco install innosetup -y
+          mkdir -p output
+          vpk pack `
+            --packId Snacka `
+            --packVersion ${{ needs.version.outputs.version }} `
+            --packDir publish `
+            --mainExe Snacka.Client.exe `
+            --outputDir output
 
-      - name: Create installer
-        if: needs.version.outputs.is_release == 'true' || github.event.inputs.create_release == 'true'
-        run: |
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
-            installers/windows/Snacka.iss `
-            /DVersion=${{ needs.version.outputs.version }} `
-            /DSourceDir=${{ github.workspace }}\publish `
-            /DOutputDir=${{ github.workspace }}\output
-
-      - name: Upload installer
+      - name: Upload Velopack releases
         if: needs.version.outputs.is_release == 'true' || github.event.inputs.create_release == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: Snacka-Windows-x64-installer
-          path: output/*.exe
+          name: Snacka-Windows-x64-velopack
+          path: output/
 
   # ============================================
   # Linux Build
@@ -275,8 +275,10 @@ jobs:
           # macOS DMG
           cp artifacts/Snacka-macOS-dmg/*.dmg release-assets/ 2>/dev/null || true
 
-          # Windows installer
-          cp artifacts/Snacka-Windows-x64-installer/*.exe release-assets/ 2>/dev/null || true
+          # Windows Velopack releases (includes Setup.exe, nupkg, and RELEASES file)
+          if [ -d "artifacts/Snacka-Windows-x64-velopack" ]; then
+            cp artifacts/Snacka-Windows-x64-velopack/* release-assets/ 2>/dev/null || true
+          fi
 
           # Linux AppImage
           cp artifacts/Snacka-Linux-x64-AppImage/*.AppImage release-assets/ 2>/dev/null || true
@@ -306,14 +308,18 @@ jobs:
 
           | Platform | Installer | Portable |
           |----------|-----------|----------|
+          | **Windows** | [Installer](../../releases/download/v${{ needs.version.outputs.version }}/Snacka-Setup.exe) (auto-updates) | [Portable ZIP](../../releases/download/v${{ needs.version.outputs.version }}/Snacka-${{ needs.version.outputs.version }}-Windows-x64-portable.zip) |
           | **macOS** | [DMG](../../releases/download/v${{ needs.version.outputs.version }}/Snacka-${{ needs.version.outputs.version }}-macOS.dmg) | [App Bundle](../../releases/download/v${{ needs.version.outputs.version }}/Snacka-${{ needs.version.outputs.version }}-macOS-app.zip) |
-          | **Windows** | [Installer](../../releases/download/v${{ needs.version.outputs.version }}/Snacka-${{ needs.version.outputs.version }}-x64-Setup.exe) | [Portable ZIP](../../releases/download/v${{ needs.version.outputs.version }}/Snacka-${{ needs.version.outputs.version }}-Windows-x64-portable.zip) |
           | **Linux** | [AppImage](../../releases/download/v${{ needs.version.outputs.version }}/Snacka-${{ needs.version.outputs.version }}-x86_64.AppImage) | [Portable tar.gz](../../releases/download/v${{ needs.version.outputs.version }}/Snacka-${{ needs.version.outputs.version }}-Linux-x64-portable.tar.gz) |
+
+          ### Auto-Updates (Windows)
+
+          The Windows installer includes automatic updates. When a new version is available, you'll see a notification in the app. Click "Download" to download the update in the background, then "Restart Now" to apply it.
 
           ### Requirements
 
-          - **macOS**: macOS 11.0 (Big Sur) or later, Apple Silicon. [VLC](https://www.videolan.org/vlc/) recommended for audio playback.
           - **Windows**: Windows 10 or later. [VLC](https://www.videolan.org/vlc/) recommended for audio playback.
+          - **macOS**: macOS 11.0 (Big Sur) or later, Apple Silicon. [VLC](https://www.videolan.org/vlc/) recommended for audio playback.
           - **Linux**: Most modern distributions. Requires: `ffmpeg`, `vlc`, `libvlc-dev`
 
           ### macOS Users

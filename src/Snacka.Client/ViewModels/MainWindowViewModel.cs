@@ -23,6 +23,8 @@ public class MainWindowViewModel : ViewModelBase
     private ServerInfoResponse? _currentServerInfo;
     private UpdateInfo? _updateInfo;
     private bool _showUpdateBanner;
+    private UpdateState _updateState = UpdateState.NoUpdate;
+    private int _updateDownloadProgress;
 
     // File picker provider (set from View)
     public Func<Task<IStorageFile?>>? ImageFilePickerProvider { get; set; }
@@ -43,14 +45,16 @@ public class MainWindowViewModel : ViewModelBase
         // Initialize update commands
         OpenUpdatePage = ReactiveCommand.Create(() =>
         {
-            if (UpdateInfo != null)
-            {
-                _updateService.OpenReleasePage(UpdateInfo.ReleaseUrl);
-            }
+            _updateService.OpenReleasesPage();
         });
         DismissUpdateBanner = ReactiveCommand.Create(() =>
         {
             ShowUpdateBanner = false;
+        });
+        DownloadUpdate = ReactiveCommand.CreateFromTask(DownloadUpdateAsync);
+        RestartToUpdate = ReactiveCommand.Create(() =>
+        {
+            _updateService.ApplyUpdateAndRestart();
         });
 
         // Check for updates on startup
@@ -279,8 +283,26 @@ public class MainWindowViewModel : ViewModelBase
 
     public string CurrentVersion => _updateService.CurrentVersion.ToString();
 
+    public UpdateState UpdateState
+    {
+        get => _updateState;
+        set => this.RaiseAndSetIfChanged(ref _updateState, value);
+    }
+
+    public int UpdateDownloadProgress
+    {
+        get => _updateDownloadProgress;
+        set => this.RaiseAndSetIfChanged(ref _updateDownloadProgress, value);
+    }
+
+    public bool IsUpdateDownloading => UpdateState == UpdateState.Downloading;
+    public bool IsUpdateReadyToInstall => UpdateState == UpdateState.ReadyToInstall;
+    public bool IsUpdateAvailable => UpdateState == UpdateState.UpdateAvailable;
+
     public ReactiveCommand<Unit, Unit> OpenUpdatePage { get; }
     public ReactiveCommand<Unit, Unit> DismissUpdateBanner { get; }
+    public ReactiveCommand<Unit, Unit> DownloadUpdate { get; }
+    public ReactiveCommand<Unit, Unit> RestartToUpdate { get; }
 
     private async Task CheckForUpdatesAsync()
     {
@@ -288,7 +310,29 @@ public class MainWindowViewModel : ViewModelBase
         if (update != null)
         {
             UpdateInfo = update;
+            UpdateState = update.IsDownloaded ? UpdateState.ReadyToInstall : UpdateState.UpdateAvailable;
             ShowUpdateBanner = true;
+        }
+    }
+
+    private async Task DownloadUpdateAsync()
+    {
+        try
+        {
+            UpdateState = UpdateState.Downloading;
+            UpdateDownloadProgress = 0;
+
+            await _updateService.DownloadUpdateAsync(progress =>
+            {
+                UpdateDownloadProgress = progress;
+            });
+
+            UpdateState = UpdateState.ReadyToInstall;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to download update: {ex.Message}");
+            UpdateState = UpdateState.Error;
         }
     }
 
