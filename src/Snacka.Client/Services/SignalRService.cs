@@ -3,9 +3,24 @@ using Snacka.Shared.Models;
 
 namespace Snacka.Client.Services;
 
+/// <summary>
+/// Represents the current connection state of the SignalR service.
+/// </summary>
+public enum ConnectionState
+{
+    Disconnected,
+    Connecting,
+    Connected,
+    Reconnecting
+}
+
 public interface ISignalRService : IAsyncDisposable
 {
     bool IsConnected { get; }
+    ConnectionState State { get; }
+
+    // Connection state events
+    event Action<ConnectionState>? ConnectionStateChanged;
     Task ConnectAsync(string baseUrl, string accessToken);
     Task DisconnectAsync();
     Task JoinServerAsync(Guid serverId);
@@ -117,8 +132,25 @@ public record DMTypingEvent(Guid UserId, string Username);
 public class SignalRService : ISignalRService
 {
     private HubConnection? _hubConnection;
+    private ConnectionState _state = ConnectionState.Disconnected;
 
     public bool IsConnected => _hubConnection?.State == HubConnectionState.Connected;
+
+    public ConnectionState State
+    {
+        get => _state;
+        private set
+        {
+            if (_state != value)
+            {
+                _state = value;
+                ConnectionStateChanged?.Invoke(value);
+            }
+        }
+    }
+
+    // Connection state event
+    public event Action<ConnectionState>? ConnectionStateChanged;
 
     // Channel events
     public event Action<ChannelResponse>? ChannelCreated;
@@ -193,6 +225,8 @@ public class SignalRService : ISignalRService
         var hubUrl = $"{baseUrl.TrimEnd('/')}/hubs/snacka";
         Console.WriteLine($"SignalR: Connecting to {hubUrl}");
 
+        State = ConnectionState.Connecting;
+
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(hubUrl, options =>
             {
@@ -206,6 +240,7 @@ public class SignalRService : ISignalRService
         try
         {
             await _hubConnection.StartAsync();
+            State = ConnectionState.Connected;
             Console.WriteLine("SignalR: Connected successfully");
 
             // Get current online users and emit events for each
@@ -213,6 +248,7 @@ public class SignalRService : ISignalRService
         }
         catch (Exception ex)
         {
+            State = ConnectionState.Disconnected;
             Console.WriteLine($"SignalR: Connection failed - {ex.Message}");
             throw;
         }
@@ -246,6 +282,7 @@ public class SignalRService : ISignalRService
         {
             await _hubConnection.DisposeAsync();
             _hubConnection = null;
+            State = ConnectionState.Disconnected;
             Console.WriteLine("SignalR: Disconnected");
         }
     }
@@ -657,18 +694,21 @@ public class SignalRService : ISignalRService
 
         _hubConnection.Reconnecting += error =>
         {
+            State = ConnectionState.Reconnecting;
             Console.WriteLine($"SignalR: Reconnecting... {error?.Message}");
             return Task.CompletedTask;
         };
 
         _hubConnection.Reconnected += connectionId =>
         {
+            State = ConnectionState.Connected;
             Console.WriteLine($"SignalR: Reconnected with ID {connectionId}");
             return Task.CompletedTask;
         };
 
         _hubConnection.Closed += error =>
         {
+            State = ConnectionState.Disconnected;
             Console.WriteLine($"SignalR: Connection closed. {error?.Message}");
             return Task.CompletedTask;
         };

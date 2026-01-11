@@ -17,7 +17,8 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             // HttpClient without a predefined base address - will be set dynamically
-            var httpClient = new HttpClient();
+            // Timeout set to 20 seconds for better UX when server is slow/unreachable
+            var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
             var apiClient = new ApiClient(httpClient);
 
             // Initialize MessageContentBlock with API client for link previews

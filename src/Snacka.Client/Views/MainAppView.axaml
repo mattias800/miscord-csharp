@@ -11,13 +11,47 @@
     <UserControl.Resources>
         <conv:ColorToBorderConverter x:Key="ColorToBorderConverter"/>
     </UserControl.Resources>
-    <Grid Background="#202225">
+    <Grid Background="#202225" RowDefinitions="Auto,*">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="72"/>
             <ColumnDefinition Width="240"/>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="240"/>
         </Grid.ColumnDefinitions>
+
+        <!-- Connection Status Banner (top of screen, spans all columns) -->
+        <Border Grid.Row="0" Grid.ColumnSpan="4"
+                Background="#ed4245"
+                Padding="12,8"
+                IsVisible="{Binding IsDisconnected}">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
+                <TextBlock Text="Connection lost. Check your internet connection."
+                           Foreground="White"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="0" Grid.ColumnSpan="4"
+                Background="#FAA61A"
+                Padding="8,6"
+                IsVisible="{Binding IsReconnecting}">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
+                <TextBlock Text="Reconnecting..."
+                           Foreground="White"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Main Content Grid (Row 1) -->
+        <Grid Grid.Row="1" Grid.ColumnSpan="4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="72"/>
+                <ColumnDefinition Width="240"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="240"/>
+            </Grid.ColumnDefinitions>
 
         <!-- Community List (Left Sidebar) -->
         <controls:CommunityListView Grid.Column="0"
@@ -488,5 +522,6 @@
                                 CloseRequested="OnLightboxCloseRequested"
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Stretch"/>
+        </Grid>
     </Grid>
 </UserControl>

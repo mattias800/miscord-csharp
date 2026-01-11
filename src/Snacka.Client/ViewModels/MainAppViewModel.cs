@@ -127,6 +127,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     // Server feature flags
     private readonly bool _isGifsEnabled;
 
+    // Connection state
+    private ConnectionState _connectionState = ConnectionState.Connected;
+
     public MainAppViewModel(IApiClient apiClient, ISignalRService signalR, IWebRtcService webRtc, IScreenCaptureService screenCaptureService, ISettingsStore settingsStore, IAudioDeviceService audioDeviceService, string baseUrl, AuthResponse auth, Action onLogout, Action? onSwitchServer = null, Action? onOpenDMs = null, Action<Guid?, string?>? onOpenDMsWithUser = null, Action? onOpenSettings = null, bool gifsEnabled = false)
     {
         _apiClient = apiClient;
@@ -168,6 +171,13 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         {
             Dispatcher.UIThread.Post(() => VoiceConnectionStatus = status);
         };
+
+        // Subscribe to SignalR connection state changes
+        _signalR.ConnectionStateChanged += state =>
+        {
+            Dispatcher.UIThread.Post(() => ConnectionState = state);
+        };
+        ConnectionState = _signalR.State;
 
         Communities = new ObservableCollection<CommunityResponse>();
         Channels = new ObservableCollection<ChannelResponse>();
@@ -1056,6 +1066,33 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         get => _errorMessage;
         set => this.RaiseAndSetIfChanged(ref _errorMessage, value);
     }
+
+    // Connection state properties
+    public ConnectionState ConnectionState
+    {
+        get => _connectionState;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _connectionState, value);
+            this.RaisePropertyChanged(nameof(IsConnected));
+            this.RaisePropertyChanged(nameof(IsReconnecting));
+            this.RaisePropertyChanged(nameof(IsDisconnected));
+            this.RaisePropertyChanged(nameof(ConnectionStatusText));
+        }
+    }
+
+    public bool IsConnected => _connectionState == ConnectionState.Connected;
+    public bool IsReconnecting => _connectionState == ConnectionState.Reconnecting;
+    public bool IsDisconnected => _connectionState == ConnectionState.Disconnected;
+
+    public string ConnectionStatusText => _connectionState switch
+    {
+        ConnectionState.Connected => "Connected",
+        ConnectionState.Connecting => "Connecting...",
+        ConnectionState.Reconnecting => "Reconnecting...",
+        ConnectionState.Disconnected => "Disconnected",
+        _ => ""
+    };
 
     public ChannelResponse? EditingChannel
     {
