@@ -1,12 +1,12 @@
 # Snacka
 
-A self-hosted communication platform - like Discord, but you own your data.
+A self-hosted communication platform where you own your data.
 
 ![Snacka Screenshot](docs/screenshots/main-app.png)
 
 ## What is Snacka?
 
-Snacka is a free, open-source alternative to Discord that you can host yourself. Run your own server on your own hardware or cloud infrastructure, with full control over your data and privacy.
+Snacka is a free, open-source communication platform that you can host yourself. Run your own server on your own hardware or cloud infrastructure, with full control over your data and privacy.
 
 Whether you're setting up a private space for friends, a team communication hub, or a community server - Snacka gives you the features you need without relying on third-party services.
 
@@ -68,7 +68,3 @@ Contributions are welcome! See [DEVELOPMENT.md](DEVELOPMENT.md) for development 
 ## License
 
 TBD
-
----
-
-*Snacka is not affiliated with Discord. Discord is a trademark of Discord Inc.*
