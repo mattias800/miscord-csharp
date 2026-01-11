@@ -18,6 +18,7 @@ public sealed class SnackaDbContext : DbContext
     public DbSet<ChannelReadState> ChannelReadStates => Set<ChannelReadState>();
     public DbSet<MessageReaction> MessageReactions => Set<MessageReaction>();
     public DbSet<MessageAttachment> MessageAttachments => Set<MessageAttachment>();
+    public DbSet<CommunityInvite> CommunityInvites => Set<CommunityInvite>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -201,5 +202,27 @@ public sealed class SnackaDbContext : DbContext
             .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<MessageAttachment>()
             .HasIndex(ma => ma.MessageId);
+
+        // CommunityInvite configuration
+        modelBuilder.Entity<CommunityInvite>()
+            .HasKey(ci => ci.Id);
+        modelBuilder.Entity<CommunityInvite>()
+            .HasOne(ci => ci.Community)
+            .WithMany()
+            .HasForeignKey(ci => ci.CommunityId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CommunityInvite>()
+            .HasOne(ci => ci.InvitedUser)
+            .WithMany()
+            .HasForeignKey(ci => ci.InvitedUserId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CommunityInvite>()
+            .HasOne(ci => ci.InvitedBy)
+            .WithMany()
+            .HasForeignKey(ci => ci.InvitedById)
+            .OnDelete(DeleteBehavior.Cascade);
+        // Prevent duplicate pending invites for the same user to the same community
+        modelBuilder.Entity<CommunityInvite>()
+            .HasIndex(ci => new { ci.CommunityId, ci.InvitedUserId, ci.Status });
     }
 }

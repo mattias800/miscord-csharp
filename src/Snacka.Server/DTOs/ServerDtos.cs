@@ -215,3 +215,65 @@ public record MessageSearchResponse(
     int TotalCount,
     string Query
 );
+
+// Community Invite DTOs
+
+/// <summary>
+/// Request to invite a user to a community
+/// </summary>
+public record CreateCommunityInviteRequest([Required] Guid UserId);
+
+/// <summary>
+/// Response for a community invite
+/// </summary>
+public record CommunityInviteResponse(
+    Guid Id,
+    Guid CommunityId,
+    string CommunityName,
+    string? CommunityIcon,
+    Guid InvitedUserId,
+    string InvitedUserUsername,
+    string InvitedUserEffectiveDisplayName,
+    Guid InvitedById,
+    string InvitedByUsername,
+    string InvitedByEffectiveDisplayName,
+    CommunityInviteStatus Status,
+    DateTime CreatedAt,
+    DateTime? RespondedAt
+);
+
+/// <summary>
+/// SignalR event when user receives an invite
+/// </summary>
+public record CommunityInviteReceivedEvent(
+    Guid InviteId,
+    Guid CommunityId,
+    string CommunityName,
+    string? CommunityIcon,
+    Guid InvitedById,
+    string InvitedByUsername,
+    string InvitedByEffectiveDisplayName,
+    DateTime CreatedAt
+);
+
+/// <summary>
+/// SignalR event when an invite is responded to
+/// </summary>
+public record CommunityInviteRespondedEvent(
+    Guid InviteId,
+    Guid CommunityId,
+    Guid InvitedUserId,
+    string InvitedUserUsername,
+    CommunityInviteStatus Status
+);
+
+/// <summary>
+/// User search result for inviting
+/// </summary>
+public record UserSearchResult(
+    Guid Id,
+    string Username,
+    string EffectiveDisplayName,
+    string? Avatar,
+    bool IsOnline
+);

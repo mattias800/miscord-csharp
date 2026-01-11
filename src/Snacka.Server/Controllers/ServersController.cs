@@ -15,15 +15,18 @@ public class CommunitiesController : ControllerBase
 {
     private readonly ICommunityService _communityService;
     private readonly ICommunityMemberService _memberService;
+    private readonly ICommunityInviteService _inviteService;
     private readonly IHubContext<SnackaHub> _hubContext;
 
     public CommunitiesController(
         ICommunityService communityService,
         ICommunityMemberService memberService,
+        ICommunityInviteService inviteService,
         IHubContext<SnackaHub> hubContext)
     {
         _communityService = communityService;
         _memberService = memberService;
+        _inviteService = inviteService;
         _hubContext = hubContext;
     }
 
@@ -317,6 +320,124 @@ public class CommunitiesController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    // ==================== Community Invites ====================
+
+    /// <summary>
+    /// Search for users to invite to the community.
+    /// </summary>
+    [HttpGet("{communityId:guid}/users/search")]
+    public async Task<ActionResult<IEnumerable<UserSearchResult>>> SearchUsersToInvite(
+        Guid communityId,
+        [FromQuery] string q,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        if (userId is null) return Unauthorized();
+
+        if (!await _memberService.IsMemberAsync(communityId, userId.Value, cancellationToken))
+            return Forbid();
+
+        var users = await _inviteService.SearchUsersToInviteAsync(communityId, q, cancellationToken);
+        return Ok(users);
+    }
+
+    /// <summary>
+    /// Invite a user to join the community.
+    /// </summary>
+    [HttpPost("{communityId:guid}/invites")]
+    public async Task<ActionResult<CommunityInviteResponse>> CreateInvite(
+        Guid communityId,
+        [FromBody] CreateCommunityInviteRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        if (userId is null) return Unauthorized();
+
+        try
+        {
+            var invite = await _inviteService.CreateInviteAsync(communityId, request.UserId, userId.Value, cancellationToken);
+
+            // Notify the invited user in real-time
+            await _hubContext.Clients.User(request.UserId.ToString())
+                .SendAsync("CommunityInviteReceived", new CommunityInviteReceivedEvent(
+                    invite.Id,
+                    invite.CommunityId,
+                    invite.CommunityName,
+                    invite.CommunityIcon,
+                    invite.InvitedById,
+                    invite.InvitedByUsername,
+                    invite.InvitedByEffectiveDisplayName,
+                    invite.CreatedAt
+                ), cancellationToken);
+
+            return Ok(invite);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Get all invites for a community (admin/owner only).
+    /// </summary>
+    [HttpGet("{communityId:guid}/invites")]
+    public async Task<ActionResult<IEnumerable<CommunityInviteResponse>>> GetCommunityInvites(
+        Guid communityId,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        if (userId is null) return Unauthorized();
+
+        try
+        {
+            var member = await _memberService.GetMemberAsync(communityId, userId.Value, cancellationToken);
+            if (member.Role != Snacka.Shared.Models.UserRole.Owner &&
+                member.Role != Snacka.Shared.Models.UserRole.Admin)
+            {
+                return StatusCode(403, new { error = "Only admins and owners can view community invites." });
+            }
+
+            var invites = await _inviteService.GetInvitesForCommunityAsync(communityId, cancellationToken);
+            return Ok(invites);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Cancel a pending invite.
+    /// </summary>
+    [HttpDelete("{communityId:guid}/invites/{inviteId:guid}")]
+    public async Task<IActionResult> CancelInvite(
+        Guid communityId,
+        Guid inviteId,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        if (userId is null) return Unauthorized();
+
+        try
+        {
+            await _inviteService.CancelInviteAsync(inviteId, userId.Value, cancellationToken);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
         }
     }
 
