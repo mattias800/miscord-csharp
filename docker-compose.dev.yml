@@ -10,7 +10,7 @@ services:
       - POSTGRES_PASSWORD=snacka
       - POSTGRES_DB=snacka
     ports:
-      - "5432:5432"
+      - "5435:5432"
     volumes:
       - snacka-dev-data:/var/lib/postgresql/data
     healthcheck:

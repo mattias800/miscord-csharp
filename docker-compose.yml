@@ -10,9 +10,8 @@ services:
     ports:
       - "5117:8080"
     environment:
-      # Database - PostgreSQL is used for production deployments
-      - UseSqlite=false
-      - ConnectionStrings__DefaultConnection=Host=postgres;Database=snacka;Username=snacka;Password=${POSTGRES_PASSWORD}
+      # Database - PostgreSQL
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=snacka;Username=snacka;Password=${POSTGRES_PASSWORD}
       # JWT Configuration - REQUIRED: Set JWT_SECRET_KEY in .env
       - Jwt__SecretKey=${JWT_SECRET_KEY}
       - Jwt__Issuer=Snacka

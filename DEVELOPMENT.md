@@ -9,7 +9,7 @@ This guide covers setting up a development environment for Snacka.
 - **Desktop Client**: Avalonia UI 11.3 (cross-platform XAML framework)
 - **Real-time Communication**: WebRTC with SipSorcery
 - **Signaling**: SignalR for WebSocket-based signaling
-- **Database**: Entity Framework Core with PostgreSQL (SQLite for development)
+- **Database**: Entity Framework Core with PostgreSQL
 - **Audio**: SDL2 for audio capture and playback
 - **Video**: LibVLC for media playback
 - **Updates**: Velopack for automatic updates (Windows)
@@ -128,15 +128,21 @@ dotnet test tests/Snacka.Server.Tests
 
 ## Database
 
-### Development Mode
-The server uses SQLite by default in development mode. The database file is created automatically at `snacka.db`.
+PostgreSQL is used for both development and production.
 
-### Production Mode
-For production, PostgreSQL is used. Configure the connection string in environment variables or `appsettings.json`.
+### Development Setup
+Start the development database with Docker:
+```bash
+docker compose -f docker-compose.dev.yml up -d
+```
+This starts PostgreSQL on port **5435** (to avoid conflicts with other PostgreSQL instances).
 
 ### Entity Framework Migrations
 
 ```bash
+# Make sure dev database is running first
+docker compose -f docker-compose.dev.yml up -d
+
 # Create a new migration
 cd src/Snacka.Server
 dotnet ef migrations add MigrationName
@@ -169,7 +175,6 @@ Key settings in `appsettings.json` or environment variables:
 | `ServerInfo:AllowRegistration` | `ServerInfo__AllowRegistration` | Enable/disable registration |
 | `ConnectionStrings:DefaultConnection` | `ConnectionStrings__DefaultConnection` | PostgreSQL connection |
 | `Tenor:ApiKey` | `Tenor__ApiKey` | Optional Tenor API key for GIF picker |
-| `UseSqlite` | `UseSqlite` | Use SQLite instead of PostgreSQL |
 
 ### Client Configuration
 
