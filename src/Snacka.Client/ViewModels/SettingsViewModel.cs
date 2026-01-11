@@ -64,6 +64,21 @@ public class SettingsViewModel : ViewModelBase
 
         // Start with Voice & Video page
         CurrentPage = AudioSettingsViewModel;
+
+        // Trigger async device loading (fire and forget - UI shows loading state)
+        _ = InitializeAsync();
+    }
+
+    /// <summary>
+    /// Initialize device lists asynchronously. Called automatically after construction.
+    /// </summary>
+    private async Task InitializeAsync()
+    {
+        // Load audio and video devices in parallel
+        await Task.WhenAll(
+            AudioSettingsViewModel.InitializeAsync(),
+            VideoSettingsViewModel.InitializeAsync()
+        );
     }
 
     public object? CurrentPage

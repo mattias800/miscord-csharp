@@ -20,6 +20,7 @@ public class AudioSettingsViewModel : ViewModelBase
     private float _gateThreshold;
     private bool _gateEnabled;
     private bool _isRefreshingDevices; // Flag to prevent binding feedback during refresh
+    private bool _isLoadingDevices;
 
     public AudioSettingsViewModel(ISettingsStore settingsStore, IAudioDeviceService audioDeviceService)
     {
@@ -31,7 +32,7 @@ public class AudioSettingsViewModel : ViewModelBase
 
         TestMicrophoneCommand = ReactiveCommand.CreateFromTask(ToggleMicrophoneTest);
         ToggleLoopbackCommand = ReactiveCommand.Create(ToggleLoopback);
-        RefreshDevicesCommand = ReactiveCommand.Create(RefreshDevices);
+        RefreshDevicesCommand = ReactiveCommand.CreateFromTask(RefreshDevicesAsync);
 
         // Load saved selections first (before populating devices)
         _selectedInputDevice = _settingsStore.Settings.AudioInputDevice;
@@ -40,13 +41,15 @@ public class AudioSettingsViewModel : ViewModelBase
         _gateThreshold = _settingsStore.Settings.GateThreshold;
         _gateEnabled = _settingsStore.Settings.GateEnabled;
 
-        // Load devices
-        RefreshDevices();
-
-        // Notify UI of initial selections (must be after devices are loaded)
-        this.RaisePropertyChanged(nameof(SelectedInputDeviceItem));
-        this.RaisePropertyChanged(nameof(SelectedOutputDeviceItem));
+        // Add default options immediately so UI has something to show
+        InputDevices.Add(new AudioDeviceItem(null, "Default"));
+        OutputDevices.Add(new AudioDeviceItem(null, "Default"));
     }
+
+    /// <summary>
+    /// Initialize device lists asynchronously. Call this after construction.
+    /// </summary>
+    public Task InitializeAsync() => RefreshDevicesAsync();
 
     public ObservableCollection<AudioDeviceItem> InputDevices { get; }
     public ObservableCollection<AudioDeviceItem> OutputDevices { get; }
@@ -173,15 +176,32 @@ public class AudioSettingsViewModel : ViewModelBase
     // Is the current input level above the gate threshold?
     public bool IsAboveGate => !_gateEnabled || _inputLevel >= _gateThreshold;
 
+    public bool IsLoadingDevices
+    {
+        get => _isLoadingDevices;
+        private set => this.RaiseAndSetIfChanged(ref _isLoadingDevices, value);
+    }
+
     public ICommand TestMicrophoneCommand { get; }
     public ICommand ToggleLoopbackCommand { get; }
     public ICommand RefreshDevicesCommand { get; }
 
-    private void RefreshDevices()
+    private async Task RefreshDevicesAsync()
     {
+        IsLoadingDevices = true;
         _isRefreshingDevices = true;
+
         try
         {
+            // Run device enumeration on background thread to avoid blocking UI
+            var (inputDevices, outputDevices) = await Task.Run(() =>
+            {
+                var inputs = _audioDeviceService.GetInputDevices();
+                var outputs = _audioDeviceService.GetOutputDevices();
+                return (inputs, outputs);
+            });
+
+            // Update collections on UI thread
             InputDevices.Clear();
             OutputDevices.Clear();
 
@@ -190,12 +210,12 @@ public class AudioSettingsViewModel : ViewModelBase
             OutputDevices.Add(new AudioDeviceItem(null, "Default"));
 
             // Add available devices
-            foreach (var device in _audioDeviceService.GetInputDevices())
+            foreach (var device in inputDevices)
             {
                 InputDevices.Add(new AudioDeviceItem(device, device));
             }
 
-            foreach (var device in _audioDeviceService.GetOutputDevices())
+            foreach (var device in outputDevices)
             {
                 OutputDevices.Add(new AudioDeviceItem(device, device));
             }
@@ -203,6 +223,7 @@ public class AudioSettingsViewModel : ViewModelBase
         finally
         {
             _isRefreshingDevices = false;
+            IsLoadingDevices = false;
         }
 
         // Notify UI to re-sync the selection after items are populated

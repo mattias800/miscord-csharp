@@ -16,6 +16,7 @@ public class VideoSettingsViewModel : ViewModelBase
 
     private string? _selectedVideoDevice;
     private bool _isTestingCamera;
+    private bool _isLoadingDevices;
     private int _frameCount;
     private int _frameWidth;
     private int _frameHeight;
@@ -30,17 +31,19 @@ public class VideoSettingsViewModel : ViewModelBase
         VideoDevices = new ObservableCollection<VideoDeviceItem>();
 
         TestCameraCommand = ReactiveCommand.CreateFromTask(ToggleCameraTest);
-        RefreshDevicesCommand = ReactiveCommand.Create(RefreshDevices);
+        RefreshDevicesCommand = ReactiveCommand.CreateFromTask(RefreshDevicesAsync);
 
         // Load saved selection
         _selectedVideoDevice = _settingsStore.Settings.VideoDevice;
 
-        // Load devices
-        RefreshDevices();
-
-        // Notify UI of initial selection
-        this.RaisePropertyChanged(nameof(SelectedVideoDevice));
+        // Add default option immediately so UI has something to show
+        VideoDevices.Add(new VideoDeviceItem(null, "Default"));
     }
+
+    /// <summary>
+    /// Initialize device lists asynchronously. Call this after construction.
+    /// </summary>
+    public Task InitializeAsync() => RefreshDevicesAsync();
 
     public ObservableCollection<VideoDeviceItem> VideoDevices { get; }
 
@@ -89,20 +92,39 @@ public class VideoSettingsViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _previewBitmap, value);
     }
 
+    public bool IsLoadingDevices
+    {
+        get => _isLoadingDevices;
+        private set => this.RaiseAndSetIfChanged(ref _isLoadingDevices, value);
+    }
+
     public ICommand TestCameraCommand { get; }
     public ICommand RefreshDevicesCommand { get; }
 
-    private void RefreshDevices()
+    private async Task RefreshDevicesAsync()
     {
-        VideoDevices.Clear();
+        IsLoadingDevices = true;
 
-        // Add default option
-        VideoDevices.Add(new VideoDeviceItem(null, "Default"));
-
-        // Add available devices
-        foreach (var device in _videoDeviceService.GetCameraDevices())
+        try
         {
-            VideoDevices.Add(new VideoDeviceItem(device.Path, device.Name));
+            // Run device enumeration on background thread to avoid blocking UI
+            var devices = await Task.Run(() => _videoDeviceService.GetCameraDevices());
+
+            // Update collection on UI thread
+            VideoDevices.Clear();
+
+            // Add default option
+            VideoDevices.Add(new VideoDeviceItem(null, "Default"));
+
+            // Add available devices
+            foreach (var device in devices)
+            {
+                VideoDevices.Add(new VideoDeviceItem(device.Path, device.Name));
+            }
+        }
+        finally
+        {
+            IsLoadingDevices = false;
         }
     }
 
