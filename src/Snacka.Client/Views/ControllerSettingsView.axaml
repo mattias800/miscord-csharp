@@ -230,30 +230,7 @@
                                    Foreground="{StaticResource ForegroundBrush}"
                                    FontSize="13"
                                    FontWeight="SemiBold"/>
-                        <WrapPanel Orientation="Horizontal">
-                            <ItemsControl ItemsSource="{Binding CurrentState.Buttons}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <WrapPanel Orientation="Horizontal"/>
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Width="32" Height="32"
-                                                Margin="4"
-                                                CornerRadius="8"
-                                                Background="{Binding Converter={x:Static conv:BoolToButtonColorConverter.Instance}}">
-                                            <TextBlock Text="{Binding $parent[ItemsControl].ItemContainerGenerator.IndexFromContainer($parent[ContentPresenter])}"
-                                                       Foreground="White"
-                                                       FontSize="11"
-                                                       HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center"/>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </WrapPanel>
-                        <!-- Simplified button display - first 16 buttons -->
+                        <!-- Button display - first 16 buttons -->
                         <WrapPanel Orientation="Horizontal">
                             <Border Width="32" Height="32" Margin="3" CornerRadius="8"
                                     Background="{Binding CurrentState.Buttons[0], Converter={x:Static conv:BoolToButtonColorConverter.Instance}}">
