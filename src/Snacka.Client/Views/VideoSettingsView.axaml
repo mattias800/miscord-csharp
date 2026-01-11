@@ -6,77 +6,68 @@
              x:DataType="vm:VideoSettingsViewModel">
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Spacing="24" MaxWidth="600">
+        <StackPanel Spacing="28" MaxWidth="600">
             <!-- Header -->
-            <TextBlock Text="Video Settings"
-                       FontSize="20"
-                       FontWeight="SemiBold"
-                       Foreground="#ffffff"/>
+            <TextBlock Text="Video"
+                       FontSize="24"
+                       FontWeight="Bold"
+                       Foreground="{StaticResource ForegroundBrush}"/>
 
             <!-- Camera Device Section -->
-            <StackPanel Spacing="8">
+            <StackPanel Spacing="10">
                 <TextBlock Text="CAMERA"
                            FontSize="11"
                            FontWeight="SemiBold"
-                           Foreground="#b9bbbe"/>
+                           Foreground="{StaticResource Foreground3Brush}"/>
                 <ComboBox ItemsSource="{Binding VideoDevices}"
                           SelectedValue="{Binding SelectedVideoDevice}"
                           SelectedValueBinding="{Binding Value}"
                           DisplayMemberBinding="{Binding DisplayName}"
-                          Background="#202225"
-                          Foreground="White"
-                          MinWidth="300"
-                          Padding="12,8"/>
+                          Background="{StaticResource Content1Brush}"
+                          Foreground="{StaticResource ForegroundBrush}"
+                          MinWidth="320"
+                          Padding="14,10"
+                          CornerRadius="10"/>
             </StackPanel>
 
             <!-- Camera Test Section -->
-            <Border Background="#2f3136" CornerRadius="8" Padding="16">
-                <StackPanel Spacing="16">
+            <Border Background="{StaticResource Content1Brush}" CornerRadius="16" Padding="24">
+                <StackPanel Spacing="20">
                     <TextBlock Text="CAMERA TEST"
                                FontSize="11"
                                FontWeight="SemiBold"
-                               Foreground="#b9bbbe"/>
+                               Foreground="{StaticResource Foreground3Brush}"/>
 
                     <!-- Test Button and Status -->
-                    <StackPanel Orientation="Horizontal" Spacing="16">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
                         <Panel MinWidth="140">
                             <Button Command="{Binding TestCameraCommand}"
-                                    Background="#5865f2"
-                                    Padding="16,10"
-                                    CornerRadius="4"
-                                    Cursor="Hand"
+                                    Classes="btn-primary"
                                     HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"
                                     IsVisible="{Binding !IsTestingCamera}">
-                                <TextBlock Text="Test Camera"
-                                           Foreground="White"
-                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="Test Camera" FontWeight="SemiBold"/>
                             </Button>
                             <Button Command="{Binding TestCameraCommand}"
-                                    Background="#ed4245"
-                                    Padding="16,10"
-                                    CornerRadius="4"
-                                    Cursor="Hand"
+                                    Classes="btn-danger"
                                     HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"
                                     IsVisible="{Binding IsTestingCamera}">
-                                <TextBlock Text="Stop Test"
-                                           Foreground="White"
-                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="Stop Test" FontWeight="SemiBold" Foreground="White"/>
                             </Button>
                         </Panel>
 
                         <Button Command="{Binding RefreshDevicesCommand}"
-                                Background="Transparent"
-                                Padding="8"
-                                CornerRadius="4"
-                                Cursor="Hand"
+                                Classes="btn-icon"
+                                Padding="10"
                                 ToolTip.Tip="Refresh camera devices">
-                            <ui:SymbolIcon Symbol="Sync" Foreground="#b9bbbe" FontSize="16"/>
+                            <ui:SymbolIcon Symbol="Sync" Foreground="{StaticResource Foreground2Brush}" FontSize="16"/>
                         </Button>
                     </StackPanel>
 
                     <!-- Camera Preview -->
-                    <Border Background="#202225"
-                            CornerRadius="4"
+                    <Border Background="{StaticResource BackgroundBrush}"
+                            CornerRadius="10"
                             Padding="4"
                             IsVisible="{Binding IsTestingCamera}"
                             HorizontalAlignment="Left">
@@ -87,35 +78,35 @@
                     </Border>
 
                     <!-- Camera Status -->
-                    <StackPanel Spacing="8" IsVisible="{Binding IsTestingCamera}">
+                    <StackPanel Spacing="10" IsVisible="{Binding IsTestingCamera}">
                         <Grid ColumnDefinitions="Auto,*,Auto">
                             <TextBlock Text="Status:"
                                        FontSize="12"
-                                       Foreground="#72767d"/>
+                                       Foreground="{StaticResource Foreground3Brush}"/>
                             <TextBlock Grid.Column="1"
                                        Text="{Binding CameraStatus}"
                                        FontSize="12"
-                                       Foreground="#3ba55c"
+                                       Foreground="{StaticResource SuccessBrush}"
                                        Margin="8,0,0,0"/>
                         </Grid>
                         <Grid ColumnDefinitions="Auto,*,Auto">
                             <TextBlock Text="Resolution:"
                                        FontSize="12"
-                                       Foreground="#72767d"/>
+                                       Foreground="{StaticResource Foreground3Brush}"/>
                             <TextBlock Grid.Column="1"
                                        Text="{Binding Resolution}"
                                        FontSize="12"
-                                       Foreground="#ffffff"
+                                       Foreground="{StaticResource ForegroundBrush}"
                                        Margin="8,0,0,0"/>
                         </Grid>
                         <Grid ColumnDefinitions="Auto,*,Auto">
                             <TextBlock Text="Frames received:"
                                        FontSize="12"
-                                       Foreground="#72767d"/>
+                                       Foreground="{StaticResource Foreground3Brush}"/>
                             <TextBlock Grid.Column="1"
                                        Text="{Binding FrameCount}"
                                        FontSize="12"
-                                       Foreground="#ffffff"
+                                       Foreground="{StaticResource ForegroundBrush}"
                                        Margin="8,0,0,0"/>
                         </Grid>
                     </StackPanel>
@@ -123,7 +114,7 @@
                     <!-- Instructions when not testing -->
                     <TextBlock Text="Click 'Test Camera' to verify your camera is working. You'll see status information and frame count."
                                FontSize="12"
-                               Foreground="#72767d"
+                               Foreground="{StaticResource Foreground3Brush}"
                                TextWrapping="Wrap"
                                IsVisible="{Binding !IsTestingCamera}"/>
                 </StackPanel>
@@ -132,31 +123,31 @@
             <!-- Info Text -->
             <TextBlock Text="Changes are saved automatically when you select a new device."
                        FontSize="12"
-                       Foreground="#72767d"
+                       Foreground="{StaticResource Foreground3Brush}"
                        Margin="0,8,0,0"/>
 
             <!-- FFmpeg requirement notice -->
-            <Border Background="#2f3136" CornerRadius="8" Padding="16">
-                <StackPanel Spacing="8">
+            <Border Background="{StaticResource Content1Brush}" CornerRadius="16" Padding="24">
+                <StackPanel Spacing="10">
                     <TextBlock Text="REQUIREMENTS"
                                FontSize="11"
                                FontWeight="SemiBold"
-                               Foreground="#b9bbbe"/>
+                               Foreground="{StaticResource Foreground3Brush}"/>
                     <TextBlock Text="Video capture requires FFmpeg to be installed:"
                                FontSize="12"
-                               Foreground="#72767d"
+                               Foreground="{StaticResource Foreground3Brush}"
                                TextWrapping="Wrap"/>
                     <TextBlock Text="macOS: brew install ffmpeg"
                                FontSize="12"
-                               Foreground="#b9bbbe"
+                               Foreground="{StaticResource Foreground2Brush}"
                                FontFamily="Consolas,Monaco,monospace"/>
                     <TextBlock Text="Windows: winget install ffmpeg"
                                FontSize="12"
-                               Foreground="#b9bbbe"
+                               Foreground="{StaticResource Foreground2Brush}"
                                FontFamily="Consolas,Monaco,monospace"/>
                     <TextBlock Text="Linux: apt install ffmpeg"
                                FontSize="12"
-                               Foreground="#b9bbbe"
+                               Foreground="{StaticResource Foreground2Brush}"
                                FontFamily="Consolas,Monaco,monospace"/>
                 </StackPanel>
             </Border>

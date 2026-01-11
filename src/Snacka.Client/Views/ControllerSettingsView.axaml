@@ -13,15 +13,15 @@
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Spacing="24" MaxWidth="700">
+        <StackPanel Spacing="28" MaxWidth="700">
             <!-- Header -->
             <StackPanel Spacing="8">
                 <TextBlock Text="Controllers"
-                           FontSize="20"
-                           FontWeight="SemiBold"
-                           Foreground="#ffffff"/>
+                           FontSize="24"
+                           FontWeight="Bold"
+                           Foreground="{StaticResource ForegroundBrush}"/>
                 <TextBlock Text="Connect and test your game controllers."
-                           Foreground="#b9bbbe"
+                           Foreground="{StaticResource Foreground2Brush}"
                            FontSize="14"/>
             </StackPanel>
 
@@ -30,26 +30,25 @@
                 <TextBlock Text="INPUT DEVICE"
                            FontSize="11"
                            FontWeight="SemiBold"
-                           Foreground="#8e9297"
-                           Margin="0,0,0,4"/>
+                           Foreground="{StaticResource Foreground3Brush}"/>
 
                 <Grid ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto">
                     <ComboBox Grid.Column="0"
                               ItemsSource="{Binding AvailableControllers}"
                               SelectedItem="{Binding SelectedController}"
                               HorizontalAlignment="Stretch"
-                              Background="#1e1f22"
-                              Foreground="#dcddde"
+                              Background="{StaticResource Content1Brush}"
+                              Foreground="{StaticResource ForegroundBrush}"
                               BorderThickness="0"
-                              CornerRadius="4"
-                              Padding="12,10"
-                              MinHeight="40">
+                              CornerRadius="10"
+                              Padding="14,10"
+                              MinHeight="44">
                         <ComboBox.ItemTemplate>
                             <DataTemplate x:DataType="services:ControllerDevice">
                                 <StackPanel>
-                                    <TextBlock Text="{Binding Name}" Foreground="#dcddde"/>
+                                    <TextBlock Text="{Binding Name}" Foreground="{StaticResource ForegroundBrush}"/>
                                     <TextBlock Text="{Binding Manufacturer}"
-                                               Foreground="#72767d"
+                                               Foreground="{StaticResource Foreground3Brush}"
                                                FontSize="11"/>
                                 </StackPanel>
                             </DataTemplate>
@@ -58,51 +57,46 @@
 
                     <Button Grid.Column="1"
                             Command="{Binding RefreshCommand}"
-                            Background="#40444b"
-                            Foreground="#dcddde"
-                            Padding="12,10"
-                            Margin="8,0,0,0"
-                            CornerRadius="4"
+                            Classes="btn-secondary"
+                            Padding="14,10"
+                            Margin="10,0,0,0"
                             ToolTip.Tip="Refresh controller list">
                         <ui:SymbolIcon Symbol="Sync" FontSize="14"/>
                     </Button>
 
                     <Button Grid.Column="2"
                             Command="{Binding StartTestCommand}"
-                            Background="#5865f2"
-                            Foreground="White"
-                            Padding="16,10"
-                            Margin="8,0,0,0"
-                            CornerRadius="4"
+                            Classes="btn-primary"
+                            Padding="20,10"
+                            Margin="10,0,0,0"
                             IsVisible="{Binding !IsReading}"
                             IsEnabled="{Binding SelectedController, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <TextBlock Text="Test Controller"/>
+                        <TextBlock Text="Test Controller" FontWeight="SemiBold"/>
                     </Button>
 
                     <Button Grid.Column="2"
                             Command="{Binding StopTestCommand}"
-                            Background="#ed4245"
-                            Foreground="White"
-                            Padding="16,10"
-                            Margin="8,0,0,0"
-                            CornerRadius="4"
+                            Classes="btn-danger"
+                            Padding="20,10"
+                            Margin="10,0,0,0"
                             IsVisible="{Binding IsReading}">
-                        <TextBlock Text="Stop Test"/>
+                        <TextBlock Text="Stop Test" FontWeight="SemiBold" Foreground="White"/>
                     </Button>
                 </Grid>
 
                 <!-- No controllers message -->
-                <Border Background="#2f3136"
-                        CornerRadius="8"
-                        Padding="20"
+                <Border Background="{StaticResource Content1Brush}"
+                        CornerRadius="16"
+                        Padding="24"
                         IsVisible="{Binding !AvailableControllers.Count}">
                     <StackPanel HorizontalAlignment="Center" Spacing="8">
                         <TextBlock Text="No controllers found"
-                                   Foreground="#dcddde"
+                                   Foreground="{StaticResource ForegroundBrush}"
                                    FontSize="16"
+                                   FontWeight="SemiBold"
                                    HorizontalAlignment="Center"/>
                         <TextBlock Text="Connect a game controller and click refresh"
-                                   Foreground="#72767d"
+                                   Foreground="{StaticResource Foreground3Brush}"
                                    FontSize="13"
                                    HorizontalAlignment="Center"/>
                     </StackPanel>
@@ -110,91 +104,93 @@
             </StackPanel>
 
             <!-- Controller Info -->
-            <Border Background="#2f3136"
-                    CornerRadius="8"
-                    Padding="20"
+            <Border Background="{StaticResource Content1Brush}"
+                    CornerRadius="16"
+                    Padding="24"
                     IsVisible="{Binding SelectedController, Converter={x:Static ObjectConverters.IsNotNull}}">
-                <StackPanel Spacing="12">
+                <StackPanel Spacing="16">
                     <TextBlock Text="CONTROLLER INFO"
                                FontSize="11"
                                FontWeight="SemiBold"
-                               Foreground="#8e9297"/>
+                               Foreground="{StaticResource Foreground3Brush}"/>
 
-                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Name:" Foreground="#72767d" Margin="0,0,16,0"/>
-                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedController.Name}" Foreground="#dcddde"/>
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Name:" Foreground="{StaticResource Foreground3Brush}" Margin="0,0,16,0"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedController.Name}" Foreground="{StaticResource ForegroundBrush}"/>
 
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Manufacturer:" Foreground="#72767d" Margin="0,0,16,0"/>
-                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedController.Manufacturer}" Foreground="#dcddde"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Manufacturer:" Foreground="{StaticResource Foreground3Brush}" Margin="0,0,16,0"/>
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedController.Manufacturer}" Foreground="{StaticResource ForegroundBrush}"/>
 
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="ID:" Foreground="#72767d" Margin="0,0,16,0"/>
-                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedController.Id}" Foreground="#72767d" FontFamily="Consolas,Menlo,monospace"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="ID:" Foreground="{StaticResource Foreground3Brush}" Margin="0,0,16,0"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedController.Id}" Foreground="{StaticResource Foreground3Brush}" FontFamily="Consolas,Menlo,monospace"/>
                     </Grid>
                 </StackPanel>
             </Border>
 
             <!-- Input Visualization -->
-            <Border Background="#2f3136"
-                    CornerRadius="8"
-                    Padding="20"
+            <Border Background="{StaticResource Content1Brush}"
+                    CornerRadius="16"
+                    Padding="24"
                     IsVisible="{Binding IsReading}">
-                <StackPanel Spacing="20">
+                <StackPanel Spacing="24">
                     <TextBlock Text="INPUT TEST"
                                FontSize="11"
                                FontWeight="SemiBold"
-                               Foreground="#8e9297"/>
+                               Foreground="{StaticResource Foreground3Brush}"/>
 
                     <!-- Analog Sticks -->
                     <Grid ColumnDefinitions="*,*" RowDefinitions="Auto">
                         <!-- Left Stick (X/Y) -->
-                        <StackPanel Grid.Column="0" HorizontalAlignment="Center" Spacing="8">
+                        <StackPanel Grid.Column="0" HorizontalAlignment="Center" Spacing="10">
                             <TextBlock Text="Left Stick"
-                                       Foreground="#dcddde"
+                                       Foreground="{StaticResource ForegroundBrush}"
                                        FontSize="13"
+                                       FontWeight="SemiBold"
                                        HorizontalAlignment="Center"/>
                             <Border Width="120" Height="120"
-                                    Background="#1e1f22"
+                                    Background="{StaticResource BackgroundBrush}"
                                     CornerRadius="60"
                                     ClipToBounds="True">
                                 <Canvas Width="120" Height="120">
                                     <!-- Center crosshair -->
-                                    <Line StartPoint="60,0" EndPoint="60,120" Stroke="#40444b" StrokeThickness="1"/>
-                                    <Line StartPoint="0,60" EndPoint="120,60" Stroke="#40444b" StrokeThickness="1"/>
+                                    <Line StartPoint="60,0" EndPoint="60,120" Stroke="{StaticResource Content3Brush}" StrokeThickness="1"/>
+                                    <Line StartPoint="0,60" EndPoint="120,60" Stroke="{StaticResource Content3Brush}" StrokeThickness="1"/>
                                     <!-- Stick position indicator -->
                                     <Ellipse Width="20" Height="20"
-                                             Fill="#5865f2"
+                                             Fill="{StaticResource PrimaryBrush}"
                                              Canvas.Left="{Binding AxisX, Converter={StaticResource AxisToPositionConverter}, ConverterParameter=100}"
                                              Canvas.Top="{Binding AxisY, Converter={StaticResource AxisToPositionConverter}, ConverterParameter=100}"/>
                                 </Canvas>
                             </Border>
-                            <TextBlock Foreground="#72767d" FontSize="11" HorizontalAlignment="Center">
+                            <TextBlock Foreground="{StaticResource Foreground3Brush}" FontSize="11" HorizontalAlignment="Center">
                                 <Run Text="X: "/><Run Text="{Binding AxisX, StringFormat={}{0:F2}}"/>
                                 <Run Text="  Y: "/><Run Text="{Binding AxisY, StringFormat={}{0:F2}}"/>
                             </TextBlock>
                         </StackPanel>
 
                         <!-- Right Stick (Z/Rz or Rx/Ry) -->
-                        <StackPanel Grid.Column="1" HorizontalAlignment="Center" Spacing="8">
+                        <StackPanel Grid.Column="1" HorizontalAlignment="Center" Spacing="10">
                             <TextBlock Text="Right Stick"
-                                       Foreground="#dcddde"
+                                       Foreground="{StaticResource ForegroundBrush}"
                                        FontSize="13"
+                                       FontWeight="SemiBold"
                                        HorizontalAlignment="Center"/>
                             <Border Width="120" Height="120"
-                                    Background="#1e1f22"
+                                    Background="{StaticResource BackgroundBrush}"
                                     CornerRadius="60"
                                     ClipToBounds="True">
                                 <Canvas Width="120" Height="120">
                                     <!-- Center crosshair -->
-                                    <Line StartPoint="60,0" EndPoint="60,120" Stroke="#40444b" StrokeThickness="1"/>
-                                    <Line StartPoint="0,60" EndPoint="120,60" Stroke="#40444b" StrokeThickness="1"/>
+                                    <Line StartPoint="60,0" EndPoint="60,120" Stroke="{StaticResource Content3Brush}" StrokeThickness="1"/>
+                                    <Line StartPoint="0,60" EndPoint="120,60" Stroke="{StaticResource Content3Brush}" StrokeThickness="1"/>
                                     <!-- Stick position indicator -->
                                     <Ellipse Width="20" Height="20"
-                                             Fill="#5865f2"
+                                             Fill="{StaticResource PrimaryBrush}"
                                              Canvas.Left="{Binding AxisZ, Converter={StaticResource AxisToPositionConverter}, ConverterParameter=100}"
                                              Canvas.Top="{Binding AxisRz, Converter={StaticResource AxisToPositionConverter}, ConverterParameter=100}"/>
                                 </Canvas>
                             </Border>
-                            <TextBlock Foreground="#72767d" FontSize="11" HorizontalAlignment="Center">
+                            <TextBlock Foreground="{StaticResource Foreground3Brush}" FontSize="11" HorizontalAlignment="Center">
                                 <Run Text="Z: "/><Run Text="{Binding AxisZ, StringFormat={}{0:F2}}"/>
                                 <Run Text="  Rz: "/><Run Text="{Binding AxisRz, StringFormat={}{0:F2}}"/>
                             </TextBlock>
@@ -202,36 +198,38 @@
                     </Grid>
 
                     <!-- Triggers (Rx/Ry as bars) -->
-                    <StackPanel Spacing="8">
+                    <StackPanel Spacing="10">
                         <TextBlock Text="Triggers / Extra Axes"
-                                   Foreground="#dcddde"
-                                   FontSize="13"/>
+                                   Foreground="{StaticResource ForegroundBrush}"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"/>
                         <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto" RowSpacing="8">
                             <!-- Left Trigger -->
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Rx:" Foreground="#72767d" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                            <Border Grid.Row="0" Grid.Column="1" Height="16" Background="#1e1f22" CornerRadius="4" Margin="0,0,16,0">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Rx:" Foreground="{StaticResource Foreground3Brush}" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                            <Border Grid.Row="0" Grid.Column="1" Height="16" Background="{StaticResource BackgroundBrush}" CornerRadius="8" Margin="0,0,20,0">
                                 <Border HorizontalAlignment="Left"
-                                        Background="#43b581"
-                                        CornerRadius="4"
+                                        Background="{StaticResource SuccessBrush}"
+                                        CornerRadius="8"
                                         Width="{Binding AxisRx, Converter={StaticResource AxisToPositionConverter}, ConverterParameter=200}"/>
                             </Border>
 
                             <!-- Right Trigger -->
-                            <TextBlock Grid.Row="0" Grid.Column="2" Text="Ry:" Foreground="#72767d" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                            <Border Grid.Row="0" Grid.Column="3" Height="16" Background="#1e1f22" CornerRadius="4">
+                            <TextBlock Grid.Row="0" Grid.Column="2" Text="Ry:" Foreground="{StaticResource Foreground3Brush}" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                            <Border Grid.Row="0" Grid.Column="3" Height="16" Background="{StaticResource BackgroundBrush}" CornerRadius="8">
                                 <Border HorizontalAlignment="Left"
-                                        Background="#43b581"
-                                        CornerRadius="4"
+                                        Background="{StaticResource SuccessBrush}"
+                                        CornerRadius="8"
                                         Width="{Binding AxisRy, Converter={StaticResource AxisToPositionConverter}, ConverterParameter=200}"/>
                             </Border>
                         </Grid>
                     </StackPanel>
 
                     <!-- Buttons -->
-                    <StackPanel Spacing="8">
+                    <StackPanel Spacing="10">
                         <TextBlock Text="Buttons"
-                                   Foreground="#dcddde"
-                                   FontSize="13"/>
+                                   Foreground="{StaticResource ForegroundBrush}"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"/>
                         <WrapPanel Orientation="Horizontal">
                             <ItemsControl ItemsSource="{Binding CurrentState.Buttons}">
                                 <ItemsControl.ItemsPanel>
@@ -243,7 +241,7 @@
                                     <DataTemplate>
                                         <Border Width="32" Height="32"
                                                 Margin="4"
-                                                CornerRadius="4"
+                                                CornerRadius="8"
                                                 Background="{Binding Converter={x:Static conv:BoolToButtonColorConverter.Instance}}">
                                             <TextBlock Text="{Binding $parent[ItemsControl].ItemContainerGenerator.IndexFromContainer($parent[ContentPresenter])}"
                                                        Foreground="White"
@@ -257,67 +255,67 @@
                         </WrapPanel>
                         <!-- Simplified button display - first 16 buttons -->
                         <WrapPanel Orientation="Horizontal">
-                            <Border Width="32" Height="32" Margin="2" CornerRadius="4"
+                            <Border Width="32" Height="32" Margin="3" CornerRadius="8"
                                     Background="{Binding CurrentState.Buttons[0], Converter={x:Static conv:BoolToButtonColorConverter.Instance}}">
                                 <TextBlock Text="1" Foreground="White" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
-                            <Border Width="32" Height="32" Margin="2" CornerRadius="4"
+                            <Border Width="32" Height="32" Margin="3" CornerRadius="8"
                                     Background="{Binding CurrentState.Buttons[1], Converter={x:Static conv:BoolToButtonColorConverter.Instance}}">
                                 <TextBlock Text="2" Foreground="White" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
-                            <Border Width="32" Height="32" Margin="2" CornerRadius="4"
+                            <Border Width="32" Height="32" Margin="3" CornerRadius="8"
                                     Background="{Binding CurrentState.Buttons[2], Converter={x:Static conv:BoolToButtonColorConverter.Instance}}">
                                 <TextBlock Text="3" Foreground="White" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
-                            <Border Width="32" Height="32" Margin="2" CornerRadius="4"
+                            <Border Width="32" Height="32" Margin="3" CornerRadius="8"
                                     Background="{Binding CurrentState.Buttons[3], Converter={x:Static conv:BoolToButtonColorConverter.Instance}}">
                                 <TextBlock Text="4" Foreground="White" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
-                            <Border Width="32" Height="32" Margin="2" CornerRadius="4"
+                            <Border Width="32" Height="32" Margin="3" CornerRadius="8"
                                     Background="{Binding CurrentState.Buttons[4], Converter={x:Static conv:BoolToButtonColorConverter.Instance}}">
                                 <TextBlock Text="5" Foreground="White" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
-                            <Border Width="32" Height="32" Margin="2" CornerRadius="4"
+                            <Border Width="32" Height="32" Margin="3" CornerRadius="8"
                                     Background="{Binding CurrentState.Buttons[5], Converter={x:Static conv:BoolToButtonColorConverter.Instance}}">
                                 <TextBlock Text="6" Foreground="White" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
-                            <Border Width="32" Height="32" Margin="2" CornerRadius="4"
+                            <Border Width="32" Height="32" Margin="3" CornerRadius="8"
                                     Background="{Binding CurrentState.Buttons[6], Converter={x:Static conv:BoolToButtonColorConverter.Instance}}">
                                 <TextBlock Text="7" Foreground="White" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
-                            <Border Width="32" Height="32" Margin="2" CornerRadius="4"
+                            <Border Width="32" Height="32" Margin="3" CornerRadius="8"
                                     Background="{Binding CurrentState.Buttons[7], Converter={x:Static conv:BoolToButtonColorConverter.Instance}}">
                                 <TextBlock Text="8" Foreground="White" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
-                            <Border Width="32" Height="32" Margin="2" CornerRadius="4"
+                            <Border Width="32" Height="32" Margin="3" CornerRadius="8"
                                     Background="{Binding CurrentState.Buttons[8], Converter={x:Static conv:BoolToButtonColorConverter.Instance}}">
                                 <TextBlock Text="9" Foreground="White" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
-                            <Border Width="32" Height="32" Margin="2" CornerRadius="4"
+                            <Border Width="32" Height="32" Margin="3" CornerRadius="8"
                                     Background="{Binding CurrentState.Buttons[9], Converter={x:Static conv:BoolToButtonColorConverter.Instance}}">
                                 <TextBlock Text="10" Foreground="White" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
-                            <Border Width="32" Height="32" Margin="2" CornerRadius="4"
+                            <Border Width="32" Height="32" Margin="3" CornerRadius="8"
                                     Background="{Binding CurrentState.Buttons[10], Converter={x:Static conv:BoolToButtonColorConverter.Instance}}">
                                 <TextBlock Text="11" Foreground="White" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
-                            <Border Width="32" Height="32" Margin="2" CornerRadius="4"
+                            <Border Width="32" Height="32" Margin="3" CornerRadius="8"
                                     Background="{Binding CurrentState.Buttons[11], Converter={x:Static conv:BoolToButtonColorConverter.Instance}}">
                                 <TextBlock Text="12" Foreground="White" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
-                            <Border Width="32" Height="32" Margin="2" CornerRadius="4"
+                            <Border Width="32" Height="32" Margin="3" CornerRadius="8"
                                     Background="{Binding CurrentState.Buttons[12], Converter={x:Static conv:BoolToButtonColorConverter.Instance}}">
                                 <TextBlock Text="13" Foreground="White" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
-                            <Border Width="32" Height="32" Margin="2" CornerRadius="4"
+                            <Border Width="32" Height="32" Margin="3" CornerRadius="8"
                                     Background="{Binding CurrentState.Buttons[13], Converter={x:Static conv:BoolToButtonColorConverter.Instance}}">
                                 <TextBlock Text="14" Foreground="White" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
-                            <Border Width="32" Height="32" Margin="2" CornerRadius="4"
+                            <Border Width="32" Height="32" Margin="3" CornerRadius="8"
                                     Background="{Binding CurrentState.Buttons[14], Converter={x:Static conv:BoolToButtonColorConverter.Instance}}">
                                 <TextBlock Text="15" Foreground="White" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
-                            <Border Width="32" Height="32" Margin="2" CornerRadius="4"
+                            <Border Width="32" Height="32" Margin="3" CornerRadius="8"
                                     Background="{Binding CurrentState.Buttons[15], Converter={x:Static conv:BoolToButtonColorConverter.Instance}}">
                                 <TextBlock Text="16" Foreground="White" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
@@ -325,16 +323,17 @@
                     </StackPanel>
 
                     <!-- D-Pad / Hat Switch -->
-                    <StackPanel Spacing="8">
+                    <StackPanel Spacing="10">
                         <TextBlock Text="D-Pad (Hat Switch)"
-                                   Foreground="#dcddde"
-                                   FontSize="13"/>
+                                   Foreground="{StaticResource ForegroundBrush}"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"/>
                         <Grid Width="100" Height="100" HorizontalAlignment="Left">
                             <!-- Up -->
                             <Border Width="30" Height="30"
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Top"
-                                    CornerRadius="4"
+                                    CornerRadius="8"
                                     Background="{Binding CurrentState.HatSwitch, Converter={x:Static conv:HatToDPadConverter.Up}}">
                                 <TextBlock Text="↑" Foreground="White" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
@@ -342,7 +341,7 @@
                             <Border Width="30" Height="30"
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Bottom"
-                                    CornerRadius="4"
+                                    CornerRadius="8"
                                     Background="{Binding CurrentState.HatSwitch, Converter={x:Static conv:HatToDPadConverter.Down}}">
                                 <TextBlock Text="↓" Foreground="White" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
@@ -350,7 +349,7 @@
                             <Border Width="30" Height="30"
                                     HorizontalAlignment="Left"
                                     VerticalAlignment="Center"
-                                    CornerRadius="4"
+                                    CornerRadius="8"
                                     Background="{Binding CurrentState.HatSwitch, Converter={x:Static conv:HatToDPadConverter.Left}}">
                                 <TextBlock Text="←" Foreground="White" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
@@ -358,7 +357,7 @@
                             <Border Width="30" Height="30"
                                     HorizontalAlignment="Right"
                                     VerticalAlignment="Center"
-                                    CornerRadius="4"
+                                    CornerRadius="8"
                                     Background="{Binding CurrentState.HatSwitch, Converter={x:Static conv:HatToDPadConverter.Right}}">
                                 <TextBlock Text="→" Foreground="White" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
@@ -366,21 +365,21 @@
                             <Border Width="30" Height="30"
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center"
-                                    CornerRadius="4"
-                                    Background="#1e1f22"/>
+                                    CornerRadius="8"
+                                    Background="{StaticResource BackgroundBrush}"/>
                         </Grid>
                     </StackPanel>
                 </StackPanel>
             </Border>
 
             <!-- Instructions when not testing -->
-            <Border Background="#2f3136"
-                    CornerRadius="8"
-                    Padding="20"
+            <Border Background="{StaticResource Content1Brush}"
+                    CornerRadius="16"
+                    Padding="24"
                     IsVisible="{Binding !IsReading}">
                 <StackPanel Spacing="8" HorizontalAlignment="Center">
                     <TextBlock Text="Select a controller and click 'Test Controller' to visualize input"
-                               Foreground="#72767d"
+                               Foreground="{StaticResource Foreground3Brush}"
                                FontSize="13"
                                HorizontalAlignment="Center"/>
                 </StackPanel>

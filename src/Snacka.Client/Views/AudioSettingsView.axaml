@@ -7,74 +7,76 @@
              x:DataType="vm:AudioSettingsViewModel">
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Spacing="24" MaxWidth="600">
+        <StackPanel Spacing="28" MaxWidth="600">
             <!-- Header -->
             <TextBlock Text="Voice &amp; Video"
-                       FontSize="20"
-                       FontWeight="SemiBold"
-                       Foreground="#ffffff"/>
+                       FontSize="24"
+                       FontWeight="Bold"
+                       Foreground="{StaticResource ForegroundBrush}"/>
 
             <!-- Input Device Section -->
-            <StackPanel Spacing="8">
+            <StackPanel Spacing="10">
                 <TextBlock Text="INPUT DEVICE"
                            FontSize="11"
                            FontWeight="SemiBold"
-                           Foreground="#b9bbbe"/>
+                           Foreground="{StaticResource Foreground3Brush}"/>
                 <ComboBox ItemsSource="{Binding InputDevices}"
                           SelectedItem="{Binding SelectedInputDeviceItem, Mode=TwoWay}"
                           DisplayMemberBinding="{Binding DisplayName}"
-                          Background="#202225"
-                          Foreground="White"
-                          MinWidth="300"
-                          Padding="12,8"/>
+                          Background="{StaticResource Content1Brush}"
+                          Foreground="{StaticResource ForegroundBrush}"
+                          MinWidth="320"
+                          Padding="14,10"
+                          CornerRadius="10"/>
             </StackPanel>
 
             <!-- Output Device Section -->
-            <StackPanel Spacing="8">
+            <StackPanel Spacing="10">
                 <TextBlock Text="OUTPUT DEVICE"
                            FontSize="11"
                            FontWeight="SemiBold"
-                           Foreground="#b9bbbe"/>
+                           Foreground="{StaticResource Foreground3Brush}"/>
                 <ComboBox ItemsSource="{Binding OutputDevices}"
                           SelectedItem="{Binding SelectedOutputDeviceItem, Mode=TwoWay}"
                           DisplayMemberBinding="{Binding DisplayName}"
-                          Background="#202225"
-                          Foreground="White"
-                          MinWidth="300"
-                          Padding="12,8"/>
+                          Background="{StaticResource Content1Brush}"
+                          Foreground="{StaticResource ForegroundBrush}"
+                          MinWidth="320"
+                          Padding="14,10"
+                          CornerRadius="10"/>
             </StackPanel>
 
             <!-- Input Gain Section -->
-            <StackPanel Spacing="8">
+            <StackPanel Spacing="10">
                 <Grid ColumnDefinitions="*,Auto">
                     <TextBlock Text="INPUT GAIN"
                                FontSize="11"
                                FontWeight="SemiBold"
-                               Foreground="#b9bbbe"/>
+                               Foreground="{StaticResource Foreground3Brush}"/>
                     <TextBlock Grid.Column="1"
                                Text="{Binding InputGainPercent, StringFormat={}{0}%}"
                                FontSize="11"
-                               Foreground="#b9bbbe"/>
+                               Foreground="{StaticResource Foreground2Brush}"/>
                 </Grid>
                 <Slider Minimum="0"
                         Maximum="3"
                         Value="{Binding InputGain}"
-                        Foreground="#5865f2"
-                        Background="#202225"/>
+                        Foreground="{StaticResource PrimaryBrush}"
+                        Background="{StaticResource Content1Brush}"/>
                 <TextBlock Text="Adjust microphone sensitivity. Values above 100% amplify quiet audio."
                            FontSize="12"
-                           Foreground="#72767d"
+                           Foreground="{StaticResource Foreground3Brush}"
                            TextWrapping="Wrap"/>
             </StackPanel>
 
             <!-- Noise Gate Section -->
-            <StackPanel Spacing="8">
+            <StackPanel Spacing="10">
                 <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
                         <TextBlock Text="NOISE GATE"
                                    FontSize="11"
                                    FontWeight="SemiBold"
-                                   Foreground="#b9bbbe"
+                                   Foreground="{StaticResource Foreground3Brush}"
                                    VerticalAlignment="Center"/>
                         <ToggleSwitch IsChecked="{Binding GateEnabled}"
                                       OnContent=""
@@ -85,94 +87,80 @@
                     <TextBlock Grid.Column="1"
                                Text="{Binding GateThresholdPercent, StringFormat={}{0}%}"
                                FontSize="11"
-                               Foreground="#b9bbbe"
+                               Foreground="{StaticResource Foreground2Brush}"
                                IsVisible="{Binding GateEnabled}"/>
                 </Grid>
                 <Slider Minimum="0"
                         Maximum="0.5"
                         Value="{Binding GateThreshold}"
-                        Foreground="#5865f2"
-                        Background="#202225"
+                        Foreground="{StaticResource PrimaryBrush}"
+                        Background="{StaticResource Content1Brush}"
                         IsVisible="{Binding GateEnabled}"/>
                 <TextBlock Text="Mutes input when audio level is below the threshold, reducing background noise."
                            FontSize="12"
-                           Foreground="#72767d"
+                           Foreground="{StaticResource Foreground3Brush}"
                            TextWrapping="Wrap"/>
             </StackPanel>
 
             <!-- Mic Test Section -->
-            <Border Background="#2f3136" CornerRadius="8" Padding="16">
-                <StackPanel Spacing="16">
+            <Border Background="{StaticResource Content1Brush}" CornerRadius="16" Padding="24">
+                <StackPanel Spacing="20">
                     <TextBlock Text="MIC TEST"
                                FontSize="11"
                                FontWeight="SemiBold"
-                               Foreground="#b9bbbe"/>
+                               Foreground="{StaticResource Foreground3Brush}"/>
 
                     <!-- Test Button and Status -->
-                    <StackPanel Orientation="Horizontal" Spacing="16">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
                         <Panel MinWidth="140">
                             <Button Command="{Binding TestMicrophoneCommand}"
-                                    Background="#5865f2"
-                                    Padding="16,10"
-                                    CornerRadius="4"
-                                    Cursor="Hand"
+                                    Classes="btn-primary"
                                     HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"
                                     IsVisible="{Binding !IsTestingMicrophone}">
-                                <TextBlock Text="Let's Check"
-                                           Foreground="White"
-                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="Let's Check" FontWeight="SemiBold"/>
                             </Button>
                             <Button Command="{Binding TestMicrophoneCommand}"
-                                    Background="#ed4245"
-                                    Padding="16,10"
-                                    CornerRadius="4"
-                                    Cursor="Hand"
+                                    Classes="btn-danger"
                                     HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"
                                     IsVisible="{Binding IsTestingMicrophone}">
-                                <TextBlock Text="Stop Testing"
-                                           Foreground="White"
-                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="Stop Testing" FontWeight="SemiBold" Foreground="White"/>
                             </Button>
                         </Panel>
 
                         <Button Command="{Binding ToggleLoopbackCommand}"
                                 IsEnabled="{Binding IsTestingMicrophone}"
-                                Background="Transparent"
-                                BorderBrush="#5865f2"
-                                BorderThickness="1"
+                                Classes="btn-secondary"
                                 Padding="16,10"
-                                CornerRadius="4"
-                                Cursor="Hand"
                                 ToolTip.Tip="Hear yourself to test audio quality">
                             <Panel>
                                 <TextBlock Text="Enable Loopback"
-                                           Foreground="#b9bbbe"
+                                           Foreground="{StaticResource Foreground2Brush}"
                                            IsVisible="{Binding !IsLoopbackEnabled}"/>
                                 <TextBlock Text="Disable Loopback"
-                                           Foreground="#5865f2"
+                                           Foreground="{StaticResource PrimaryBrush}"
                                            IsVisible="{Binding IsLoopbackEnabled}"/>
                             </Panel>
                         </Button>
 
                         <Button Command="{Binding RefreshDevicesCommand}"
-                                Background="Transparent"
-                                Padding="8"
-                                CornerRadius="4"
-                                Cursor="Hand"
+                                Classes="btn-icon"
+                                Padding="10"
                                 ToolTip.Tip="Refresh audio devices">
-                            <ui:SymbolIcon Symbol="Sync" Foreground="#b9bbbe" FontSize="16"/>
+                            <ui:SymbolIcon Symbol="Sync" Foreground="{StaticResource Foreground2Brush}" FontSize="16"/>
                         </Button>
                     </StackPanel>
 
                     <!-- Audio Level Indicator -->
-                    <StackPanel Spacing="8" IsVisible="{Binding IsTestingMicrophone}">
+                    <StackPanel Spacing="10" IsVisible="{Binding IsTestingMicrophone}">
                         <Grid ColumnDefinitions="*,Auto">
                             <TextBlock Text="INPUT LEVEL"
                                        FontSize="11"
-                                       Foreground="#72767d"/>
+                                       Foreground="{StaticResource Foreground3Brush}"/>
                             <TextBlock Grid.Column="1"
                                        FontSize="11"
-                                       Foreground="#72767d">
+                                       Foreground="{StaticResource Foreground3Brush}">
                                 <TextBlock.Text>
                                     <MultiBinding StringFormat="{}Gate: {0}">
                                         <Binding Path="IsAboveGate" Converter="{x:Static conv:BoolToGateStatusConverter.Instance}"/>
@@ -181,14 +169,14 @@
                             </TextBlock>
                         </Grid>
 
-                        <Grid Height="12">
+                        <Grid Height="14">
                             <!-- Background bar -->
-                            <Border Background="#202225"
-                                    CornerRadius="4"
+                            <Border Background="{StaticResource BackgroundBrush}"
+                                    CornerRadius="7"
                                     HorizontalAlignment="Stretch"/>
 
                             <!-- Level indicator - changes color based on gate -->
-                            <Border CornerRadius="4"
+                            <Border CornerRadius="7"
                                     HorizontalAlignment="Left"
                                     Width="{Binding InputLevel, Converter={x:Static conv:AudioLevelToWidthConverter.Instance}, ConverterParameter=300}">
                                 <Border.Background>
@@ -198,8 +186,8 @@
 
                             <!-- Gate threshold marker (vertical line) -->
                             <Border HorizontalAlignment="Left"
-                                    Width="2"
-                                    Background="#ed4245"
+                                    Width="3"
+                                    Background="{StaticResource DangerBrush}"
                                     CornerRadius="1"
                                     Margin="{Binding GateThreshold, Converter={x:Static conv:GateThresholdToMarginConverter.Instance}, ConverterParameter=300}"
                                     IsVisible="{Binding GateEnabled}"
@@ -208,14 +196,14 @@
 
                         <TextBlock Text="Speak into your microphone. The bar turns green when above the gate threshold (red line)."
                                    FontSize="12"
-                                   Foreground="#72767d"
+                                   Foreground="{StaticResource Foreground3Brush}"
                                    TextWrapping="Wrap"/>
                     </StackPanel>
 
                     <!-- Instructions when not testing -->
                     <TextBlock Text="Click 'Let's Check' to test your microphone. You'll see a level indicator showing your input volume."
                                FontSize="12"
-                               Foreground="#72767d"
+                               Foreground="{StaticResource Foreground3Brush}"
                                TextWrapping="Wrap"
                                IsVisible="{Binding !IsTestingMicrophone}"/>
                 </StackPanel>
@@ -224,7 +212,7 @@
             <!-- Info Text -->
             <TextBlock Text="Changes are saved automatically when you select a new device."
                        FontSize="12"
-                       Foreground="#72767d"
+                       Foreground="{StaticResource Foreground3Brush}"
                        Margin="0,8,0,0"/>
         </StackPanel>
     </ScrollViewer>
