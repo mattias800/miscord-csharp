@@ -38,7 +38,7 @@ internal record SnackaCaptureApplication(
 /// <summary>
 /// Cross-platform service for enumerating screen capture sources (displays, windows, and applications).
 /// - macOS: Displays, windows, and applications via SnackaCapture (ScreenCaptureKit)
-/// - Windows: Displays and windows
+/// - Windows: Displays and windows via SnackaCaptureWindows (Desktop Duplication API)
 /// - Linux: Displays and windows
 /// </summary>
 public class ScreenCaptureService : IScreenCaptureService
@@ -46,6 +46,11 @@ public class ScreenCaptureService : IScreenCaptureService
     private SnackaCaptureSourceList? _cachedMacOSSources;
     private bool _macOSSourcesCacheAttempted;
     private string? _snackaCapturePath;
+
+    // Windows-specific
+    private SnackaCaptureSourceList? _cachedWindowsSources;
+    private bool _windowsSourcesCacheAttempted;
+    private string? _snackaCaptureWindowsPath;
 
     /// <summary>
     /// Ensures we've attempted to load macOS sources via SnackaCapture.
@@ -65,6 +70,11 @@ public class ScreenCaptureService : IScreenCaptureService
         if (OperatingSystem.IsMacOS())
         {
             RefreshMacOSSources();
+        }
+        // On Windows, try to get all sources at once via SnackaCaptureWindows
+        else if (OperatingSystem.IsWindows())
+        {
+            RefreshWindowsSources();
         }
 
         var sources = new List<ScreenCaptureSource>();
@@ -413,11 +423,150 @@ for (i, display) in displays.enumerated() {
 
     #region Windows Implementation
 
+    /// <summary>
+    /// Gets the path to SnackaCaptureWindows.exe if available.
+    /// </summary>
+    private string? GetSnackaCaptureWindowsPath()
+    {
+        if (_snackaCaptureWindowsPath != null)
+            return _snackaCaptureWindowsPath;
+
+        var appDir = AppDomain.CurrentDomain.BaseDirectory;
+
+        var searchPaths = new[]
+        {
+            // Bundled with app
+            Path.Combine(appDir, "SnackaCaptureWindows.exe"),
+            // CMake build paths
+            Path.Combine(appDir, "..", "SnackaCaptureWindows", "build", "bin", "SnackaCaptureWindows.exe"),
+            Path.Combine(appDir, "..", "..", "..", "..", "SnackaCaptureWindows", "build", "bin", "SnackaCaptureWindows.exe"),
+            Path.Combine(appDir, "..", "SnackaCaptureWindows", "build", "bin", "Release", "SnackaCaptureWindows.exe"),
+            Path.Combine(appDir, "..", "..", "..", "..", "SnackaCaptureWindows", "build", "bin", "Release", "SnackaCaptureWindows.exe"),
+            Path.Combine(appDir, "..", "SnackaCaptureWindows", "build", "bin", "Debug", "SnackaCaptureWindows.exe"),
+            Path.Combine(appDir, "..", "..", "..", "..", "SnackaCaptureWindows", "build", "bin", "Debug", "SnackaCaptureWindows.exe"),
+        };
+
+        Console.WriteLine($"ScreenCaptureService: Looking for SnackaCaptureWindows, appDir={appDir}");
+        foreach (var path in searchPaths)
+        {
+            var fullPath = Path.GetFullPath(path);
+            var exists = File.Exists(fullPath);
+            Console.WriteLine($"ScreenCaptureService:   Checking {fullPath} -> {(exists ? "FOUND" : "not found")}");
+            if (exists)
+            {
+                Console.WriteLine($"ScreenCaptureService: Using SnackaCaptureWindows at {fullPath}");
+                _snackaCaptureWindowsPath = fullPath;
+                return fullPath;
+            }
+        }
+
+        Console.WriteLine("ScreenCaptureService: SnackaCaptureWindows not found in any search path!");
+        return null;
+    }
+
+    /// <summary>
+    /// Ensures we've attempted to load Windows sources via SnackaCaptureWindows.
+    /// Call this before checking _cachedWindowsSources.
+    /// </summary>
+    private void EnsureWindowsSourcesCached()
+    {
+        if (!_windowsSourcesCacheAttempted)
+        {
+            RefreshWindowsSources();
+            _windowsSourcesCacheAttempted = true;
+        }
+    }
+
+    /// <summary>
+    /// Refreshes the cached Windows sources by running SnackaCaptureWindows list --json.
+    /// </summary>
+    private void RefreshWindowsSources()
+    {
+        Console.WriteLine("ScreenCaptureService: RefreshWindowsSources() called");
+        var capturePath = GetSnackaCaptureWindowsPath();
+        if (capturePath == null)
+        {
+            Console.WriteLine("ScreenCaptureService: SnackaCaptureWindows not found, using Win32 fallback");
+            _cachedWindowsSources = null;
+            return;
+        }
+        Console.WriteLine($"ScreenCaptureService: Using SnackaCaptureWindows at: {capturePath}");
+
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = capturePath,
+                Arguments = "list --json",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var process = System.Diagnostics.Process.Start(psi);
+            if (process == null)
+            {
+                _cachedWindowsSources = null;
+                return;
+            }
+
+            var output = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(10000);
+
+            if (!string.IsNullOrEmpty(stderr))
+            {
+                Console.WriteLine($"ScreenCaptureService: SnackaCaptureWindows stderr: {stderr}");
+            }
+
+            if (process.ExitCode != 0)
+            {
+                Console.WriteLine($"ScreenCaptureService: SnackaCaptureWindows exited with code {process.ExitCode}");
+                _cachedWindowsSources = null;
+                return;
+            }
+
+            _cachedWindowsSources = JsonSerializer.Deserialize<SnackaCaptureSourceList>(output);
+            Console.WriteLine($"ScreenCaptureService: SnackaCaptureWindows found {_cachedWindowsSources?.Displays.Count ?? 0} displays, " +
+                              $"{_cachedWindowsSources?.Windows.Count ?? 0} windows");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"ScreenCaptureService: Failed to get sources via SnackaCaptureWindows - {ex.Message}");
+            _cachedWindowsSources = null;
+        }
+    }
+
     private IReadOnlyList<ScreenCaptureSource> GetDisplaysWindows()
     {
         if (!OperatingSystem.IsWindows())
             return Array.Empty<ScreenCaptureSource>();
 
+        // Try to use SnackaCaptureWindows if available
+        EnsureWindowsSourcesCached();
+        if (_cachedWindowsSources != null)
+        {
+            var displays = _cachedWindowsSources.Displays.Select(d =>
+                new ScreenCaptureSource(
+                    ScreenCaptureSourceType.Display,
+                    d.Id,
+                    $"{d.Name} ({d.Width}x{d.Height})"
+                )).ToList();
+
+            foreach (var d in displays)
+                Console.WriteLine($"  - {d.Name}");
+
+            Console.WriteLine($"ScreenCaptureService: Found {displays.Count} displays via SnackaCaptureWindows");
+            return displays;
+        }
+
+        // Fallback to Win32 P/Invoke
+        return GetDisplaysWindowsFallback();
+    }
+
+    private IReadOnlyList<ScreenCaptureSource> GetDisplaysWindowsFallback()
+    {
         var displays = new List<ScreenCaptureSource>();
 
         try
@@ -464,6 +613,39 @@ for (i, display) in displays.enumerated() {
         if (!OperatingSystem.IsWindows())
             return Array.Empty<ScreenCaptureSource>();
 
+        // Try to use SnackaCaptureWindows if available
+        EnsureWindowsSourcesCached();
+        if (_cachedWindowsSources != null)
+        {
+            var windows = _cachedWindowsSources.Windows.Select(w =>
+            {
+                var displayName = string.IsNullOrEmpty(w.AppName)
+                    ? w.Name
+                    : $"{w.AppName}: {w.Name}";
+
+                // Truncate long titles
+                if (displayName.Length > 60)
+                    displayName = displayName.Substring(0, 57) + "...";
+
+                return new ScreenCaptureSource(
+                    ScreenCaptureSourceType.Window,
+                    w.Id,  // HWND as string for SnackaCaptureWindows
+                    displayName,
+                    w.AppName,
+                    w.BundleId
+                );
+            }).ToList();
+
+            Console.WriteLine($"ScreenCaptureService: Found {windows.Count} windows via SnackaCaptureWindows");
+            return windows;
+        }
+
+        // Fallback to Win32 P/Invoke
+        return GetWindowsWindowsFallback();
+    }
+
+    private IReadOnlyList<ScreenCaptureSource> GetWindowsWindowsFallback()
+    {
         var windows = new List<ScreenCaptureSource>();
 
         try
@@ -512,7 +694,7 @@ for (i, display) in displays.enumerated() {
                 }
                 catch { }
 
-                // Use window handle as ID for gdigrab
+                // Use window handle as ID
                 var windowId = hWnd.ToString();
                 var displayName = string.IsNullOrEmpty(appName) ? title : $"{appName}: {title}";
 
@@ -522,7 +704,7 @@ for (i, display) in displays.enumerated() {
 
                 windows.Add(new ScreenCaptureSource(
                     ScreenCaptureSourceType.Window,
-                    title, // gdigrab uses window title
+                    windowId,  // HWND as string
                     displayName,
                     appName
                 ));

@@ -8,6 +8,7 @@ on:
       - 'src/Snacka.Shared/**'
       - 'src/Snacka.WebRTC/**'
       - 'src/SnackaCapture/**'
+      - 'src/SnackaCaptureWindows/**'
       - 'src/SnackaMetalRenderer/**'
       - 'installers/**'
       - '.github/workflows/build-client.yml'
@@ -132,12 +133,25 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      - name: Build SnackaCaptureWindows
+        run: |
+          cd src/SnackaCaptureWindows
+          cmake -B build -G "Visual Studio 17 2022" -A x64
+          cmake --build build --config Release
+
       - name: Publish Snacka.Client
         run: |
           dotnet publish src/Snacka.Client -c Release -r win-x64 `
             --self-contained `
             -p:Version=${{ needs.version.outputs.version }} `
             -o publish
+
+      - name: Copy SnackaCaptureWindows
+        run: |
+          Copy-Item "src/SnackaCaptureWindows/build/bin/Release/SnackaCaptureWindows.exe" "publish/" -ErrorAction SilentlyContinue
+          if (-not (Test-Path "publish/SnackaCaptureWindows.exe")) {
+            Copy-Item "src/SnackaCaptureWindows/build/bin/SnackaCaptureWindows.exe" "publish/" -ErrorAction SilentlyContinue
+          }
 
       - name: Upload portable build
         uses: actions/upload-artifact@v4
