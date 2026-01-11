@@ -243,11 +243,11 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Ensure database is created and reset online status
+// Apply pending migrations and ensure database is created
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<SnackaDbContext>();
-    db.Database.EnsureCreated();
+    db.Database.Migrate();
 
     // In development, ensure there are unlimited bootstrap invites for easy testing
     if (app.Environment.IsDevelopment())
