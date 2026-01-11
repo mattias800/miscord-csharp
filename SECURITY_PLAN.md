@@ -70,9 +70,10 @@ public async Task<IActionResult> GetFile(string storedFileName, CancellationToke
 **Risk:** Anyone can download ANY uploaded file by guessing/enumerating file names.
 
 **Fix:**
-- [x] Add `[Authorize]` attribute to endpoint
-- [x] Verify user has access to the message/channel containing the attachment
-- [x] Check community membership before returning file
+- [x] Use unguessable UUID filenames (security through obscurity - same as Discord/Slack)
+- [x] Allow anonymous access with `[AllowAnonymous]` to support `<img>` tag loading
+- [x] Add path traversal protection (block `..`, `/`, `\` in filenames)
+- Note: Full auth check was removed as `<img>` tags can't send Authorization headers
 
 ```csharp
 [Authorize]

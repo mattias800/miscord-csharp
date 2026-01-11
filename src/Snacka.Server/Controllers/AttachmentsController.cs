@@ -196,32 +196,17 @@ public class AttachmentFilesController : ControllerBase
 
     /// <summary>
     /// Download or view an attachment file.
+    /// Security: Uses unguessable UUID filenames (same approach as Discord, Slack).
+    /// This allows img tags to load attachments without Authorization headers.
     /// </summary>
+    [AllowAnonymous]
     [HttpGet("{storedFileName}")]
     public async Task<IActionResult> GetFile(string storedFileName, CancellationToken ct)
     {
-        var userId = GetCurrentUserId();
-        if (userId is null) return Unauthorized();
-
-        // Find the attachment and verify the user has access
-        var attachment = await _db.MessageAttachments
-            .Include(a => a.Message)
-            .ThenInclude(m => m.Channel)
-            .FirstOrDefaultAsync(a => a.StoredFileName == storedFileName, ct);
-
-        if (attachment?.Message?.Channel is null)
-            return NotFound();
-
-        // Check if user is a member of the community containing this attachment
-        var isMember = await _db.UserCommunities
-            .AnyAsync(uc => uc.UserId == userId &&
-                           uc.CommunityId == attachment.Message.Channel.CommunityId, ct);
-
-        if (!isMember)
+        // Validate filename format (should be a GUID-based name to prevent path traversal)
+        if (string.IsNullOrEmpty(storedFileName) || storedFileName.Contains("..") || storedFileName.Contains('/') || storedFileName.Contains('\\'))
         {
-            _logger.LogWarning("User {UserId} attempted to access attachment {FileName} without membership",
-                userId, storedFileName);
-            return Forbid();
+            return BadRequest();
         }
 
         var result = await _fileStorage.GetFileAsync(storedFileName, ct);

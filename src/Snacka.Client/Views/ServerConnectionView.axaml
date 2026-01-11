@@ -225,7 +225,7 @@
                                    Foreground="#52525b"
                                    HorizontalAlignment="Center"/>
 
-                        <ItemsControl x:Name="SavedServersList" ItemsSource="{Binding SavedServers}">
+                        <ItemsControl ItemsSource="{Binding SavedServers}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center"/>
@@ -233,7 +233,7 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Button Command="{Binding #SavedServersList.DataContext.SelectServerCommand}"
+                                    <Button Command="{Binding $parent[UserControl].DataContext.SelectServerCommand}"
                                             CommandParameter="{Binding}"
                                             Classes="btn-ghost"
                                             Padding="16,12"
