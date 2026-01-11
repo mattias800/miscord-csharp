@@ -1,6 +1,6 @@
-# Miscord - Discord Clone
+# Snacka - Discord Clone
 
-A self-hosted Discord alternative built with C# and .NET. Miscord allows users to run their own communication server with full control over data and infrastructure.
+A self-hosted Discord alternative built with C# and .NET. Snacka allows users to run their own communication server with full control over data and infrastructure.
 
 ## Features
 
@@ -26,19 +26,19 @@ A self-hosted Discord alternative built with C# and .NET. Miscord allows users t
 ## Project Structure
 
 ```
-miscord-csharp/
+snacka-csharp/
 ├── src/
-│   ├── Miscord.Server/          # ASP.NET Core server application
-│   ├── Miscord.Client/          # Avalonia UI desktop client (Windows, macOS, Linux)
-│   ├── Miscord.Shared/          # Shared models and interfaces
-│   └── Miscord.WebRTC/          # WebRTC/media handling
+│   ├── Snacka.Server/          # ASP.NET Core server application
+│   ├── Snacka.Client/          # Avalonia UI desktop client (Windows, macOS, Linux)
+│   ├── Snacka.Shared/          # Shared models and interfaces
+│   └── Snacka.WebRTC/          # WebRTC/media handling
 ├── tests/
-│   ├── Miscord.Server.Tests/
-│   └── Miscord.WebRTC.Tests/
+│   ├── Snacka.Server.Tests/
+│   └── Snacka.WebRTC.Tests/
 ├── AGENTS.md
 ├── .gitignore
 ├── .editorconfig
-├── Miscord.sln
+├── Snacka.sln
 └── README.md
 ```
 
@@ -46,7 +46,7 @@ miscord-csharp/
 
 ### Current Progress
 - ✅ **Phase 1.1 - Database Setup (100%)**: All 7 entity models created with EF Core DbContext
-  - User, MiscordServer, Channel, Message, DirectMessage, UserServer, VoiceParticipant
+  - User, SnackaServer, Channel, Message, DirectMessage, UserServer, VoiceParticipant
   - Migrations ready for deployment
   - Foreign key relationships configured
   - Unique constraints and indexes optimized
@@ -67,7 +67,7 @@ See [PLAN.md](PLAN.md) for complete implementation roadmap.
 ### Building
 
 ```bash
-cd /Users/mattias800/repos/miscord-csharp
+cd /Users/mattias800/repos/snacka-csharp
 dotnet build
 ```
 
@@ -81,7 +81,7 @@ dotnet test
 
 The project uses Entity Framework Core with support for SQL Server and PostgreSQL. Database schema includes:
 - **Users**: User accounts with authentication
-- **MiscordServers**: Server/workspace management
+- **SnackaServers**: Server/workspace management
 - **Channels**: Text and voice channels
 - **Messages**: Channel messages
 - **DirectMessages**: Private messages

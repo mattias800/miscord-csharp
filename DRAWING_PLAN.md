@@ -11,7 +11,7 @@ Add collaborative drawing/annotation capability for screen shares, similar to Sl
 ### 1. Two Different User Experiences
 
 **Viewers (watching someone's screen share):**
-- Draw on the fullscreen video overlay in the Miscord client
+- Draw on the fullscreen video overlay in the Snacka client
 - Canvas sits on top of the video stream
 - Standard in-app experience
 
@@ -42,9 +42,9 @@ When the sharer enables drawing mode:
 ### Visual Overview
 
 ```
-VIEWER'S SCREEN (Miscord Client)          SHARER'S SCREEN (Monitor being shared)
+VIEWER'S SCREEN (Snacka Client)          SHARER'S SCREEN (Monitor being shared)
 ┌─────────────────────────────────┐       ┌─────────────────────────────────┐
-│ Miscord App                     │       │ Desktop                         │
+│ Snacka App                     │       │ Desktop                         │
 │ ┌─────────────────────────────┐ │       │                                 │
 │ │ Fullscreen Video View       │ │       │  ┌──────────────────────────┐   │
 │ │ ┌─────────────────────────┐ │ │       │  │ VS Code / Browser / etc  │   │
@@ -90,7 +90,7 @@ VIEWER'S SCREEN (Miscord Client)          SHARER'S SCREEN (Monitor being shared)
 
 ## Components
 
-### Shared (Miscord.Shared)
+### Shared (Snacka.Shared)
 
 #### Data Models
 
@@ -125,7 +125,7 @@ public class AnnotationMessage
 }
 ```
 
-### Server (Miscord.Server)
+### Server (Snacka.Server)
 
 #### SignalR Hub Methods
 
@@ -153,7 +153,7 @@ public async Task ClearAnnotationsAsync(Guid channelId, Guid sharerUserId)
 }
 ```
 
-### Client (Miscord.Client)
+### Client (Snacka.Client)
 
 #### 1. SignalR Service Additions
 
@@ -320,32 +320,32 @@ public class ScreenAnnotationWindow : Window
 ### Phase 1: Data Models & SignalR (Foundation)
 
 **Files to create/modify:**
-- `src/Miscord.Shared/Models/DrawingStroke.cs` (new)
-- `src/Miscord.Shared/Models/AnnotationMessage.cs` (new)
-- `src/Miscord.Server/Hubs/CommunityHub.cs` (add methods)
-- `src/Miscord.Client/Services/ISignalRService.cs` (add interface)
-- `src/Miscord.Client/Services/SignalRService.cs` (add implementation)
+- `src/Snacka.Shared/Models/DrawingStroke.cs` (new)
+- `src/Snacka.Shared/Models/AnnotationMessage.cs` (new)
+- `src/Snacka.Server/Hubs/CommunityHub.cs` (add methods)
+- `src/Snacka.Client/Services/ISignalRService.cs` (add interface)
+- `src/Snacka.Client/Services/SignalRService.cs` (add implementation)
 
 **Outcome:** SignalR can send/receive annotation messages
 
 ### Phase 2: Viewer Drawing Experience
 
 **Files to create/modify:**
-- `src/Miscord.Client/Services/AnnotationService.cs` (new)
-- `src/Miscord.Client/ViewModels/MainAppViewModel.cs` (add annotation state)
-- `src/Miscord.Client/Views/MainAppView.axaml` (add canvas + toolbar)
-- `src/Miscord.Client/Views/MainAppView.axaml.cs` (add pointer handlers)
+- `src/Snacka.Client/Services/AnnotationService.cs` (new)
+- `src/Snacka.Client/ViewModels/MainAppViewModel.cs` (add annotation state)
+- `src/Snacka.Client/Views/MainAppView.axaml` (add canvas + toolbar)
+- `src/Snacka.Client/Views/MainAppView.axaml.cs` (add pointer handlers)
 
 **Outcome:** Viewers can draw on fullscreen video, strokes sync to all viewers
 
 ### Phase 3: Sharer Drawing Experience
 
 **Files to create/modify:**
-- `src/Miscord.Client/Views/ScreenAnnotationWindow.axaml` (new)
-- `src/Miscord.Client/Views/ScreenAnnotationWindow.axaml.cs` (new)
-- `src/Miscord.Client/Views/AnnotationToolbarWindow.axaml` (new - floating toolbar)
-- `src/Miscord.Client/ViewModels/ScreenAnnotationViewModel.cs` (new)
-- `src/Miscord.Client/Services/WebRtcService.cs` (launch overlay when sharing)
+- `src/Snacka.Client/Views/ScreenAnnotationWindow.axaml` (new)
+- `src/Snacka.Client/Views/ScreenAnnotationWindow.axaml.cs` (new)
+- `src/Snacka.Client/Views/AnnotationToolbarWindow.axaml` (new - floating toolbar)
+- `src/Snacka.Client/ViewModels/ScreenAnnotationViewModel.cs` (new)
+- `src/Snacka.Client/Services/WebRtcService.cs` (launch overlay when sharing)
 
 **Outcome:** Sharer sees floating toolbar, can toggle draw mode, drawings appear on their screen
 

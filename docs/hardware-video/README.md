@@ -1,10 +1,10 @@
 # Hardware Video Decoding Architecture
 
-This document describes the cross-platform hardware video decoding system for Miscord.
+This document describes the cross-platform hardware video decoding system for Snacka.
 
 ## Overview
 
-Miscord uses hardware-accelerated video decoding for screen share and camera streams. The system provides a zero-copy pipeline from H264-encoded WebRTC frames directly to GPU rendering, bypassing CPU-based decoding entirely.
+Snacka uses hardware-accelerated video decoding for screen share and camera streams. The system provides a zero-copy pipeline from H264-encoded WebRTC frames directly to GPU rendering, bypassing CPU-based decoding entirely.
 
 ```
 WebRTC H264 NAL Units
@@ -42,7 +42,7 @@ WebRTC H264 NAL Units
 
 ### 1. C# Interface (`IHardwareVideoDecoder`)
 
-Location: `src/Miscord.Client/Services/HardwareVideo/IHardwareVideoDecoder.cs`
+Location: `src/Snacka.Client/Services/HardwareVideo/IHardwareVideoDecoder.cs`
 
 The interface that all platform implementations must follow:
 
@@ -62,9 +62,9 @@ public interface IHardwareVideoDecoder : IDisposable
 
 | File | Platform | Native Library |
 |------|----------|----------------|
-| `VideoToolboxDecoder.cs` | macOS | `libMiscordMetalRenderer.dylib` |
-| `MediaFoundationDecoder.cs` | Windows | `MiscordWindowsRenderer.dll` |
-| `VaapiDecoder.cs` | Linux | `libMiscordLinuxRenderer.so` |
+| `VideoToolboxDecoder.cs` | macOS | `libSnackaMetalRenderer.dylib` |
+| `MediaFoundationDecoder.cs` | Windows | `SnackaWindowsRenderer.dll` |
+| `VaapiDecoder.cs` | Linux | `libSnackaLinuxRenderer.so` |
 
 ### 3. Factory
 
@@ -72,7 +72,7 @@ public interface IHardwareVideoDecoder : IDisposable
 
 ### 4. Avalonia Integration
 
-The `HardwareVideoViewHost` control in `src/Miscord.Client/Controls/HardwareVideoView.cs` embeds the native view using Avalonia's `NativeControlHost`.
+The `HardwareVideoViewHost` control in `src/Snacka.Client/Controls/HardwareVideoView.cs` embeds the native view using Avalonia's `NativeControlHost`.
 
 ## Key Design Decisions
 
@@ -139,9 +139,9 @@ bool decoder_is_available();
 ### macOS (VideoToolbox + Metal)
 
 ```bash
-cd src/MiscordMetalRenderer
+cd src/SnackaMetalRenderer
 swift build -c release
-# Output: .build/release/libMiscordMetalRenderer.dylib
+# Output: .build/release/libSnackaMetalRenderer.dylib
 ```
 
 ### Windows (MediaFoundation + D3D11)
@@ -186,18 +186,18 @@ Each platform implementation should verify:
 ## Files Reference
 
 ```
-src/Miscord.Client/Services/HardwareVideo/
+src/Snacka.Client/Services/HardwareVideo/
 ├── IHardwareVideoDecoder.cs      # Interface + factory
 ├── VideoToolboxDecoder.cs        # macOS implementation ✅
 ├── MediaFoundationDecoder.cs     # Windows stub (P/Invoke ready)
 └── VaapiDecoder.cs               # Linux stub (P/Invoke ready)
 
-src/Miscord.Client/Controls/
+src/Snacka.Client/Controls/
 └── HardwareVideoView.cs          # Avalonia NativeControlHost wrapper
 
-src/MiscordMetalRenderer/         # macOS native library (Swift)
+src/SnackaMetalRenderer/         # macOS native library (Swift)
 ├── Package.swift
-└── Sources/MiscordMetalRenderer/
+└── Sources/SnackaMetalRenderer/
     ├── VideoToolboxDecoder.swift
     ├── VideoToolboxDecoderCApi.swift
     └── ... (Metal renderer)
@@ -215,7 +215,7 @@ If you're an AI agent implementing one of the platform decoders:
 1. Read the platform-specific guide (WINDOWS_IMPLEMENTATION.md or LINUX_IMPLEMENTATION.md)
 2. Create the native library project following the C API specification
 3. The C# P/Invoke wrapper is already complete - just build the native library
-4. Test with the existing Miscord client
+4. Test with the existing Snacka client
 5. The overlay window pattern is critical - don't try direct NativeControlHost embedding
 
-The macOS implementation in `src/MiscordMetalRenderer/` serves as the reference implementation.
+The macOS implementation in `src/SnackaMetalRenderer/` serves as the reference implementation.

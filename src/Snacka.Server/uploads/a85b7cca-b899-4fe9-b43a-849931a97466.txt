@@ -1,0 +1,1007 @@
+[05:15:31] [INF] [21] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:17:07] [INF] [98] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:17:19] [INF] [114] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:18:19] [INF] [116] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:20:07] [INF] [93] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:20:31] [INF] [21] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:21:07] [INF] [53] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:23:19] [INF] [93] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:23:31] [INF] [53] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:24:31] [INF] [93] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:26:07] [INF] [97] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:26:19] [INF] [97] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:27:19] [INF] [49] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:29:07] [INF] [62] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:29:31] [INF] [108] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:30:07] [INF] [114] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:32:19] [INF] [116] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:32:31] [INF] [28] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:33:31] [INF] [20] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:35:07] [INF] [28] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:35:19] [INF] [116] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:36:19] [INF] [59] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:38:07] [INF] [85] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:38:31] [INF] [85] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:39:07] [INF] [85] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:41:19] [INF] [21] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:41:31] [INF] [21] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:42:31] [INF] [21] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:44:07] [INF] [21] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:44:19] [INF] [21] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:45:19] [INF] [53] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:47:07] [INF] [28] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:47:31] [INF] [28] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:48:07] [INF] [28] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:50:19] [INF] [53] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:50:31] [INF] [53] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:51:31] [INF] [53] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:53:07] [INF] [87] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:53:19] [INF] [114] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:54:19] [INF] [87] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:56:07] [INF] [62] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:56:31] [INF] [62] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:57:07] [INF] [108] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:59:19] [INF] [85] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[05:59:31] [INF] [85] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:00:31] [INF] [62] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:02:07] [INF] [62] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:02:19] [INF] [114] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:03:19] [INF] [114] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:05:07] [INF] [28] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:05:31] [INF] [28] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:06:07] [INF] [59] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:08:19] [INF] [21] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:08:31] [INF] [21] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:09:31] [INF] [21] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:11:07] [INF] [21] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:11:19] [INF] [21] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:12:19] [INF] [98] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:14:07] [INF] [98] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:14:31] [INF] [98] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:15:07] [INF] [21] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:17:19] [INF] [53] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:17:31] [INF] [53] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:18:31] [INF] [21] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:20:07] [INF] [98] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:20:19] [INF] [21] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:21:19] [INF] [85] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:23:07] [INF] [85] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:23:31] [INF] [21] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:24:07] [INF] [116] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:26:19] [INF] [93] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:26:31] [INF] [62] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:27:31] [INF] [62] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:29:07] [INF] [85] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:29:19] [INF] [62] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:30:19] [INF] [53] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:32:07] [INF] [53] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:32:31] [INF] [53] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:33:07] [INF] [87] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:35:19] [INF] [28] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:35:31] [INF] [28] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:36:31] [INF] [93] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:38:07] [INF] [93] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:38:19] [INF] [53] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:39:19] [INF] [53] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:41:07] [INF] [104] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:41:31] [INF] [62] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:42:07] [INF] [97] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:44:19] [INF] [101] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:44:31] [INF] [101] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:45:31] [INF] [59] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:47:07] [INF] [28] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:47:19] [INF] [116] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:48:19] [INF] [59] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:50:07] [INF] [53] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:50:31] [INF] [85] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:51:07] [INF] [85] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:53:19] [INF] [93] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:53:31] [INF] [53] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:54:31] [INF] [62] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:56:07] [INF] [104] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:56:19] [INF] [20] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:57:19] [INF] [49] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:59:07] [INF] [104] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[06:59:31] [INF] [49] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:00:07] [INF] [20] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:02:19] [INF] [49] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:02:31] [INF] [49] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:03:31] [INF] [49] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:05:07] [INF] [116] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:05:19] [INF] [97] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:06:19] [INF] [108] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:08:07] [INF] [97] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:08:31] [INF] [108] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:09:07] [INF] [108] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:11:19] [INF] [101] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:11:31] [INF] [49] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:12:31] [INF] [49] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:14:07] [INF] [116] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:14:19] [INF] [116] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:15:19] [INF] [98] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:17:07] [INF] [98] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:17:31] [INF] [87] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:18:07] [INF] [87] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:20:19] [INF] [104] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:20:31] [INF] [62] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:21:31] [INF] [28] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:23:07] [INF] [62] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:23:19] [INF] [62] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:24:19] [INF] [62] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:26:07] [INF] [53] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:26:31] [INF] [49] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:27:07] [INF] [53] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:29:19] [INF] [93] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:29:31] [INF] [93] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:30:31] [INF] [98] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:32:07] [INF] [104] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:32:19] [INF] [98] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:33:19] [INF] [59] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:35:07] [INF] [87] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:35:31] [INF] [101] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:36:07] [INF] [114] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:38:19] [INF] [108] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:38:31] [INF] [108] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:39:31] [INF] [53] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:41:07] [INF] [62] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:41:19] [INF] [62] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:42:19] [INF] [87] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:44:07] [INF] [97] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:44:31] [INF] [97] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:45:07] [INF] [20] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:47:19] [INF] [28] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:47:31] [INF] [28] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:48:31] [INF] [28] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:50:07] [INF] [20] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:50:19] [INF] [104] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:51:19] [INF] [20] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:53:07] [INF] [114] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:53:31] [INF] [114] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:54:07] [INF] [114] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:56:19] [INF] [85] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:56:31] [INF] [62] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:57:31] [INF] [116] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:59:07] [INF] [98] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[07:59:19] [INF] [98] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:00:19] [INF] [108] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:02:07] [INF] [101] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:02:31] [INF] [49] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:03:07] [INF] [101] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:05:19] [INF] [114] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:05:31] [INF] [93] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:06:31] [INF] [53] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:08:07] [INF] [28] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:08:19] [INF] [28] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:09:19] [INF] [20] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:11:07] [INF] [59] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:11:31] [INF] [59] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:12:07] [INF] [53] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:14:19] [INF] [59] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:14:31] [INF] [53] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:15:31] [INF] [21] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:17:07] [INF] [49] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:17:19] [INF] [28] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:18:19] [INF] [49] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:20:07] [INF] [93] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:20:31] [INF] [114] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:21:07] [INF] [93] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:23:19] [INF] [114] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:23:31] [INF] [53] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:24:31] [INF] [114] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:26:07] [INF] [20] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:26:19] [INF] [93] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:27:19] [INF] [21] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:29:07] [INF] [21] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:29:31] [INF] [93] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:30:07] [INF] [49] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:32:19] [INF] [116] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:32:31] [INF] [116] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:33:31] [INF] [116] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:35:07] [INF] [98] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:35:19] [INF] [62] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:36:19] [INF] [98] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:38:07] [INF] [93] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:38:31] [INF] [98] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:39:07] [INF] [98] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[08:39:19] [INF] [98] Emby.Server.Implementations.HttpServer.WebSocketManager: WS 94.191.152.157 request
+[08:39:30] [INF] [93] Emby.Server.Implementations.IO.LibraryMonitor: Stopping directory watching for path /data/Music
+[08:39:30] [INF] [93] Emby.Server.Implementations.IO.LibraryMonitor: Stopping directory watching for path /data/Shows
+[08:39:30] [INF] [93] Emby.Server.Implementations.IO.LibraryMonitor: Stopping directory watching for path /data/Movies
+[08:39:30] [INF] [93] Emby.Server.Implementations.Library.LibraryManager: Validating media library
+[08:39:31] [WRN] [69] MediaBrowser.Controller.Entities.BaseItem: Unable to find linked item at path /data/Movies/The Hobbit The Battle of the Five Armies (2014)/The.Hobbit.The.Battle.of.the.Five.Armies.2014.EXTENDED.2160p.UHD.BluRay.x265.10bit.HDR.TrueHD.7.1.Atmos-RARBG.mkv
+[08:39:31] [WRN] [69] MediaBrowser.Controller.Entities.BaseItem: Unable to find linked item at path /data/Movies/The Hobbit The Desolation of Smaug (2013)/The.Hobbit.The.Desolation.of.Smaug.2013.EXTENDED.2160p.UHD.BluRay.x265.10bit.HDR.TrueHD.7.1.Atmos-RARBG.mkv
+[08:39:31] [WRN] [69] MediaBrowser.Controller.Entities.BaseItem: Unable to find linked item at path /data/Movies/The Hobbit An Unexpected Journey (2012)/The.Hobbit.An.Unexpected.Journey.2012.EXTENDED.2160p.UHD.BluRay.x265.10bit.HDR.TrueHD.7.1.Atmos-RARBG.mkv
+[08:39:31] [INF] [116] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Halo/Season 1/halo.s01e04.hdr.2160p.web.h265-ggez.mkv" -threads 0 -v warning -print_format json -show_streams -show_chapters -show_format
+[08:39:31] [INF] [101] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Halo/Season 1/halo.s01e04.hdr.2160p.web.h265-ggez.sv.srt" -threads 0 -v warning -print_format json -show_streams -show_format
+[08:39:40] [INF] [98] Emby.Server.Implementations.ScheduledTasks.TaskManager: Scan Media Library Completed after 0 minute(s) and 10 seconds
+[08:39:40] [INF] [69] Emby.Server.Implementations.IO.LibraryMonitor: Watching directory /data/Music
+[08:39:41] [INF] [18] Emby.Server.Implementations.IO.LibraryMonitor: Watching directory /data/Movies
+[08:39:44] [INF] [98] Emby.Server.Implementations.Session.SessionManager: Sending shutdown notifications
+[08:39:44] [INF] [98] Emby.Server.Implementations.HttpServer.WebSocketManager: WS 192.168.11.1 closed
+[08:39:44] [INF] [69] Emby.Server.Implementations.HttpServer.WebSocketManager: WS 192.168.11.1 closed
+[08:39:44] [INF] [116] Emby.Server.Implementations.HttpServer.WebSocketManager: WS 94.191.152.157 closed
+[08:40:03] [INF] [20] Emby.Server.Implementations.IO.LibraryMonitor: Watching directory /data/Shows
+[08:40:14] [ERR] [20] Emby.Server.Implementations.HttpServer.WebSocketManager: WS 192.168.11.1 WebSocketRequestHandler error
+Microsoft.AspNetCore.Connections.ConnectionAbortedException: The connection was aborted because the server is shutting down and request processing didn't complete within the time specified by HostOptions.ShutdownTimeout.
+   at System.IO.Pipelines.Pipe.GetReadResult(ReadResult& result)
+   at System.IO.Pipelines.Pipe.GetReadAsyncResult()
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http.Http1UpgradeMessageBody.ReadAsyncInternalAwaited(ValueTask`1 readTask, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http.HttpRequestStream.ReadAsyncInternal(Memory`1 destination, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at System.IO.Stream.ReadAtLeastAsyncCore(Memory`1 buffer, Int32 minimumBytes, Boolean throwOnEndOfStream, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at System.Net.WebSockets.ManagedWebSocket.EnsureBufferContainsAsync(Int32 minimumRequiredBytes, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource.GetResult(Int16 token)
+   at System.Net.WebSockets.ManagedWebSocket.ReceiveAsyncPrivate[TResult](Memory`1 payloadBuffer, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Emby.Server.Implementations.HttpServer.WebSocketConnection.ReceiveAsync(CancellationToken cancellationToken)
+   at Emby.Server.Implementations.HttpServer.WebSocketManager.WebSocketRequestHandler(HttpContext context)
+   at Emby.Server.Implementations.HttpServer.WebSocketManager.WebSocketRequestHandler(HttpContext context)
+[08:40:14] [INF] [116] Jellyfin.Networking.PortForwardingHost: Stopping NAT discovery
+[08:40:14] [INF] [116] Main: Running query planner optimizations in the database... This might take a while
+[08:40:14] [INF] [69] Emby.Server.Implementations.IO.LibraryMonitor: Stopping directory watching for path /data/Music
+[08:40:14] [INF] [69] Emby.Server.Implementations.IO.LibraryMonitor: Stopping directory watching for path /data/Shows
+[08:40:14] [INF] [69] Emby.Server.Implementations.IO.LibraryMonitor: Stopping directory watching for path /data/Movies
+[08:40:14] [INF] [116] Emby.Server.Implementations.ApplicationHost: Disposing CoreAppHost
+[08:40:14] [INF] [116] Emby.Server.Implementations.ApplicationHost: Disposing MusicBrainzArtistProvider
+[08:40:14] [INF] [116] Emby.Server.Implementations.ApplicationHost: Disposing MusicBrainzAlbumProvider
+[08:40:14] [INF] [116] Emby.Server.Implementations.ApplicationHost: Disposing PluginManager
+[08:40:14] [INF] [116] Emby.Server.Implementations.AppBase.BaseConfigurationManager: Setting cache path: /cache
+[08:40:14] [INF] [116] Emby.Server.Implementations.ApplicationHost: Loading assemblies
+[08:40:15] [INF] [116] Emby.Server.Implementations.Plugins.PluginManager: Loaded assembly IntroSkipper, Version=1.10.10.14, Culture=neutral, PublicKeyToken=null from /config/plugins/Intro Skipper_1.10.10.14/IntroSkipper.dll
+[08:40:15] [INF] [116] Emby.Server.Implementations.Plugins.PluginManager: Loaded assembly Jellyfin.Plugin.SkinManager, Version=2.0.2.0, Culture=neutral, PublicKeyToken=null from /config/plugins/Skin Manager_2.0.2.0/Jellyfin.Plugin.SkinManager.dll
+[08:40:15] [INF] [116] Emby.Server.Implementations.Plugins.PluginManager: Loaded assembly Jellyfin.Plugin.ThemeSongs, Version=10.10.0.1, Culture=neutral, PublicKeyToken=null from /config/plugins/Theme Songs_10.10.0.1/Jellyfin.Plugin.ThemeSongs.dll
+[08:40:15] [INF] [116] Jellyfin.Networking.Manager.NetworkManager: Defined LAN subnets: ["127.0.0.1/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+[08:40:15] [INF] [116] Jellyfin.Networking.Manager.NetworkManager: Defined LAN exclusions: []
+[08:40:15] [INF] [116] Jellyfin.Networking.Manager.NetworkManager: Used LAN subnets: ["127.0.0.1/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+[08:40:15] [INF] [116] Jellyfin.Networking.Manager.NetworkManager: Filtered interface addresses: ["127.0.0.1", "172.23.0.2"]
+[08:40:15] [INF] [116] Jellyfin.Networking.Manager.NetworkManager: Bind Addresses ["0.0.0.0"]
+[08:40:15] [INF] [116] Jellyfin.Networking.Manager.NetworkManager: Remote IP filter is Allowlist
+[08:40:15] [INF] [116] Jellyfin.Networking.Manager.NetworkManager: Filtered subnets: []
+[08:40:18] [INF] [116] IntroSkipper.Plugin: Reading index.html from /jellyfin/jellyfin-web/index.html
+Trailing option(s) found in the command: may be ignored.
+Trailing option(s) found in the command: may be ignored.
+Trailing option(s) found in the command: may be ignored.
+Trailing option(s) found in the command: may be ignored.
+[08:40:18] [INF] [116] Emby.Server.Implementations.Plugins.PluginManager: Loaded plugin: Intro Skipper 1.10.10.14
+[08:40:18] [INF] [116] Emby.Server.Implementations.Plugins.PluginManager: Loaded plugin: SkinManager 2.0.2.0
+[08:40:18] [INF] [116] Emby.Server.Implementations.Plugins.PluginManager: Loaded plugin: Theme Songs 10.10.0.1
+[08:40:18] [INF] [116] Emby.Server.Implementations.Plugins.PluginManager: Loaded plugin: TMDb 10.10.5.0
+[08:40:18] [INF] [116] Emby.Server.Implementations.Plugins.PluginManager: Loaded plugin: Studio Images 10.10.5.0
+[08:40:18] [INF] [116] Emby.Server.Implementations.Plugins.PluginManager: Loaded plugin: OMDb 10.10.5.0
+[08:40:18] [INF] [116] Emby.Server.Implementations.Plugins.PluginManager: Loaded plugin: MusicBrainz 10.10.5.0
+[08:40:18] [INF] [116] Emby.Server.Implementations.Plugins.PluginManager: Loaded plugin: AudioDB 10.10.5.0
+[08:40:18] [INF] [116] Main: Kestrel is listening on 0.0.0.0
+[08:40:18] [INF] [116] IntroSkipper.Services.Entrypoint: Running startup enqueue
+[08:40:18] [INF] [116] IntroSkipper.Manager.QueueManager: Running enqueue of items in library Shows
+[08:40:18] [INF] [116] IntroSkipper.Manager.QueueManager: Running enqueue of items in library Music
+[08:40:18] [INF] [116] IntroSkipper.Manager.QueueManager: Running enqueue of items in library Movies
+[08:40:18] [INF] [116] IntroSkipper.Manager.QueueManager: Running enqueue of items in library Collections
+[08:40:18] [WRN] [116] Microsoft.AspNetCore.StaticFiles.StaticFileMiddleware: The WebRootPath was not found: /wwwroot. Static files may be unavailable.
+[08:40:18] [INF] [116] Emby.Server.Implementations.ApplicationHost: Running startup tasks
+[08:40:18] [INF] [116] Emby.Server.Implementations.ScheduledTasks.TaskManager: Daily trigger for Detect and Analyze Media Segments set to fire at 2025-02-07 00:00:00.000 +01:00, which is 15:19:41.3051792 from now.
+[08:40:18] [INF] [116] Emby.Server.Implementations.ScheduledTasks.TaskManager: Daily trigger for Generate Trickplay Images set to fire at 2025-02-07 03:00:00.000 +01:00, which is 18:19:41.3035091 from now.
+[08:40:18] [INF] [116] Emby.Server.Implementations.ScheduledTasks.TaskManager: Daily trigger for Extract Chapter Images set to fire at 2025-02-07 02:00:00.000 +01:00, which is 17:19:41.3016299 from now.
+[08:40:18] [INF] [116] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Found ffmpeg version 7.0.2
+[08:40:18] [INF] [116] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Available decoders: ["libdav1d", "av1", "av1_cuvid", "av1_qsv", "h264", "h264_qsv", "h264_cuvid", "hevc", "hevc_qsv", "hevc_cuvid", "mpeg2video", "mpeg2_qsv", "mpeg2_cuvid", "mpeg4", "mpeg4_cuvid", "msmpeg4", "vc1_qsv", "vc1_cuvid", "vp8", "libvpx", "vp8_cuvid", "vp8_qsv", "vp9", "libvpx-vp9", "vp9_cuvid", "vp9_qsv", "aac", "ac3", "ac4", "dca", "flac", "mp3", "truehd"]
+[08:40:18] [INF] [116] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Available encoders: ["libsvtav1", "av1_nvenc", "av1_qsv", "av1_amf", "av1_vaapi", "libx264", "h264_amf", "h264_nvenc", "h264_qsv", "h264_v4l2m2m", "h264_vaapi", "libx265", "hevc_amf", "hevc_nvenc", "hevc_qsv", "hevc_vaapi", "mjpeg_qsv", "mjpeg_vaapi", "aac", "libfdk_aac", "ac3", "alac", "dca", "flac", "libmp3lame", "libopus", "truehd", "libvorbis", "srt"]
+[08:40:18] [INF] [116] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Available filters: ["bwdif_cuda", "deinterlace_qsv", "deinterlace_vaapi", "flip_vulkan", "hwupload_cuda", "hwupload_vaapi", "libplacebo", "overlay_opencl", "overlay_qsv", "overlay_vaapi", "overlay_vulkan", "overlay_cuda", "procamp_vaapi", "scale_cuda", "scale_opencl", "scale_qsv", "scale_vaapi", "scale_vulkan", "tonemapx", "tonemap_cuda", "tonemap_opencl", "tonemap_vaapi", "transpose_cuda", "transpose_opencl", "transpose_vaapi", "transpose_vulkan", "vpp_qsv", "yadif_cuda", "zscale", "alphasrc"]
+[08:40:18] [INF] [39] Emby.Server.Implementations.IO.LibraryMonitor: Watching directory /data/Music
+[08:40:18] [INF] [116] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Available hwaccel types: ["cuda", "vaapi", "qsv", "drm", "opencl", "vulkan"]
+[08:40:18] [INF] [69] Emby.Server.Implementations.IO.LibraryMonitor: Watching directory /data/Movies
+[08:40:21] [INF] [69] Emby.Server.Implementations.ScheduledTasks.TaskManager: Clean Transcode Directory Completed after 0 minute(s) and 0 seconds
+[08:40:21] [INF] [20] Emby.Server.Implementations.ScheduledTasks.Tasks.CleanupCollectionAndPlaylistPathsTask: Item in The Hobbit Collection cannot be found at /data/Movies/The Hobbit The Battle of the Five Armies (2014)/The.Hobbit.The.Battle.of.the.Five.Armies.2014.EXTENDED.2160p.UHD.BluRay.x265.10bit.HDR.TrueHD.7.1.Atmos-RARBG.mkv
+[08:40:21] [INF] [20] Emby.Server.Implementations.ScheduledTasks.Tasks.CleanupCollectionAndPlaylistPathsTask: Item in The Hobbit Collection cannot be found at /data/Movies/The Hobbit The Desolation of Smaug (2013)/The.Hobbit.The.Desolation.of.Smaug.2013.EXTENDED.2160p.UHD.BluRay.x265.10bit.HDR.TrueHD.7.1.Atmos-RARBG.mkv
+[08:40:21] [INF] [20] Emby.Server.Implementations.ScheduledTasks.Tasks.CleanupCollectionAndPlaylistPathsTask: Item in The Hobbit Collection cannot be found at /data/Movies/The Hobbit An Unexpected Journey (2012)/The.Hobbit.An.Unexpected.Journey.2012.EXTENDED.2160p.UHD.BluRay.x265.10bit.HDR.TrueHD.7.1.Atmos-RARBG.mkv
+[08:40:21] [INF] [20] Emby.Server.Implementations.ScheduledTasks.TaskManager: Clean up collections and playlists Completed after 0 minute(s) and 0 seconds
+[08:40:22] [INF] [83] Emby.Server.Implementations.ScheduledTasks.TaskManager: Update Plugins Completed after 0 minute(s) and 1 seconds
+[08:40:23] [INF] [116] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: VAAPI device /dev/dri/renderD128 is Intel GPU (iHD)
+[08:40:23] [INF] [116] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: VAAPI device /dev/dri/renderD128 supports Vulkan DRM modifier
+[08:40:23] [INF] [116] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: VAAPI device /dev/dri/renderD128 supports Vulkan DRM interop
+[08:40:23] [INF] [116] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: FFmpeg: /usr/lib/jellyfin-ffmpeg/ffmpeg
+[08:40:23] [INF] [116] Emby.Server.Implementations.ApplicationHost: ServerId: 933d117245af4121ab1a8b5fccbdd2f8
+[08:40:23] [INF] [116] Emby.Server.Implementations.ApplicationHost: Core startup complete
+[08:40:23] [INF] [116] Main: Startup complete 0:00:08.1174023
+[08:40:29] [INF] [18] Emby.Server.Implementations.IO.LibraryMonitor: Watching directory /data/Shows
+[08:40:36] [INF] [69] Emby.Server.Implementations.HttpServer.WebSocketManager: WS 94.191.152.157 request
+[08:40:39] [INF] [20] Emby.Server.Implementations.HttpServer.WebSocketManager: WS 94.191.152.157 closed
+[08:40:39] [INF] [18] Emby.Server.Implementations.HttpServer.WebSocketManager: WS 94.191.152.157 request
+[08:40:52] [INF] [91] Emby.Server.Implementations.HttpServer.WebSocketManager: WS 94.191.152.157 closed
+[08:40:53] [INF] [91] Emby.Server.Implementations.HttpServer.WebSocketManager: WS 94.191.152.157 request
+[08:41:53] [INF] [83] Emby.Server.Implementations.AppBase.BaseConfigurationManager: Saving system configuration
+[08:41:53] [INF] [83] Emby.Server.Implementations.AppBase.BaseConfigurationManager: Setting cache path: /cache
+[08:41:53] [INF] [91] Jellyfin.Networking.PortForwardingHost: Stopping NAT discovery
+[08:42:51] [WRN] [29] Emby.Server.Implementations.HttpServer.WebSocketConnection: WS 94.191.152.157 error receiving data: The remote party closed the WebSocket connection without completing the close handshake.
+[08:42:51] [INF] [29] Emby.Server.Implementations.HttpServer.WebSocketManager: WS 94.191.152.157 closed
+[08:45:45] [INF] [101] Emby.Server.Implementations.HttpServer.WebSocketManager: WS 212.181.124.157 request
+[08:46:09] [INF] [53] Emby.Server.Implementations.AppBase.BaseConfigurationManager: Saving system configuration
+[08:46:09] [INF] [53] Emby.Server.Implementations.AppBase.BaseConfigurationManager: Setting cache path: /cache
+[08:46:14] [INF] [87] Emby.Server.Implementations.HttpServer.WebSocketManager: WS 212.181.124.157 closed
+[08:46:15] [INF] [114] Emby.Server.Implementations.HttpServer.WebSocketManager: WS 212.181.124.157 request
+[08:46:52] [INF] [81] Emby.Server.Implementations.HttpServer.WebSocketManager: WS 212.181.124.157 closed
+[09:32:00] [INF] [68] Emby.Server.Implementations.IO.LibraryMonitor: Season 3 (/data/Shows/For all mankind/Season 3) will be refreshed.
+[09:32:00] [INF] [68] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/For all mankind/Season 3/For All Mankind - S03E04 - Happy Valley WEBDL-2160p.mkv" -threads 0 -v warning -print_format json -show_streams -show_chapters -show_format
+[09:32:00] [INF] [107] Jellyfin.Server.Implementations.Trickplay.TrickplayManager: Creating trickplay files at 320 width, for /data/Shows/For all mankind/Season 3/For All Mankind - S03E04 - Happy Valley WEBDL-2160p.mkv [ID: d56babe2-7f20-7236-f0a7-5dd7b2a193b4]
+[09:32:00] [INF] [107] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Trickplay generation: /usr/lib/jellyfin-ffmpeg/ffmpeg -loglevel error -skip_frame nokey -init_hw_device vaapi=va:/dev/dri/renderD128,driver=iHD -hwaccel vaapi -hwaccel_output_format vaapi -noautorotate -i file:"/data/Shows/For all mankind/Season 3/For All Mankind - S03E04 - Happy Valley WEBDL-2160p.mkv" -noautoscale -an -sn -vf "fps=0.10000000149011612,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709,scale_vaapi=w=320:h=160:format=nv12:out_range=pc:mode=hq:extra_hw_frames=24" -threads 1 -c:v mjpeg_vaapi -global_quality:v 91 -fps_mode passthrough -f image2 "/tmp/jellyfin/32c16eb62f374c30b7d8d422e07a3cf8/%08d.jpg"
+[09:32:50] [INF] [115] Jellyfin.Server.Implementations.Trickplay.TrickplayManager: Finished creation of trickplay files for /data/Shows/For all mankind/Season 3/For All Mankind - S03E04 - Happy Valley WEBDL-2160p.mkv
+[09:33:00] [INF] [115] IntroSkipper.Services.Entrypoint: Initiating automatic analysis task
+Trailing option(s) found in the command: may be ignored.
+Trailing option(s) found in the command: may be ignored.
+Trailing option(s) found in the command: may be ignored.
+Trailing option(s) found in the command: may be ignored.
+[09:33:00] [INF] [115] IntroSkipper.Manager.QueueManager: Running enqueue of items in library Shows
+[09:33:01] [INF] [115] IntroSkipper.Manager.QueueManager: Running enqueue of items in library Music
+[09:33:01] [INF] [115] IntroSkipper.Manager.QueueManager: Running enqueue of items in library Movies
+[09:33:01] [INF] [115] IntroSkipper.Manager.QueueManager: Running enqueue of items in library Collections
+[09:33:01] [INF] [11] IntroSkipper.Services.Entrypoint: [Mode: Introduction] Analyzing 10 files from For All Mankind season 3
+[09:34:08] [INF] [11] IntroSkipper.Services.Entrypoint: [Mode: Credits] Analyzing 10 files from For All Mankind season 3
+[09:34:38] [INF] [11] IntroSkipper.Services.Entrypoint: [Mode: Recap] Analyzing 10 files from For All Mankind season 3
+[09:34:38] [INF] [11] IntroSkipper.Services.Entrypoint: [Mode: Preview] Analyzing 10 files from For All Mankind season 3
+[09:34:38] [INF] [11] IntroSkipper.Services.Entrypoint: Regenerated media segments.
+[09:40:18] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Starting plugin, Downloading TV Theme Songs...
+[09:40:19] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: 12 Monkeys theme song succesfully downloaded
+[09:40:19] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: See theme song succesfully downloaded
+[09:40:19] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Two and a Half Men theme song succesfully downloaded
+[09:40:19] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Mentalist theme song succesfully downloaded
+[09:40:19] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: His Dark Materials theme song succesfully downloaded
+[09:40:19] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Shogun theme song succesfully downloaded
+[09:40:20] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Family Guy theme song succesfully downloaded
+[09:40:20] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Sopranos theme song succesfully downloaded
+[09:40:20] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: American Gods theme song succesfully downloaded
+[09:40:20] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: SEAL Team theme song succesfully downloaded
+[09:40:21] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Agatha All Along theme song succesfully downloaded
+[09:40:21] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Last of Us theme song succesfully downloaded
+[09:40:21] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Rick and Morty theme song succesfully downloaded
+[09:40:21] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: MINDHUNTER theme song succesfully downloaded
+[09:40:22] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Earth Abides theme song not in database, or no internet connection
+[09:40:22] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Hunter x Hunter (2011) theme song succesfully downloaded
+[09:40:22] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Big Door Prize theme song succesfully downloaded
+[09:40:22] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: ONE PIECE (2023) theme song not in database, or no internet connection
+[09:40:23] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Beck theme song succesfully downloaded
+[09:40:23] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Gaslit theme song not in database, or no internet connection
+[09:40:23] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Dr. Brain theme song not in database, or no internet connection
+[09:40:24] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Fullmetal Alchemist: Brotherhood theme song succesfully downloaded
+[09:40:24] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Star Wars: The Clone Wars theme song succesfully downloaded
+[09:40:24] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: A Good Girl's Guide to Murder theme song not in database, or no internet connection
+[09:40:25] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Last Kingdom theme song succesfully downloaded
+[09:40:25] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Fallout theme song succesfully downloaded
+[09:40:25] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Signal theme song not in database, or no internet connection
+[09:40:25] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Wheel of Time theme song succesfully downloaded
+[09:40:25] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Friends theme song succesfully downloaded
+[09:40:25] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: One Piece theme song succesfully downloaded
+[09:40:26] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Rosemary's Baby theme song succesfully downloaded
+[09:40:26] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Planetes theme song succesfully downloaded
+[09:40:26] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Good Omens theme song succesfully downloaded
+[09:40:26] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Outer Range theme song succesfully downloaded
+[09:40:26] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Arcane theme song succesfully downloaded
+[09:40:26] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Married... with Children theme song succesfully downloaded
+[09:40:27] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Them theme song not in database, or no internet connection
+[09:40:27] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Your Friendly Neighborhood Spider-Man theme song not in database, or no internet connection
+[09:40:27] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Better Call Saul theme song succesfully downloaded
+[09:40:27] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Chucky theme song succesfully downloaded
+[09:40:28] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Avatar: The Last Airbender (2024) theme song not in database, or no internet connection
+[09:40:28] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The White Lotus theme song succesfully downloaded
+[09:40:28] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Vikings theme song succesfully downloaded
+[09:40:28] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Sword Art Online theme song succesfully downloaded
+[09:40:28] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Rig (2023) theme song succesfully downloaded
+[09:40:29] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Willow theme song succesfully downloaded
+[09:40:29] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Night Sky theme song succesfully downloaded
+[09:40:29] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Dark Winds theme song not in database, or no internet connection
+[09:40:29] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Fear the Walking Dead theme song succesfully downloaded
+[09:40:30] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Prime Target theme song not in database, or no internet connection
+[09:40:30] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Teacup theme song not in database, or no internet connection
+[09:40:30] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Landman theme song not in database, or no internet connection
+[09:40:30] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Recruit theme song not in database, or no internet connection
+[09:40:31] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Avatar: The Last Airbender theme song succesfully downloaded
+[09:40:31] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: True Blood theme song succesfully downloaded
+[09:40:31] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Walking Dead: The Ones Who Live theme song succesfully downloaded
+[09:40:31] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Carnival Row theme song succesfully downloaded
+[09:40:31] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Elfen Lied theme song succesfully downloaded
+[09:40:31] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Homeland theme song succesfully downloaded
+[09:40:31] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Jujutsu Kaisen theme song succesfully downloaded
+[09:40:32] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Boruto: Naruto Next Generations theme song succesfully downloaded
+[09:40:32] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Home Before Dark theme song succesfully downloaded
+[09:40:32] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Chainsaw Man theme song succesfully downloaded
+[09:40:32] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: House theme song succesfully downloaded
+[09:40:32] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Naruto theme song succesfully downloaded
+[09:40:33] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Stranger Things theme song succesfully downloaded
+[09:40:33] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Walking Dead: Daryl Dixon theme song succesfully downloaded
+[09:40:33] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Walking Dead: Dead City theme song succesfully downloaded
+[09:40:33] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Cowboy Cartel theme song not in database, or no internet connection
+[09:40:33] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Snabba Cash theme song not in database, or no internet connection
+[09:40:34] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Blue Mountain State theme song succesfully downloaded
+[09:40:34] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Day of the Jackal theme song not in database, or no internet connection
+[09:40:34] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Mr. & Mrs. Smith (2024) theme song not in database, or no internet connection
+[09:40:35] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Record of Lodoss War theme song succesfully downloaded
+[09:40:35] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Castlevania: Nocturne theme song not in database, or no internet connection
+[09:40:35] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: How I Met Your Mother theme song succesfully downloaded
+[09:40:35] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Kaleidoscope (2023) theme song succesfully downloaded
+[09:40:35] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Silo theme song succesfully downloaded
+[09:40:35] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Californication theme song succesfully downloaded
+[09:40:36] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Penguin theme song succesfully downloaded
+[09:40:36] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Naruto Shippuden theme song succesfully downloaded
+[09:40:36] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Cobra Kai theme song succesfully downloaded
+[09:40:36] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Lord of the Rings: The Rings of Power theme song succesfully downloaded
+[09:40:36] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Wire theme song succesfully downloaded
+[09:40:37] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Sandman theme song succesfully downloaded
+[09:40:37] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Solo Leveling theme song succesfully downloaded
+[09:40:37] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: X-Men '97 theme song succesfully downloaded
+[09:40:37] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Dexter: Original Sin theme song not in database, or no internet connection
+[09:40:37] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Marianne theme song not in database, or no internet connection
+[09:40:38] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Secret Level theme song not in database, or no internet connection
+[09:40:38] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Helicopter Heist theme song not in database, or no internet connection
+[09:40:38] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Paradise theme song not in database, or no internet connection
+[09:40:39] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Eminence in Shadow theme song succesfully downloaded
+[09:40:39] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Disastrous Life of Saiki K. theme song succesfully downloaded
+[09:40:39] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Night Agent theme song not in database, or no internet connection
+[09:40:39] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: South Park theme song succesfully downloaded
+[09:40:40] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Yellowjackets theme song succesfully downloaded
+[09:40:40] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Lioness theme song succesfully downloaded
+[09:40:40] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Parks and Recreation theme song succesfully downloaded
+[09:40:40] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Walking Dead: World Beyond theme song succesfully downloaded
+[09:40:41] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Star Wars: Skeleton Crew theme song not in database, or no internet connection
+[09:40:41] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Big Bang Theory theme song succesfully downloaded
+[09:40:41] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Severance theme song succesfully downloaded
+[09:40:41] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Letterkenny theme song succesfully downloaded
+[09:40:41] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Rivals (2024) theme song not in database, or no internet connection
+[09:40:42] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Disclaimer theme song not in database, or no internet connection
+[09:40:42] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Halo theme song succesfully downloaded
+[09:40:42] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Expanse theme song succesfully downloaded
+[09:40:42] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Star Wars: Andor theme song succesfully downloaded
+[09:40:42] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: It's Always Sunny in Philadelphia theme song succesfully downloaded
+[09:40:42] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Wednesday theme song succesfully downloaded
+[09:40:43] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Joey theme song succesfully downloaded
+[09:40:43] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Terminator Zero theme song not in database, or no internet connection
+[09:40:43] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Castlevania theme song succesfully downloaded
+[09:40:43] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Bleach theme song succesfully downloaded
+[09:40:44] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Alienist theme song succesfully downloaded
+[09:40:44] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Band of Brothers theme song succesfully downloaded
+[09:40:44] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Squid Game theme song succesfully downloaded
+[09:40:44] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Masters of the Air theme song succesfully downloaded
+[09:40:44] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: For All Mankind theme song succesfully downloaded
+[09:40:44] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Game of Thrones theme song succesfully downloaded
+[09:40:44] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Futurama theme song succesfully downloaded
+[09:40:45] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Hellbound theme song not in database, or no internet connection
+[09:40:45] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Star Trek: Lower Decks theme song succesfully downloaded
+[09:40:45] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Dark theme song succesfully downloaded
+[09:40:45] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Gen V theme song not in database, or no internet connection
+[09:40:46] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Kingdom (2019) theme song succesfully downloaded
+[09:40:46] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Demon Slayer: Kimetsu no Yaiba theme song succesfully downloaded
+[09:40:46] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: American Dad! theme song succesfully downloaded
+[09:40:46] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Ronja the Robber's Daughter (2024) theme song not in database, or no internet connection
+[09:40:47] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Knuckles theme song not in database, or no internet connection
+[09:40:47] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: FROM theme song succesfully downloaded
+[09:40:47] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Mythic Quest theme song succesfully downloaded
+[09:40:47] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Succession theme song succesfully downloaded
+[09:40:47] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Death Note theme song succesfully downloaded
+[09:40:47] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: My Hero Academia theme song succesfully downloaded
+[09:40:47] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Outlander theme song succesfully downloaded
+[09:40:48] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Vikings: Valhalla theme song succesfully downloaded
+[09:40:48] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Shoresy theme song not in database, or no internet connection
+[09:40:48] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Attack on Titan theme song succesfully downloaded
+[09:40:48] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Ahsoka theme song succesfully downloaded
+[09:40:49] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Queen's Gambit theme song succesfully downloaded
+[09:40:49] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Prison Break theme song succesfully downloaded
+[09:40:49] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Dune: Prophecy theme song not in database, or no internet connection
+[09:40:49] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Witcher theme song succesfully downloaded
+[09:40:49] [INF] [92] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: All theme songs downloaded
+[09:40:49] [INF] [92] Emby.Server.Implementations.ScheduledTasks.TaskManager: Download TV Theme Songs Completed after 0 minute(s) and 31 seconds
+[09:41:18] [INF] [23] Emby.Server.Implementations.IO.LibraryMonitor: 12 Monkeys (/data/Shows/12 Monkeys) will be refreshed.
+[09:41:19] [INF] [23] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/12 Monkeys/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5f532933e740] Estimating duration from bitrate, this may be inaccurate
+[09:41:19] [INF] [34] Emby.Server.Implementations.IO.LibraryMonitor: See (/data/Shows/See) will be refreshed.
+[09:41:19] [INF] [92] Emby.Server.Implementations.IO.LibraryMonitor: Two and a Half Men (/data/Shows/Two and a half men) will be refreshed.
+[09:41:19] [INF] [34] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/See/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x55c464fb1740] Estimating duration from bitrate, this may be inaccurate
+[09:41:19] [INF] [34] Emby.Server.Implementations.IO.LibraryMonitor: The Mentalist (/data/Shows/The Mentalist) will be refreshed.
+[09:41:19] [INF] [34] Emby.Server.Implementations.IO.LibraryMonitor: His Dark Materials (/data/Shows/His Dark Materials) will be refreshed.
+[09:41:19] [INF] [40] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Two and a half men/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5e696a4c9740] Estimating duration from bitrate, this may be inaccurate
+[09:41:19] [INF] [73] Emby.Server.Implementations.IO.LibraryMonitor: Shogun (/data/Shows/Shogun) will be refreshed.
+[09:41:19] [INF] [23] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/His Dark Materials/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x57b5ab601740] Estimating duration from bitrate, this may be inaccurate
+[09:41:20] [INF] [92] Emby.Server.Implementations.IO.LibraryMonitor: Family Guy (/data/Shows/Family Guy) will be refreshed.
+     
+0] [INF] [23] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Shogun/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x56c77e61e740] Estimating duration from bitrate, this may be inaccurate
+[09:41:20] [INF] [23] Emby.Server.Implementations.IO.LibraryMonitor: The Sopranos (/data/Shows/The Sopranos) will be refreshed.
+[09:41:20] [INF] [23] Emby.Server.Implementations.IO.LibraryMonitor: American Gods (/data/Shows/American Gods) will be refreshed.
+[09:41:20] [INF] [23] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Family Guy/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5bf0c1420740] Estimating duration from bitrate, this may be inaccurate
+[09:41:20] [INF] [23] Emby.Server.Implementations.IO.LibraryMonitor: SEAL Team (/data/Shows/SEAL Team) will be refreshed.
+[09:41:21] [INF] [101] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/American Gods/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x572a14181740] Estimating duration from bitrate, this may be inaccurate
+[09:41:21] [INF] [101] Emby.Server.Implementations.IO.LibraryMonitor: Agatha All Along (/data/Shows/Agatha All Along) will be refreshed.
+[09:41:21] [INF] [101] Emby.Server.Implementations.IO.LibraryMonitor: The Last of Us (/data/Shows/The Last of Us) will be refreshed.
+[09:41:21] [INF] [92] Emby.Server.Implementations.IO.LibraryMonitor: Rick and Morty (/data/Shows/Rick and Morty) will be refreshed.
+     [09:41:21] [INF] [23] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/SEAL Team/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5ab5d5aed740] Estimating duration from bitrate, this may be inaccurate
+[09:41:21] [INF] [23] Emby.Server.Implementations.IO.LibraryMonitor: MINDHUNTER (/data/Shows/Mindhunter) will be refreshed.
+[09:41:21] [INF] [56] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Rick and Morty/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:22] [INF] [30] Emby.Server.Implementations.IO.LibraryMonitor: Earth Abides (/data/Shows/Earth Abides) will be refreshed.
+[09:41:22] [INF] [72] Emby.Server.Implementations.IO.LibraryMonitor: Hunter x Hunter (2011) (/data/Shows/Hunter x Hunter (2011)) will be refreshed.
+[09:41:22] [INF] [58] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Mindhunter/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x615b1adc8740] Estimating duration from bitrate, this may be inaccurate
+[09:41:22] [INF] [38] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Hunter x Hunter (2011)/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x62ad460c6740] Estimating duration from bitrate, this may be inaccurate
+[09:41:22] [INF] [38] Emby.Server.Implementations.IO.LibraryMonitor: The Big Door Prize (/data/Shows/The Big Door Prize) will be refreshed.
+[09:41:22] [INF] [15] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/The Big Door Prize/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x57ca62427740] Estimating duration from bitrate, this may be inaccurate
+[09:41:22] [WRN] [58] MediaBrowser.Providers.MediaInfo.AudioFileProber: File /data/Shows/The Big Door Prize/theme.mp3 only has ID3v1 tags, some fields may be truncated
+[09:41:22] [INF] [58] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/The Last of Us/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:22] [INF] [58] Emby.Server.Implementations.IO.LibraryMonitor: ONE PIECE (2023) (/data/Shows/ONE PIECE (2023)) will be refreshed.
+[mp3 @ 0x61ca58668740] Estimating duration from bitrate, this may be inaccurate
+[09:41:23] [INF] [15] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Agatha All Along/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5a4f6c3f4740] Estimating duration from bitrate, this may be inaccurate
+[09:41:23] [WRN] [38] MediaBrowser.Providers.MediaInfo.AudioFileProber: File /data/Shows/Agatha All Along/theme.mp3 only has ID3v1 tags, some fields may be truncated
+[09:41:23] [INF] [58] Emby.Server.Implementations.IO.LibraryMonitor: Beck (/data/Shows/Beck) will be refreshed.
+[09:41:23] [INF] [58] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Beck/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5cb2b42b8740] Estimating duration from bitrate, this may be inaccurate
+[09:41:23] [INF] [38] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/The Sopranos/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5eef01c44740] Estimating duration from bitrate, this may be inaccurate
+[09:41:23] [INF] [72] Emby.Server.Implementations.IO.LibraryMonitor: Gaslit (/data/Shows/Gaslit) will be refreshed.
+[09:41:23] [INF] [40] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/The Mentalist/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x55a5a6474740] Estimating duration from bitrate, this may be inaccurate
+[09:41:23] [INF] [30] Emby.Server.Implementations.IO.LibraryMonitor: Dr. Brain (/data/Shows/Dr Brain) will be refreshed.
+[09:41:23] [INF] [58] Emby.Server.Implementations.IO.LibraryMonitor: Fullmetal Alchemist: Brotherhood (/data/Shows/Fullmetal Alchemist - Brotherhood) will be refreshed.
+[09:41:24] [INF] [56] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Fullmetal Alchemist - Brotherhood/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:24] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Star Wars: The Clone Wars (/data/Shows/Star Wars - The Clone Wars) will be refreshed.
+[09:41:24] [INF] [85] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Star Wars - The Clone Wars/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5bb0c94d9740] Estimating duration from bitrate, this may be inaccurate
+[09:41:24] [INF] [38] Emby.Server.Implementations.IO.LibraryMonitor: A Good Girl's Guide to Murder (/data/Shows/A Good Girls Guide to Murder) will be refreshed.
+[09:41:25] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: The Last Kingdom (/data/Shows/The Last Kingdom) will be refreshed.
+[09:41:25] [INF] [56] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/The Last Kingdom/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5b2c3b53a740] Estimating duration from bitrate, this may be inaccurate
+[09:41:25] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Fallout (/data/Shows/Fallout) will be refreshed.
+[09:41:25] [INF] [56] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Fallout/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x644ebaeb0740] Estimating duration from bitrate, this may be inaccurate
+[09:41:25] [WRN] [56] MediaBrowser.Providers.MediaInfo.AudioFileProber: File /data/Shows/Fallout/theme.mp3 only has ID3v1 tags, some fields may be truncated
+[09:41:25] [INF] [89] Emby.Server.Implementations.IO.LibraryMonitor: The Signal (/data/Shows/The Signal) will be refreshed.
+[09:41:25] [INF] [89] Emby.Server.Implementations.IO.LibraryMonitor: The Wheel of Time (/data/Shows/The Wheel of Time) will be refreshed.
+[09:41:25] [INF] [38] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/The Wheel of Time/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x635c3de4f740] Estimating duration from bitrate, this may be inaccurate
+[09:41:25] [INF] [89] Emby.Server.Implementations.IO.LibraryMonitor: Friends (/data/Shows/Friends) will be refreshed.
+[09:41:25] [INF] [89] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Friends/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:25] [INF] [30] Emby.Server.Implementations.IO.LibraryMonitor: One Piece (/data/Shows/One Piece) will be refreshed.
+[09:41:26] [INF] [30] Emby.Server.Implementations.IO.LibraryMonitor: Rosemary's Baby (/data/Shows/Rosemarys Baby) will be refreshed.
+     [09:41:26] [INF] [89] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/One Piece/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:26] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Planetes (/data/Shows/Planetes) will be refreshed.
+[09:41:26] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Good Omens (/data/Shows/Good Omens) will be refreshed.
+[09:41:26] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Outer Range (/data/Shows/Outer range) will be refreshed.
+[09:41:26] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Arcane (/data/Shows/Arcane) will be refreshed.
+[09:41:26] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Married... with Children (/data/Shows/Married. with Children) will be refreshed.
+[09:41:27] [INF] [89] Emby.Server.Implementations.IO.LibraryMonitor: Them (/data/Shows/Them) will be refreshed.
+[09:41:27] [INF] [89] Emby.Server.Implementations.IO.LibraryMonitor: Your Friendly Neighborhood Spider-Man (/data/Shows/Your Friendly Neighborhood Spider-Man) will be refreshed.
+[09:41:27] [INF] [85] Emby.Server.Implementations.IO.LibraryMonitor: Better Call Saul (/data/Shows/Better Call Saul) will be refreshed.
+[09:41:27] [INF] [56] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Rosemarys Baby/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5c686ff3f740] Estimating duration from bitrate, this may be inaccurate
+[09:41:27] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Chucky (/data/Shows/Chucky) will be refreshed.
+[09:41:27] [INF] [56] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Better Call Saul/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5b73e267a740] Estimating duration from bitrate, this may be inaccurate
+     
+8] [INF] [40] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Chucky/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5cee3d830740] Estimating duration from bitrate, this may be inaccurate
+[09:41:28] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Avatar: The Last Airbender (2024) (/data/Shows/Avatar - The Last Airbender (2024)) will be refreshed.
+[09:41:28] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: The White Lotus (/data/Shows/The White Lotus) will be refreshed.
+[09:41:28] [INF] [40] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/The White Lotus/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5d00aa2ec740] Estimating duration from bitrate, this may be inaccurate
+[09:41:28] [INF] [89] Emby.Server.Implementations.IO.LibraryMonitor: Vikings (/data/Shows/Vikings) will be refreshed.
+[09:41:28] [INF] [56] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Vikings/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:28] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Sword Art Online (/data/Shows/Sword Art Online) will be refreshed.
+[mp3 @ 0x59a83d61d740] Estimating duration from bitrate, this may be inaccurate
+[09:41:28] [INF] [89] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Sword Art Online/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:28] [INF] [89] Emby.Server.Implementations.IO.LibraryMonitor: The Rig (2023) (/data/Shows/The Rig (2023)) will be refreshed.
+[09:41:29] [INF] [58] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Married. with Children/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:29] [INF] [15] Emby.Server.Implementations.IO.LibraryMonitor: Willow (/data/Shows/Willow) will be refreshed.
+[09:41:29] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Night Sky (/data/Shows/Night sky) will be refreshed.
+[09:41:29] [INF] [30] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/The Rig (2023)/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x58c5fcca2740] Estimating duration from bitrate, this may be inaccurate
+[09:41:29] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Dark Winds (/data/Shows/Dark Winds) will be refreshed.
+     [09:41:29] [INF] [15] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Night sky/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x63e9ddc43740] Estimating duration from bitrate, this may be inaccurate
+[09:41:29] [INF] [15] Emby.Server.Implementations.IO.LibraryMonitor: Fear the Walking Dead (/data/Shows/Fear the Walking Dead) will be refreshed.
+     
+9] [INF] [15] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Willow/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x59d2b472a740] Estimating duration from bitrate, this may be inaccurate
+[09:41:29] [INF] [30] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Fear the Walking Dead/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x644c4bbba740] Estimating duration from bitrate, this may be inaccurate
+[09:41:30] [INF] [15] Emby.Server.Implementations.IO.LibraryMonitor: Prime Target (/data/Shows/Prime Target) will be refreshed.
+     
+0] [INF] [86] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Arcane/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5bd5ea35a740] Estimating duration from bitrate, this may be inaccurate
+[09:41:30] [INF] [86] Emby.Server.Implementations.IO.LibraryMonitor: Teacup (/data/Shows/Teacup) will be refreshed.
+[09:41:30] [INF] [30] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Outer range/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5ada0d893740] Estimating duration from bitrate, this may be inaccurate
+[09:41:30] [INF] [30] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Good Omens/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x64ee2ace2740] Estimating duration from bitrate, this may be inaccurate
+[09:41:30] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Landman (/data/Shows/Landman) will be refreshed.
+[09:41:30] [INF] [30] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Planetes/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:30] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: The Recruit (/data/Shows/The Recruit) will be refreshed.
+[09:41:30] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Avatar: The Last Airbender (/data/Shows/Avatar - The Last Airbender) will be refreshed.
+[09:41:31] [INF] [56] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Avatar - The Last Airbender/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x645ba0a07740] Estimating duration from bitrate, this may be inaccurate
+[09:41:31] [INF] [86] Emby.Server.Implementations.IO.LibraryMonitor: True Blood (/data/Shows/True Blood) will be refreshed.
+[09:41:31] [INF] [86] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/True Blood/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:31] [INF] [86] Emby.Server.Implementations.IO.LibraryMonitor: The Walking Dead: The Ones Who Live (/data/Shows/The Walking Dead - The Ones Who Live) will be refreshed.
+[mp3 @ 0x62a6487d8740] Estimating duration from bitrate, this may be inaccurate
+[09:41:31] [INF] [58] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/The Walking Dead - The Ones Who Live/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x566c4b667700] Estimating duration from bitrate, this may be inaccurate
+[09:41:31] [WRN] [58] MediaBrowser.Providers.MediaInfo.AudioFileProber: File /data/Shows/The Walking Dead - The Ones Who Live/theme.mp3 only has ID3v1 tags, some fields may be truncated
+[09:41:31] [INF] [86] Emby.Server.Implementations.IO.LibraryMonitor: Carnival Row (/data/Shows/Carnival Row) will be refreshed.
+[09:41:31] [INF] [58] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Carnival Row/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5b48a95a2740] Estimating duration from bitrate, this may be inaccurate
+[09:41:31] [INF] [58] Emby.Server.Implementations.IO.LibraryMonitor: Elfen Lied (/data/Shows/Elfen Lied) will be refreshed.
+[09:41:31] [INF] [86] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Elfen Lied/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:31] [INF] [86] Emby.Server.Implementations.IO.LibraryMonitor: Homeland (/data/Shows/Homeland) will be refreshed.
+[09:41:31] [INF] [86] Emby.Server.Implementations.IO.LibraryMonitor: Jujutsu Kaisen (/data/Shows/Jujutsu Kaisen) will be refreshed.
+[09:41:31] [INF] [86] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Homeland/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:32] [INF] [85] Emby.Server.Implementations.IO.LibraryMonitor: Boruto: Naruto Next Generations (/data/Shows/Boruto - Naruto Next Generations) will be refreshed.
+[09:41:32] [INF] [30] Emby.Server.Implementations.IO.LibraryMonitor: Home Before Dark (/data/Shows/Home before dark) will be refreshed.
+[09:41:32] [INF] [89] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Jujutsu Kaisen/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x578a97a51740] Estimating duration from bitrate, this may be inaccurate
+[09:41:32] [INF] [30] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Home before dark/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x6066fc9ca740] Estimating duration from bitrate, this may be inaccurate
+[09:41:32] [INF] [86] Emby.Server.Implementations.IO.LibraryMonitor: Chainsaw Man (/data/Shows/Chainsaw Man) will be refreshed.
+[09:41:32] [INF] [30] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Boruto - Naruto Next Generations/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x57d383945700] Estimating duration from bitrate, this may be inaccurate
+[09:41:32] [INF] [30] Emby.Server.Implementations.IO.LibraryMonitor: House (/data/Shows/House) will be refreshed.
+[09:41:32] [INF] [30] Emby.Server.Implementations.IO.LibraryMonitor: Naruto (/data/Shows/Naruto) will be refreshed.
+[09:41:33] [INF] [30] Emby.Server.Implementations.IO.LibraryMonitor: Stranger Things (/data/Shows/Stranger Things) will be refreshed.
+[09:41:33] [INF] [30] Emby.Server.Implementations.IO.LibraryMonitor: The Walking Dead: Daryl Dixon (/data/Shows/The Walking Dead - Daryl Dixon) will be refreshed.
+[09:41:33] [INF] [85] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Chainsaw Man/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5eb3804e6740] Estimating duration from bitrate, this may be inaccurate
+[09:41:33] [INF] [85] Emby.Server.Implementations.IO.LibraryMonitor: The Walking Dead: Dead City (/data/Shows/The Walking Dead - Dead City) will be refreshed.
+[09:41:33] [INF] [30] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/The Walking Dead - Daryl Dixon/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x64b08ced7700] Estimating duration from bitrate, this may be inaccurate
+[09:41:33] [WRN] [85] MediaBrowser.Providers.MediaInfo.AudioFileProber: File /data/Shows/The Walking Dead - Daryl Dixon/theme.mp3 only has ID3v1 tags, some fields may be truncated
+[09:41:33] [INF] [58] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/The Walking Dead - Dead City/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5c5189dbb740] Estimating duration from bitrate, this may be inaccurate
+[09:41:33] [INF] [86] Emby.Server.Implementations.IO.LibraryMonitor: Cowboy Cartel (/data/Shows/Cowboy Cartel) will be refreshed.
+[09:41:33] [INF] [86] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Stranger Things/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x59f4589f1740] Estimating duration from bitrate, this may be inaccurate
+[09:41:33] [INF] [58] Emby.Server.Implementations.IO.LibraryMonitor: Snabba Cash (/data/Shows/Snabba Cash) will be refreshed.
+     
+4] [INF] [58] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Naruto/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:34] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Blue Mountain State (/data/Shows/Blue Mountain State) will be refreshed.
+[09:41:34] [INF] [86] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/House/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:34] [INF] [86] Emby.Server.Implementations.IO.LibraryMonitor: The Day of the Jackal (/data/Shows/The Day of the Jackal) will be refreshed.
+[09:41:34] [INF] [56] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Blue Mountain State/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:34] [INF] [89] Emby.Server.Implementations.IO.LibraryMonitor: Mr. & Mrs. Smith (2024) (/data/Shows/Mr and Mrs Smith) will be refreshed.
+[09:41:35] [INF] [89] Emby.Server.Implementations.IO.LibraryMonitor: Record of Lodoss War (/data/Shows/Record of Lodoss War) will be refreshed.
+[09:41:35] [INF] [89] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Record of Lodoss War/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5eb83a09d740] Estimating duration from bitrate, this may be inaccurate
+[09:41:35] [INF] [86] Emby.Server.Implementations.IO.LibraryMonitor: Castlevania: Nocturne (/data/Shows/Castlevania - Nocturne) will be refreshed.
+[09:41:35] [INF] [86] Emby.Server.Implementations.IO.LibraryMonitor: How I Met Your Mother (/data/Shows/How I Met Your Mother) will be refreshed.
+[09:41:35] [INF] [86] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/How I Met Your Mother/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5c1c4fbe2740] Estimating duration from bitrate, this may be inaccurate
+[09:41:35] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Kaleidoscope (2023) (/data/Shows/Kaleidoscope) will be refreshed.
+[09:41:35] [INF] [85] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Kaleidoscope/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x563a05ed5740] Estimating duration from bitrate, this may be inaccurate
+[09:41:35] [INF] [30] Emby.Server.Implementations.IO.LibraryMonitor: Silo (/data/Shows/Silo) will be refreshed.
+[09:41:35] [INF] [85] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Silo/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5c8953078740] Estimating duration from bitrate, this may be inaccurate
+[09:41:35] [INF] [30] Emby.Server.Implementations.IO.LibraryMonitor: Californication (/data/Shows/Californication) will be refreshed.
+[09:41:36] [INF] [30] Emby.Server.Implementations.IO.LibraryMonitor: The Penguin (/data/Shows/The Penguin) will be refreshed.
+[09:41:36] [INF] [56] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Californication/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:36] [INF] [85] Emby.Server.Implementations.IO.LibraryMonitor: Naruto Shippuden (/data/Shows/Naruto Shippuden) will be refreshed.
+[09:41:36] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Cobra Kai (/data/Shows/Cobra Kai) will be refreshed.
+[09:41:36] [INF] [40] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/The Penguin/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x6131428cb740] Estimating duration from bitrate, this may be inaccurate
+[09:41:36] [WRN] [40] MediaBrowser.Providers.MediaInfo.AudioFileProber: File /data/Shows/The Penguin/theme.mp3 only has ID3v1 tags, some fields may be truncated
+     [09:41:36] [INF] [85] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Cobra Kai/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x55a6b89af740] Estimating duration from bitrate, this may be inaccurate
+[09:41:36] [INF] [40] Emby.Server.Implementations.IO.LibraryMonitor: The Lord of the Rings: The Rings of Power (/data/Shows/The Lord of the Rings The Rings of Power) will be refreshed.
+[09:41:36] [INF] [89] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Naruto Shippuden/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:36] [INF] [89] Emby.Server.Implementations.IO.LibraryMonitor: The Wire (/data/Shows/The Wire) will be refreshed.
+[mp3 @ 0x5e7013f3a740] Estimating duration from bitrate, this may be inaccurate
+[09:41:36] [INF] [89] Emby.Server.Implementations.IO.LibraryMonitor: The Sandman (/data/Shows/The Sandman) will be refreshed.
+[09:41:37] [INF] [89] Emby.Server.Implementations.IO.LibraryMonitor: Solo Leveling (/data/Shows/Solo Leveling) will be refreshed.
+[09:41:37] [INF] [85] Emby.Server.Implementations.IO.LibraryMonitor: X-Men '97 (/data/Shows/X-Men 97 (2024)) will be refreshed.
+[09:41:37] [INF] [72] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/The Lord of the Rings The Rings of Power/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x55d6de0d3700] Estimating duration from bitrate, this may be inaccurate
+[09:41:37] [INF] [40] Emby.Server.Implementations.IO.LibraryMonitor: Dexter: Original Sin (/data/Shows/Dexter - Original Sin) will be refreshed.
+[09:41:37] [INF] [85] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/X-Men 97 (2024)/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5b94cdb3d740] Estimating duration from bitrate, this may be inaccurate
+[09:41:37] [WRN] [40] MediaBrowser.Providers.MediaInfo.AudioFileProber: File /data/Shows/X-Men 97 (2024)/theme.mp3 only has ID3v1 tags, some fields may be truncated
+[09:41:37] [INF] [40] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Solo Leveling/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x61b87193d740] Estimating duration from bitrate, this may be inaccurate
+[09:41:37] [WRN] [38] MediaBrowser.Providers.MediaInfo.AudioFileProber: File /data/Shows/Solo Leveling/theme.mp3 only has ID3v1 tags, some fields may be truncated
+[09:41:37] [INF] [40] Emby.Server.Implementations.IO.LibraryMonitor: Marianne (/data/Shows/Marianne) will be refreshed.
+[09:41:37] [INF] [85] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/The Sandman/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x61bf97729740] Estimating duration from bitrate, this may be inaccurate
+[09:41:38] [INF] [40] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/The Wire/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:38] [INF] [86] Emby.Server.Implementations.IO.LibraryMonitor: Secret Level (/data/Shows/Secret level) will be refreshed.
+[09:41:38] [INF] [85] Emby.Server.Implementations.IO.LibraryMonitor: The Helicopter Heist (/data/Shows/The Helicopter Heist) will be refreshed.
+[09:41:38] [INF] [85] Emby.Server.Implementations.IO.LibraryMonitor: Paradise (/data/Shows/Paradise (2025)) will be refreshed.
+[09:41:39] [INF] [40] Emby.Server.Implementations.IO.LibraryMonitor: The Eminence in Shadow (/data/Shows/The Eminence in Shadow) will be refreshed.
+[09:41:39] [INF] [40] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/The Eminence in Shadow/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x55f6f0049740] Estimating duration from bitrate, this may be inaccurate
+[09:41:39] [INF] [30] Emby.Server.Implementations.IO.LibraryMonitor: The Disastrous Life of Saiki K. (/data/Shows/The Disastrous Life of Saiki K) will be refreshed.
+[09:41:39] [INF] [40] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/The Disastrous Life of Saiki K/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x6441621c5700] Estimating duration from bitrate, this may be inaccurate
+[09:41:39] [INF] [86] Emby.Server.Implementations.IO.LibraryMonitor: The Night Agent (/data/Shows/The Night Agent) will be refreshed.
+[09:41:39] [INF] [86] Emby.Server.Implementations.IO.LibraryMonitor: South Park (/data/Shows/South Park) will be refreshed.
+[09:41:39] [INF] [40] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/South Park/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:40] [INF] [85] Emby.Server.Implementations.IO.LibraryMonitor: Yellowjackets (/data/Shows/Yellowjackets) will be refreshed.
+[09:41:40] [INF] [38] Emby.Server.Implementations.IO.LibraryMonitor: Lioness (/data/Shows/Lioness) will be refreshed.
+[09:41:40] [INF] [101] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Yellowjackets/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:40] [INF] [101] Emby.Server.Implementations.IO.LibraryMonitor: Parks and Recreation (/data/Shows/Parks and recreation) will be refreshed.
+[mp3 @ 0x63fdabdc8740] Estimating duration from bitrate, this may be inaccurate
+[09:41:40] [INF] [15] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Lioness/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x6149434bb740] Estimating duration from bitrate, this may be inaccurate
+[09:41:40] [INF] [38] Emby.Server.Implementations.IO.LibraryMonitor: The Walking Dead: World Beyond (/data/Shows/The Walking Dead - World Beyond) will be refreshed.
+[09:41:40] [INF] [15] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Parks and recreation/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:41] [INF] [101] Emby.Server.Implementations.IO.LibraryMonitor: Star Wars: Skeleton Crew (/data/Shows/Star Wars - Skeleton Crew) will be refreshed.
+[09:41:41] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: The Big Bang Theory (/data/Shows/Big Bang Theory) will be refreshed.
+[09:41:41] [INF] [38] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/The Walking Dead - World Beyond/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5a44375fe700] Estimating duration from bitrate, this may be inaccurate
+[09:41:41] [INF] [38] Emby.Server.Implementations.IO.LibraryMonitor: Severance (/data/Shows/Severance) will be refreshed.
+[09:41:41] [INF] [86] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Big Bang Theory/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x575251a92740] Estimating duration from bitrate, this may be inaccurate
+[09:41:41] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Letterkenny (/data/Shows/Letterkenny) will be refreshed.
+     [09:41:41] [INF] [86] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Severance/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x575ffae40740] Estimating duration from bitrate, this may be inaccurate
+[09:41:41] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Rivals (2024) (/data/Shows/Rivals) will be refreshed.
+[09:41:41] [INF] [56] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Letterkenny/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x654e58304740] Estimating duration from bitrate, this may be inaccurate
+[09:41:42] [INF] [86] Emby.Server.Implementations.IO.LibraryMonitor: Disclaimer (/data/Shows/Disclaimer) will be refreshed.
+[09:41:42] [INF] [38] Emby.Server.Implementations.IO.LibraryMonitor: Halo (/data/Shows/Halo) will be refreshed.
+[09:41:42] [INF] [40] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Halo/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5886448ec740] Estimating duration from bitrate, this may be inaccurate
+[09:41:42] [INF] [15] Emby.Server.Implementations.IO.LibraryMonitor: The Expanse (/data/Shows/The Expanse) will be refreshed.
+[09:41:42] [INF] [56] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/The Expanse/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5938d59a7740] Estimating duration from bitrate, this may be inaccurate
+[09:41:42] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Star Wars: Andor (/data/Shows/Star Wars - Andor) will be refreshed.
+[09:41:42] [INF] [56] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Star Wars - Andor/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5f43dc5f3740] Estimating duration from bitrate, this may be inaccurate
+[09:41:42] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: It's Always Sunny in Philadelphia (/data/Shows/Its always sunny in Philadelphia) will be refreshed.
+[09:41:42] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Wednesday (/data/Shows/Wednesday) will be refreshed.
+[09:41:42] [INF] [56] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Its always sunny in Philadelphia/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:42] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Joey (/data/Shows/Joey) will be refreshed.
+[mp3 @ 0x63223da36700] Estimating duration from bitrate, this may be inaccurate
+[09:41:43] [INF] [101] Emby.Server.Implementations.IO.LibraryMonitor: Terminator Zero (/data/Shows/Terminator Zero) will be refreshed.
+[09:41:43] [INF] [38] Emby.Server.Implementations.IO.LibraryMonitor: Castlevania (/data/Shows/Castlevania) will be refreshed.
+     [09:41:43] [INF] [72] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Wednesday/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x6509c0aec740] Estimating duration from bitrate, this may be inaccurate
+[09:41:43] [INF] [38] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Castlevania/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5987221ab740] Estimating duration from bitrate, this may be inaccurate
+[09:41:43] [INF] [15] Emby.Server.Implementations.IO.LibraryMonitor: Bleach (/data/Shows/Bleach) will be refreshed.
+     
+3] [INF] [92] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Bleach/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:44] [INF] [92] Emby.Server.Implementations.IO.LibraryMonitor: The Alienist (/data/Shows/The Alienist) will be refreshed.
+[09:41:44] [INF] [40] Emby.Server.Implementations.IO.LibraryMonitor: Band of Brothers (/data/Shows/Band of brothers) will be refreshed.
+[09:41:44] [INF] [56] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Joey/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:44] [INF] [72] Emby.Server.Implementations.IO.LibraryMonitor: Squid Game (/data/Shows/Squid Game) will be refreshed.
+[mp3 @ 0x622024691740] Estimating duration from bitrate, this may be inaccurate
+[09:41:44] [INF] [40] Emby.Server.Implementations.IO.LibraryMonitor: Masters of the Air (/data/Shows/Masters of the Air) will be refreshed.
+[09:41:44] [INF] [40] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Band of brothers/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5dda9d050740] Estimating duration from bitrate, this may be inaccurate
+[09:41:44] [INF] [40] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Masters of the Air/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x580c76d0c740] Estimating duration from bitrate, this may be inaccurate
+[09:41:44] [WRN] [92] MediaBrowser.Providers.MediaInfo.AudioFileProber: File /data/Shows/Masters of the Air/theme.mp3 only has ID3v1 tags, some fields may be truncated
+[09:41:44] [INF] [72] Emby.Server.Implementations.IO.LibraryMonitor: For All Mankind (/data/Shows/For all mankind) will be refreshed.
+[09:41:44] [INF] [92] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Squid Game/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x60afb1da1740] Estimating duration from bitrate, this may be inaccurate
+[09:41:44] [INF] [92] Emby.Server.Implementations.IO.LibraryMonitor: Game of Thrones (/data/Shows/Game of Thrones) will be refreshed.
+[09:41:44] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Futurama (/data/Shows/Futurama) will be refreshed.
+[09:41:44] [INF] [72] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/For all mankind/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5c4b5e8d6740] Estimating duration from bitrate, this may be inaccurate
+[09:41:45] [INF] [15] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Futurama/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:45] [INF] [15] Emby.Server.Implementations.IO.LibraryMonitor: Hellbound (/data/Shows/Hellbound) will be refreshed.
+[09:41:45] [INF] [40] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Game of Thrones/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x636c4ada1740] Estimating duration from bitrate, this may be inaccurate
+[09:41:45] [INF] [40] Emby.Server.Implementations.IO.LibraryMonitor: Star Trek: Lower Decks (/data/Shows/Star Trek Lower Decks) will be refreshed.
+[09:41:45] [INF] [40] Emby.Server.Implementations.IO.LibraryMonitor: Dark (/data/Shows/Dark) will be refreshed.
+[09:41:45] [INF] [38] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Dark/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5ea2fd762740] Estimating duration from bitrate, this may be inaccurate
+[09:41:45] [INF] [72] Emby.Server.Implementations.IO.LibraryMonitor: Gen V (/data/Shows/Gen V) will be refreshed.
+[09:41:45] [INF] [56] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Star Trek Lower Decks/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5658cf9b6740] Estimating duration from bitrate, this may be inaccurate
+[09:41:46] [INF] [89] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/The Alienist/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x563941fcb740] Estimating duration from bitrate, this may be inaccurate
+[09:41:46] [INF] [40] Emby.Server.Implementations.IO.LibraryMonitor: Kingdom (2019) (/data/Shows/Kingdom (2019)) will be refreshed.
+[09:41:46] [INF] [40] Emby.Server.Implementations.IO.LibraryMonitor: Demon Slayer: Kimetsu no Yaiba (/data/Shows/Demon Slayer - Kimetsu no Yaiba) will be refreshed.
+[09:41:46] [INF] [89] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Kingdom (2019)/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x606a2be95740] Estimating duration from bitrate, this may be inaccurate
+[09:41:46] [INF] [89] Emby.Server.Implementations.IO.LibraryMonitor: American Dad! (/data/Shows/American Dad!) will be refreshed.
+[09:41:46] [INF] [56] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Demon Slayer - Kimetsu no Yaiba/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5bc03c8c6700] Estimating duration from bitrate, this may be inaccurate
+[09:41:46] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Ronja the Robber's Daughter (2024) (/data/Shows/Ronja the Robbers Daughter (2024)) will be refreshed.
+[09:41:46] [INF] [30] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/American Dad!/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x581d7b988740] Estimating duration from bitrate, this may be inaccurate
+[09:41:47] [INF] [15] Emby.Server.Implementations.IO.LibraryMonitor: Knuckles (/data/Shows/Knuckles) will be refreshed.
+[09:41:47] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: FROM (/data/Shows/From) will be refreshed.
+[09:41:47] [INF] [30] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/From/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:47] [INF] [30] Emby.Server.Implementations.IO.LibraryMonitor: Mythic Quest (/data/Shows/Mythic Quest) will be refreshed.
+[mp3 @ 0x628f2cbee740] Estimating duration from bitrate, this may be inaccurate
+[09:41:47] [INF] [30] Emby.Server.Implementations.IO.LibraryMonitor: Succession (/data/Shows/Succession) will be refreshed.
+[09:41:47] [INF] [30] Emby.Server.Implementations.IO.LibraryMonitor: Death Note (/data/Shows/Death Note) will be refreshed.
+[09:41:47] [INF] [30] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Death Note/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x557d806fe740] Estimating duration from bitrate, this may be inaccurate
+[09:41:47] [INF] [15] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Succession/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x560bfeb18740] Estimating duration from bitrate, this may be inaccurate
+[09:41:47] [INF] [30] Emby.Server.Implementations.IO.LibraryMonitor: My Hero Academia (/data/Shows/My Hero Academia) will be refreshed.
+[09:41:47] [INF] [30] Emby.Server.Implementations.IO.LibraryMonitor: Outlander (/data/Shows/Outlander) will be refreshed.
+[09:41:47] [INF] [56] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Mythic Quest/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x5bc780a0f740] Estimating duration from bitrate, this may be inaccurate
+     [09:41:48] [INF] [56] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Outlander/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x64ecc2f7d740] Estimating duration from bitrate, this may be inaccurate
+[09:41:48] [INF] [89] Emby.Server.Implementations.IO.LibraryMonitor: Vikings: Valhalla (/data/Shows/Vikings - Valhalla) will be refreshed.
+[09:41:48] [INF] [38] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/My Hero Academia/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x59234d72b740] Estimating duration from bitrate, this may be inaccurate
+[09:41:48] [INF] [38] Emby.Server.Implementations.IO.LibraryMonitor: Shoresy (/data/Shows/Shoresy) will be refreshed.
+[09:41:48] [INF] [38] Emby.Server.Implementations.IO.LibraryMonitor: Attack on Titan (/data/Shows/Attack on Titan) will be refreshed.
+[09:41:48] [INF] [86] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Vikings - Valhalla/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x58a0f70d2740] Estimating duration from bitrate, this may be inaccurate
+[09:41:48] [INF] [89] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Attack on Titan/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[09:41:48] [INF] [92] Emby.Server.Implementations.IO.LibraryMonitor: Ahsoka (/data/Shows/Ahsoka) will be refreshed.
+[09:41:49] [INF] [92] Emby.Server.Implementations.IO.LibraryMonitor: The Queen's Gambit (/data/Shows/Queens Gambit) will be refreshed.
+[09:41:49] [INF] [92] Emby.Server.Implementations.IO.LibraryMonitor: Prison Break (/data/Shows/Prison Break) will be refreshed.
+[09:41:49] [INF] [30] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Prison Break/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x6464a8214740] Estimating duration from bitrate, this may be inaccurate
+[09:41:49] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: Dune: Prophecy (/data/Shows/Dune Prophecy) will be refreshed.
+[09:41:49] [INF] [15] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Queens Gambit/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x561fa6c12740] Estimating duration from bitrate, this may be inaccurate
+     
+9] [INF] [40] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/Ahsoka/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x619fb67f7740] Estimating duration from bitrate, this may be inaccurate
+[09:41:49] [INF] [56] Emby.Server.Implementations.IO.LibraryMonitor: The Witcher (/data/Shows/The Witcher) will be refreshed.
+[09:41:49] [INF] [56] MediaBrowser.MediaEncoding.Encoder.MediaEncoder: Starting /usr/lib/jellyfin-ffmpeg/ffprobe with args -analyzeduration 200M -probesize 1G -i file:"/data/Shows/The Witcher/theme.mp3" -threads 0 -v warning -print_format json -show_streams -show_format
+[mp3 @ 0x64871db7f740] Estimating duration from bitrate, this may be inaccurate
+[10:40:19] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Starting plugin, Downloading TV Theme Songs...
+[10:40:20] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Earth Abides theme song not in database, or no internet connection
+[10:40:20] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: ONE PIECE (2023) theme song not in database, or no internet connection
+[10:40:20] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Gaslit theme song not in database, or no internet connection
+[10:40:20] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Dr. Brain theme song not in database, or no internet connection
+[10:40:21] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: A Good Girl's Guide to Murder theme song not in database, or no internet connection
+[10:40:21] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Signal theme song not in database, or no internet connection
+[10:40:21] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Them theme song not in database, or no internet connection
+[10:40:22] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Your Friendly Neighborhood Spider-Man theme song not in database, or no internet connection
+[10:40:22] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Avatar: The Last Airbender (2024) theme song not in database, or no internet connection
+[10:40:22] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Dark Winds theme song not in database, or no internet connection
+[10:40:23] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Prime Target theme song not in database, or no internet connection
+[10:40:23] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Teacup theme song not in database, or no internet connection
+[10:40:23] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Landman theme song not in database, or no internet connection
+[10:40:23] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Recruit theme song not in database, or no internet connection
+[10:40:24] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Cowboy Cartel theme song not in database, or no internet connection
+[10:40:24] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Snabba Cash theme song not in database, or no internet connection
+[10:40:24] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Day of the Jackal theme song not in database, or no internet connection
+[10:40:25] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Mr. & Mrs. Smith (2024) theme song not in database, or no internet connection
+[10:40:25] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Castlevania: Nocturne theme song not in database, or no internet connection
+[10:40:25] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Dexter: Original Sin theme song not in database, or no internet connection
+[10:40:25] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Marianne theme song not in database, or no internet connection
+[10:40:26] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Secret Level theme song not in database, or no internet connection
+[10:40:26] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Helicopter Heist theme song not in database, or no internet connection
+[10:40:26] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Paradise theme song not in database, or no internet connection
+[10:40:27] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Night Agent theme song not in database, or no internet connection
+[10:40:27] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Star Wars: Skeleton Crew theme song not in database, or no internet connection
+[10:40:27] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Rivals (2024) theme song not in database, or no internet connection
+[10:40:27] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Disclaimer theme song not in database, or no internet connection
+[10:40:28] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Terminator Zero theme song not in database, or no internet connection
+[10:40:28] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Hellbound theme song not in database, or no internet connection
+[10:40:28] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Gen V theme song not in database, or no internet connection
+[10:40:29] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Ronja the Robber's Daughter (2024) theme song not in database, or no internet connection
+[10:40:29] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Knuckles theme song not in database, or no internet connection
+[10:40:29] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Shoresy theme song not in database, or no internet connection
+[10:40:30] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Dune: Prophecy theme song not in database, or no internet connection
+[10:40:30] [INF] [63] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: All theme songs downloaded
+[10:40:30] [INF] [63] Emby.Server.Implementations.ScheduledTasks.TaskManager: Download TV Theme Songs Completed after 0 minute(s) and 10 seconds
+[10:41:20] [INF] [38] Emby.Server.Implementations.IO.LibraryMonitor: Earth Abides (/data/Shows/Earth Abides) will be refreshed.
+[10:41:20] [INF] [85] Emby.Server.Implementations.IO.LibraryMonitor: ONE PIECE (2023) (/data/Shows/ONE PIECE (2023)) will be refreshed.
+[10:41:20] [INF] [81] Emby.Server.Implementations.IO.LibraryMonitor: Gaslit (/data/Shows/Gaslit) will be refreshed.
+[10:41:20] [INF] [63] Emby.Server.Implementations.IO.LibraryMonitor: Dr. Brain (/data/Shows/Dr Brain) will be refreshed.
+[10:41:21] [INF] [81] Emby.Server.Implementations.IO.LibraryMonitor: A Good Girl's Guide to Murder (/data/Shows/A Good Girls Guide to Murder) will be refreshed.
+[10:41:21] [INF] [81] Emby.Server.Implementations.IO.LibraryMonitor: The Signal (/data/Shows/The Signal) will be refreshed.
+[10:41:21] [INF] [81] Emby.Server.Implementations.IO.LibraryMonitor: Them (/data/Shows/Them) will be refreshed.
+[10:41:22] [INF] [63] Emby.Server.Implementations.IO.LibraryMonitor: Your Friendly Neighborhood Spider-Man (/data/Shows/Your Friendly Neighborhood Spider-Man) will be refreshed.
+[10:41:22] [INF] [81] Emby.Server.Implementations.IO.LibraryMonitor: Avatar: The Last Airbender (2024) (/data/Shows/Avatar - The Last Airbender (2024)) will be refreshed.
+[10:41:22] [INF] [50] Emby.Server.Implementations.IO.LibraryMonitor: Dark Winds (/data/Shows/Dark Winds) will be refreshed.
+[10:41:23] [INF] [63] Emby.Server.Implementations.IO.LibraryMonitor: Prime Target (/data/Shows/Prime Target) will be refreshed.
+[10:41:23] [INF] [38] Emby.Server.Implementations.IO.LibraryMonitor: Teacup (/data/Shows/Teacup) will be refreshed.
+[10:41:23] [INF] [38] Emby.Server.Implementations.IO.LibraryMonitor: Landman (/data/Shows/Landman) will be refreshed.
+[10:41:23] [INF] [38] Emby.Server.Implementations.IO.LibraryMonitor: The Recruit (/data/Shows/The Recruit) will be refreshed.
+[10:41:24] [INF] [63] Emby.Server.Implementations.IO.LibraryMonitor: Cowboy Cartel (/data/Shows/Cowboy Cartel) will be refreshed.
+[10:41:24] [INF] [63] Emby.Server.Implementations.IO.LibraryMonitor: Snabba Cash (/data/Shows/Snabba Cash) will be refreshed.
+[10:41:24] [INF] [50] Emby.Server.Implementations.IO.LibraryMonitor: The Day of the Jackal (/data/Shows/The Day of the Jackal) will be refreshed.
+[10:41:25] [INF] [38] Emby.Server.Implementations.IO.LibraryMonitor: Mr. & Mrs. Smith (2024) (/data/Shows/Mr and Mrs Smith) will be refreshed.
+[10:41:25] [INF] [63] Emby.Server.Implementations.IO.LibraryMonitor: Castlevania: Nocturne (/data/Shows/Castlevania - Nocturne) will be refreshed.
+[10:41:25] [INF] [63] Emby.Server.Implementations.IO.LibraryMonitor: Dexter: Original Sin (/data/Shows/Dexter - Original Sin) will be refreshed.
+[10:41:25] [INF] [85] Emby.Server.Implementations.IO.LibraryMonitor: Marianne (/data/Shows/Marianne) will be refreshed.
+[10:41:26] [INF] [85] Emby.Server.Implementations.IO.LibraryMonitor: Secret Level (/data/Shows/Secret level) will be refreshed.
+[10:41:26] [INF] [63] Emby.Server.Implementations.IO.LibraryMonitor: The Helicopter Heist (/data/Shows/The Helicopter Heist) will be refreshed.
+[10:41:26] [INF] [63] Emby.Server.Implementations.IO.LibraryMonitor: Paradise (/data/Shows/Paradise (2025)) will be refreshed.
+[10:41:27] [INF] [85] Emby.Server.Implementations.IO.LibraryMonitor: The Night Agent (/data/Shows/The Night Agent) will be refreshed.
+[10:41:27] [INF] [63] Emby.Server.Implementations.IO.LibraryMonitor: Star Wars: Skeleton Crew (/data/Shows/Star Wars - Skeleton Crew) will be refreshed.
+[10:41:27] [INF] [63] Emby.Server.Implementations.IO.LibraryMonitor: Rivals (2024) (/data/Shows/Rivals) will be refreshed.
+[10:41:27] [INF] [85] Emby.Server.Implementations.IO.LibraryMonitor: Disclaimer (/data/Shows/Disclaimer) will be refreshed.
+[10:41:28] [INF] [63] Emby.Server.Implementations.IO.LibraryMonitor: Terminator Zero (/data/Shows/Terminator Zero) will be refreshed.
+[10:41:28] [INF] [63] Emby.Server.Implementations.IO.LibraryMonitor: Hellbound (/data/Shows/Hellbound) will be refreshed.
+[10:41:28] [INF] [63] Emby.Server.Implementations.IO.LibraryMonitor: Gen V (/data/Shows/Gen V) will be refreshed.
+[10:41:29] [INF] [50] Emby.Server.Implementations.IO.LibraryMonitor: Ronja the Robber's Daughter (2024) (/data/Shows/Ronja the Robbers Daughter (2024)) will be refreshed.
+[10:41:29] [INF] [85] Emby.Server.Implementations.IO.LibraryMonitor: Knuckles (/data/Shows/Knuckles) will be refreshed.
+[10:41:29] [INF] [85] Emby.Server.Implementations.IO.LibraryMonitor: Shoresy (/data/Shows/Shoresy) will be refreshed.
+[10:41:30] [INF] [50] Emby.Server.Implementations.IO.LibraryMonitor: Dune: Prophecy (/data/Shows/Dune Prophecy) will be refreshed.
+[12:32:45] [INF] [84] Emby.Server.Implementations.HttpServer.WebSocketManager: WS 192.168.11.1 request
+[12:36:33] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Downloading TV Theme Songs
+[12:36:33] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Earth Abides theme song not in database, or no internet connection
+[12:36:34] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: ONE PIECE (2023) theme song not in database, or no internet connection
+[12:36:34] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Gaslit theme song not in database, or no internet connection
+[12:36:34] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Dr. Brain theme song not in database, or no internet connection
+[12:36:35] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: A Good Girl's Guide to Murder theme song not in database, or no internet connection
+[12:36:35] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Signal theme song not in database, or no internet connection
+[12:36:35] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Them theme song not in database, or no internet connection
+[12:36:35] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Your Friendly Neighborhood Spider-Man theme song not in database, or no internet connection
+[12:36:36] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Avatar: The Last Airbender (2024) theme song not in database, or no internet connection
+[12:36:36] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Dark Winds theme song not in database, or no internet connection
+[12:36:36] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Prime Target theme song not in database, or no internet connection
+[12:36:37] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Teacup theme song not in database, or no internet connection
+[12:36:37] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Landman theme song not in database, or no internet connection
+[12:36:37] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Recruit theme song not in database, or no internet connection
+[12:36:37] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Cowboy Cartel theme song not in database, or no internet connection
+[12:36:38] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Snabba Cash theme song not in database, or no internet connection
+[12:36:38] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Day of the Jackal theme song not in database, or no internet connection
+[12:36:38] [INF] [102] Emby.Server.Implementations.HttpServer.WebSocketManager: WS 192.168.11.1 request
+[12:36:38] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Mr. & Mrs. Smith (2024) theme song not in database, or no internet connection
+[12:36:39] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Castlevania: Nocturne theme song not in database, or no internet connection
+[12:36:39] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Dexter: Original Sin theme song not in database, or no internet connection
+[12:36:39] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Marianne theme song not in database, or no internet connection
+[12:36:39] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Secret Level theme song not in database, or no internet connection
+[12:36:40] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Helicopter Heist theme song not in database, or no internet connection
+[12:36:40] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Paradise theme song not in database, or no internet connection
+[12:36:40] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: The Night Agent theme song not in database, or no internet connection
+[12:36:41] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Star Wars: Skeleton Crew theme song not in database, or no internet connection
+[12:36:41] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Rivals (2024) theme song not in database, or no internet connection
+[12:36:41] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Disclaimer theme song not in database, or no internet connection
+[12:36:41] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Terminator Zero theme song not in database, or no internet connection
+[12:36:42] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Hellbound theme song not in database, or no internet connection
+[12:36:42] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Gen V theme song not in database, or no internet connection
+[12:36:42] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Ronja the Robber's Daughter (2024) theme song not in database, or no internet connection
+[12:36:43] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Knuckles theme song not in database, or no internet connection
+[12:36:43] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Shoresy theme song not in database, or no internet connection
+[12:36:43] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Dune: Prophecy theme song not in database, or no internet connection
+[12:36:43] [INF] [86] Jellyfin.Plugin.ThemeSongs.ThemeSongsManager: Completed
+[12:37:27] [INF] [41] Emby.Server.Implementations.HttpServer.WebSocketManager: WS 192.168.11.1 request
+[12:37:33] [INF] [86] Emby.Server.Implementations.IO.LibraryMonitor: Earth Abides (/data/Shows/Earth Abides) will be refreshed.
+[12:37:34] [INF] [80] Emby.Server.Implementations.IO.LibraryMonitor: ONE PIECE (2023) (/data/Shows/ONE PIECE (2023)) will be refreshed.
+[12:37:34] [INF] [47] Emby.Server.Implementations.IO.LibraryMonitor: Gaslit (/data/Shows/Gaslit) will be refreshed.
+[12:37:34] [INF] [47] Emby.Server.Implementations.IO.LibraryMonitor: Dr. Brain (/data/Shows/Dr Brain) will be refreshed.
+[12:37:35] [INF] [47] Emby.Server.Implementations.IO.LibraryMonitor: A Good Girl's Guide to Murder (/data/Shows/A Good Girls Guide to Murder) will be refreshed.
+[12:37:35] [INF] [47] Emby.Server.Implementations.IO.LibraryMonitor: The Signal (/data/Shows/The Signal) will be refreshed.
+[12:37:35] [INF] [8] Emby.Server.Implementations.IO.LibraryMonitor: Them (/data/Shows/Them) will be refreshed.
+[12:37:35] [INF] [8] Emby.Server.Implementations.IO.LibraryMonitor: Your Friendly Neighborhood Spider-Man (/data/Shows/Your Friendly Neighborhood Spider-Man) will be refreshed.
+[12:37:36] [INF] [37] Emby.Server.Implementations.IO.LibraryMonitor: Avatar: The Last Airbender (2024) (/data/Shows/Avatar - The Last Airbender (2024)) will be refreshed.
+[12:37:36] [INF] [47] Emby.Server.Implementations.IO.LibraryMonitor: Dark Winds (/data/Shows/Dark Winds) will be refreshed.
+[12:37:36] [INF] [37] Emby.Server.Implementations.IO.LibraryMonitor: Prime Target (/data/Shows/Prime Target) will be refreshed.
+[12:37:37] [INF] [37] Emby.Server.Implementations.IO.LibraryMonitor: Teacup (/data/Shows/Teacup) will be refreshed.
+[12:37:37] [INF] [8] Emby.Server.Implementations.IO.LibraryMonitor: Landman (/data/Shows/Landman) will be refreshed.
+[12:37:37] [INF] [102] Emby.Server.Implementations.IO.LibraryMonitor: The Recruit (/data/Shows/The Recruit) will be refreshed.
+[12:37:37] [INF] [72] Emby.Server.Implementations.IO.LibraryMonitor: Cowboy Cartel (/data/Shows/Cowboy Cartel) will be refreshed.
+[12:37:38] [INF] [47] Emby.Server.Implementations.IO.LibraryMonitor: Snabba Cash (/data/Shows/Snabba Cash) will be refreshed.
+[12:37:38] [INF] [47] Emby.Server.Implementations.IO.LibraryMonitor: The Day of the Jackal (/data/Shows/The Day of the Jackal) will be refreshed.
+[12:37:38] [INF] [41] Emby.Server.Implementations.IO.LibraryMonitor: Mr. & Mrs. Smith (2024) (/data/Shows/Mr and Mrs Smith) will be refreshed.
+[12:37:39] [INF] [102] Emby.Server.Implementations.IO.LibraryMonitor: Castlevania: Nocturne (/data/Shows/Castlevania - Nocturne) will be refreshed.
+[12:37:39] [INF] [47] Emby.Server.Implementations.IO.LibraryMonitor: Dexter: Original Sin (/data/Shows/Dexter - Original Sin) will be refreshed.
+[12:37:39] [INF] [47] Emby.Server.Implementations.IO.LibraryMonitor: Marianne (/data/Shows/Marianne) will be refreshed.
+[12:37:39] [INF] [102] Emby.Server.Implementations.IO.LibraryMonitor: Secret Level (/data/Shows/Secret level) will be refreshed.
+[12:37:40] [INF] [102] Emby.Server.Implementations.IO.LibraryMonitor: The Helicopter Heist (/data/Shows/The Helicopter Heist) will be refreshed.
+[12:37:40] [INF] [102] Emby.Server.Implementations.IO.LibraryMonitor: Paradise (/data/Shows/Paradise (2025)) will be refreshed.
+[12:37:40] [INF] [41] Emby.Server.Implementations.IO.LibraryMonitor: The Night Agent (/data/Shows/The Night Agent) will be refreshed.
+[12:37:41] [INF] [41] Emby.Server.Implementations.IO.LibraryMonitor: Star Wars: Skeleton Crew (/data/Shows/Star Wars - Skeleton Crew) will be refreshed.
+[12:37:41] [INF] [41] Emby.Server.Implementations.IO.LibraryMonitor: Rivals (2024) (/data/Shows/Rivals) will be refreshed.
+[12:37:41] [INF] [102] Emby.Server.Implementations.IO.LibraryMonitor: Disclaimer (/data/Shows/Disclaimer) will be refreshed.
+[12:37:41] [INF] [102] Emby.Server.Implementations.IO.LibraryMonitor: Terminator Zero (/data/Shows/Terminator Zero) will be refreshed.
+[12:37:42] [INF] [41] Emby.Server.Implementations.IO.LibraryMonitor: Hellbound (/data/Shows/Hellbound) will be refreshed.
+[12:37:42] [INF] [102] Emby.Server.Implementations.IO.LibraryMonitor: Gen V (/data/Shows/Gen V) will be refreshed.
+[12:37:42] [INF] [47] Emby.Server.Implementations.IO.LibraryMonitor: Ronja the Robber's Daughter (2024) (/data/Shows/Ronja the Robbers Daughter (2024)) will be refreshed.
+[12:37:43] [INF] [47] Emby.Server.Implementations.IO.LibraryMonitor: Knuckles (/data/Shows/Knuckles) will be refreshed.
+[12:37:43] [INF] [102] Emby.Server.Implementations.IO.LibraryMonitor: Shoresy (/data/Shows/Shoresy) will be refreshed.
+[12:37:43] [INF] [47] Emby.Server.Implementations.IO.LibraryMonitor: Dune: Prophecy (/data/Shows/Dune Prophecy) will be refreshed.
+[12:38:09] [INF] [41] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[12:40:21] [INF] [21] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[12:40:33] [INF] [21] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[12:41:33] [INF] [11] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[12:43:09] [INF] [21] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[12:43:21] [INF] [111] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[12:44:21] [INF] [78] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.
+[12:46:09] [INF] [78] Emby.Server.Implementations.Session.SessionWebSocketListener: Sending ForceKeepAlive message to 1 inactive WebSockets.

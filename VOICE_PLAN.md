@@ -1,6 +1,6 @@
 # Voice Channel Improvement Plan
 
-This document outlines planned improvements for voice channels in Miscord.
+This document outlines planned improvements for voice channels in Snacka.
 
 ## Current State
 

@@ -1,6 +1,6 @@
 # Screen Capture & Game Streaming Plan
 
-This document outlines the cross-platform screen capture strategy and future game streaming optimizations for Miscord.
+This document outlines the cross-platform screen capture strategy and future game streaming optimizations for Snacka.
 
 ---
 
@@ -33,18 +33,18 @@ Replace ffmpeg-based capture with native platform APIs that support system audio
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        Miscord.Client                           │
+│                        Snacka.Client                           │
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │                     WebRtcService                          │  │
 │  │                                                            │  │
 │  │  ┌─────────────────────────────────────────────────────┐  │  │
 │  │  │              Platform Capture Provider               │  │  │
 │  │  │                                                      │  │  │
-│  │  │   if (macOS >= 13)     → MiscordCapture (Swift)     │  │  │
+│  │  │   if (macOS >= 13)     → SnackaCapture (Swift)     │  │  │
 │  │  │   else if (macOS)      → ffmpeg + avfoundation      │  │  │
-│  │  │   if (Windows >= 10)   → MiscordCapture (C++)       │  │  │
+│  │  │   if (Windows >= 10)   → SnackaCapture (C++)       │  │  │
 │  │  │   else if (Windows)    → ffmpeg + gdigrab           │  │  │
-│  │  │   if (Linux + PipeWire)→ MiscordCapture (C/Rust)    │  │  │
+│  │  │   if (Linux + PipeWire)→ SnackaCapture (C/Rust)    │  │  │
 │  │  │   else if (Linux)      → ffmpeg + x11grab           │  │  │
 │  │  │                                                      │  │  │
 │  │  └─────────────────────────────────────────────────────┘  │  │
@@ -62,11 +62,11 @@ Replace ffmpeg-based capture with native platform APIs that support system audio
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 1.1 macOS - MiscordCapture (Swift) ✅ COMPLETE
+### 1.1 macOS - SnackaCapture (Swift) ✅ COMPLETE
 
 **Status**: Implemented and tested
 
-**Location**: `src/MiscordCapture/`
+**Location**: `src/SnackaCapture/`
 
 **Technology**: ScreenCaptureKit (macOS 13+)
 
@@ -82,27 +82,27 @@ Replace ffmpeg-based capture with native platform APIs that support system audio
 **CLI Interface**:
 ```bash
 # List sources
-MiscordCapture list --json
+SnackaCapture list --json
 
 # Capture display
-MiscordCapture capture --display 0 --width 1920 --height 1080 --fps 30 --audio
+SnackaCapture capture --display 0 --width 1920 --height 1080 --fps 30 --audio
 
 # Capture specific application with its audio
-MiscordCapture capture --app "com.spotify.client" --width 1920 --height 1080 --fps 30 --audio
+SnackaCapture capture --app "com.spotify.client" --width 1920 --height 1080 --fps 30 --audio
 
 # Capture window
-MiscordCapture capture --window 12345 --width 1920 --height 1080 --fps 30 --audio
+SnackaCapture capture --window 12345 --width 1920 --height 1080 --fps 30 --audio
 ```
 
 **Integration Tasks**:
-- [x] Update WebRtcService to detect macOS 13+ and use MiscordCapture
+- [x] Update WebRtcService to detect macOS 13+ and use SnackaCapture
 - [x] Parse audio packets from stderr
 - [ ] Encode and transmit screen share audio
-- [ ] Update ScreenCaptureService to use MiscordCapture for source listing
+- [ ] Update ScreenCaptureService to use SnackaCapture for source listing
 
 ---
 
-### 1.2 Windows - MiscordCapture (C++ or C#)
+### 1.2 Windows - SnackaCapture (C++ or C#)
 
 **Status**: Not started
 
@@ -134,13 +134,13 @@ MiscordCapture capture --window 12345 --width 1920 --height 1080 --fps 30 --audi
 
 **Suggested CLI Interface** (same as macOS):
 ```bash
-MiscordCapture.exe list --json
-MiscordCapture.exe capture --display 0 --width 1920 --height 1080 --fps 30 --audio
+SnackaCapture.exe list --json
+SnackaCapture.exe capture --display 0 --width 1920 --height 1080 --fps 30 --audio
 ```
 
 ---
 
-### 1.3 Linux - MiscordCapture (C or Rust)
+### 1.3 Linux - SnackaCapture (C or Rust)
 
 **Status**: Not started
 
@@ -168,8 +168,8 @@ MiscordCapture.exe capture --display 0 --width 1920 --height 1080 --fps 30 --aud
 
 **Suggested CLI Interface** (same as macOS/Windows):
 ```bash
-miscord-capture list --json
-miscord-capture capture --display 0 --width 1920 --height 1080 --fps 30 --audio
+snacka-capture list --json
+snacka-capture capture --display 0 --width 1920 --height 1080 --fps 30 --audio
 ```
 
 ---
@@ -210,7 +210,7 @@ Raw frames → Hardware Encoder → H.264 NAL units → WebRTC
 **Latency Savings**: ~30-50ms (eliminates BGR24 conversion + CPU encoding)
 
 **Implementation**:
-- Modify MiscordCapture to optionally output H.264 directly
+- Modify SnackaCapture to optionally output H.264 directly
 - Add `--encode h264` flag
 - Use VTCompressionSession with IOSurface input
 
@@ -304,13 +304,13 @@ Compare to current: ~150-200ms (not playable for fast games)
 ## Implementation Priority
 
 ### High Priority (Current)
-1. ✅ macOS MiscordCapture with ScreenCaptureKit
-2. ✅ Integrate MiscordCapture with WebRtcService
+1. ✅ macOS SnackaCapture with ScreenCaptureKit
+2. ✅ Integrate SnackaCapture with WebRtcService
 3. ⬜ Screen share audio transmission
 
 ### Medium Priority
-4. ⬜ Windows MiscordCapture with WGC + WASAPI
-5. ⬜ Linux MiscordCapture with PipeWire
+4. ⬜ Windows SnackaCapture with WGC + WASAPI
+5. ⬜ Linux SnackaCapture with PipeWire
 6. ⬜ Hardware encoding (VideoToolbox first)
 
 ### Lower Priority (Game Streaming)
@@ -325,22 +325,22 @@ Compare to current: ~150-200ms (not playable for fast games)
 
 ```
 src/
-├── MiscordCapture/              # macOS (Swift) ✅
+├── SnackaCapture/              # macOS (Swift) ✅
 │   ├── Package.swift
 │   └── Sources/
-│       └── MiscordCapture/
-│           ├── MiscordCaptureApp.swift
+│       └── SnackaCapture/
+│           ├── SnackaCaptureApp.swift
 │           ├── ScreenCapturer.swift
 │           ├── SourceLister.swift
 │           └── Models.swift
 │
-├── MiscordCapture.Windows/      # Windows (C++ or C#) - Future
+├── SnackaCapture.Windows/      # Windows (C++ or C#) - Future
 │   └── ...
 │
-├── MiscordCapture.Linux/        # Linux (C or Rust) - Future
+├── SnackaCapture.Linux/        # Linux (C or Rust) - Future
 │   └── ...
 │
-└── Miscord.Client/
+└── Snacka.Client/
     └── Services/
         ├── IScreenCaptureService.cs
         ├── ScreenCaptureService.cs      # Platform detection, source listing
@@ -357,8 +357,8 @@ src/
 ## Testing Checklist
 
 ### Phase 1: Native Capture
-- [ ] macOS: MiscordCapture captures display with audio
-- [ ] macOS: MiscordCapture captures specific app with its audio only
+- [ ] macOS: SnackaCapture captures display with audio
+- [ ] macOS: SnackaCapture captures specific app with its audio only
 - [ ] macOS: Audio transmitted alongside screen share video
 - [ ] macOS: Fallback to ffmpeg on macOS < 13
 - [ ] Windows: Capture with WASAPI audio

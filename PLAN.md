@@ -1,4 +1,4 @@
-# Miscord - Complete Feature Implementation Plan
+# Snacka - Complete Feature Implementation Plan
 
 ## Overview
 Implement a self-hosted Discord alternative with user accounts, messaging, voice channels, and media streaming. Built with ASP.NET Core 9 backend, Avalonia UI desktop client, and WebRTC for real-time communication.
@@ -44,7 +44,7 @@ Implement a self-hosted Discord alternative with user accounts, messaging, voice
 - No build errors
 
 ### 1.2 User Accounts [COMPLETED] ✅
-**Implemented in:** `src/Miscord.Server/Controllers/AuthController.cs`, `src/Miscord.Server/Services/AuthService.cs`
+**Implemented in:** `src/Snacka.Server/Controllers/AuthController.cs`, `src/Snacka.Server/Services/AuthService.cs`
 
 #### Endpoints Implemented:
 - ✅ `POST /api/auth/register` - User registration with email/password validation
@@ -61,7 +61,7 @@ Implement a self-hosted Discord alternative with user accounts, messaging, voice
 - ✅ User online status tracking via SignalR
 
 ### 1.3 SignalR Hub Setup [COMPLETED] ✅
-**Implemented in:** `src/Miscord.Server/Hubs/MiscordHub.cs`
+**Implemented in:** `src/Snacka.Server/Hubs/SnackaHub.cs`
 
 #### Hub Methods Implemented:
 - ✅ Connection handling (OnConnectedAsync, OnDisconnectedAsync)
@@ -77,7 +77,7 @@ Implement a self-hosted Discord alternative with user accounts, messaging, voice
 ## Phase 2: Messaging Features
 
 ### 2.1 Direct Messages [COMPLETED] ✅
-**Implemented in:** `src/Miscord.Server/Controllers/DirectMessagesController.cs`, `src/Miscord.Server/Services/DirectMessageService.cs`
+**Implemented in:** `src/Snacka.Server/Controllers/DirectMessagesController.cs`, `src/Snacka.Server/Services/DirectMessageService.cs`
 
 #### Endpoints Implemented:
 - ✅ `GET /api/directmessages` - Get list of DM conversations
@@ -94,7 +94,7 @@ Implement a self-hosted Discord alternative with user accounts, messaging, voice
 - ✅ Unread count tracking
 
 ### 2.2 Text Channels [COMPLETED] ✅
-**Implemented in:** `src/Miscord.Server/Controllers/ChannelsController.cs`, `src/Miscord.Server/Services/CommunityService.cs`
+**Implemented in:** `src/Snacka.Server/Controllers/ChannelsController.cs`, `src/Snacka.Server/Services/CommunityService.cs`
 
 #### Endpoints Implemented:
 - ✅ `GET /api/communities/{id}/channels` - List channels
@@ -122,7 +122,7 @@ Implement a self-hosted Discord alternative with user accounts, messaging, voice
 ## Phase 3: Voice & Media Communication
 
 ### 3.1 Voice Channels & WebRTC Signaling [MOSTLY COMPLETE] ✅
-**Implemented in:** `src/Miscord.Server/Hubs/MiscordHub.cs`, `src/Miscord.Client/Services/SignalRService.cs`, `src/Miscord.Client/Services/WebRtcService.cs`
+**Implemented in:** `src/Snacka.Server/Hubs/SnackaHub.cs`, `src/Snacka.Client/Services/SignalRService.cs`, `src/Snacka.Client/Services/WebRtcService.cs`
 
 #### Completed ✅:
 - ✅ Voice channel creation (same as text channels with Type=Voice)
@@ -206,7 +206,7 @@ Implement a self-hosted Discord alternative with user accounts, messaging, voice
 ## Phase 4: UI Implementation
 
 ### 4.1 Authentication UI [COMPLETED] ✅
-**Implemented in:** `src/Miscord.Client/Views/LoginView.axaml`, `src/Miscord.Client/Views/RegisterView.axaml`, `src/Miscord.Client/Views/ServerConnectionView.axaml`
+**Implemented in:** `src/Snacka.Client/Views/LoginView.axaml`, `src/Snacka.Client/Views/RegisterView.axaml`, `src/Snacka.Client/Views/ServerConnectionView.axaml`
 
 #### Views Implemented:
 1. ✅ **ServerConnectionView** - Connect to server URL
@@ -222,12 +222,12 @@ Implement a self-hosted Discord alternative with user accounts, messaging, voice
 - ✅ Token management via AuthService
 
 ### 4.2 Main Application Layout [COMPLETED] ✅
-**Implemented in:** `src/Miscord.Client/Views/MainAppView.axaml`, `src/Miscord.Client/ViewModels/MainAppViewModel.cs`
+**Implemented in:** `src/Snacka.Client/Views/MainAppView.axaml`, `src/Snacka.Client/ViewModels/MainAppViewModel.cs`
 
 #### Main Window Structure (Implemented):
 ```
 ┌─────────────────────────────────────────┐
-│     Miscord - Username              [_][□][X]  │
+│     Snacka - Username              [_][□][X]  │
 ├─────────────────────────────────────────┤
 │ Servers │ Channels │    Chat Area    │ Users │
 │   [S1]  │ # general│ Messages Here   │ User1 │
@@ -250,7 +250,7 @@ Implement a self-hosted Discord alternative with user accounts, messaging, voice
 - ✅ Command bindings throughout
 
 ### 4.3 Voice UI [MOSTLY COMPLETE] ✅
-**Implemented in:** `src/Miscord.Client/Views/MainAppView.axaml` (voice channel section), `src/Miscord.Client/Views/AudioSettingsView.axaml`
+**Implemented in:** `src/Snacka.Client/Views/MainAppView.axaml` (voice channel section), `src/Snacka.Client/Views/AudioSettingsView.axaml`
 
 #### Completed ✅:
 - ✅ Voice channel list with participant count
@@ -340,7 +340,7 @@ Users
 ├─ CreatedAt
 └─ UpdatedAt
 
-MiscordServers
+SnackaServers
 ├─ Id (PK)
 ├─ Name
 ├─ Description
@@ -353,7 +353,7 @@ Channels
 ├─ Id (PK)
 ├─ Name
 ├─ Topic
-├─ ServerId (FK → MiscordServers)
+├─ ServerId (FK → SnackaServers)
 ├─ Type (Text/Voice)
 ├─ Position
 ├─ CreatedAt
@@ -378,7 +378,7 @@ DirectMessages
 UserServers (Junction)
 ├─ Id (PK)
 ├─ UserId (FK → Users)
-├─ ServerId (FK → MiscordServers)
+├─ ServerId (FK → SnackaServers)
 ├─ Role (Owner/Admin/Moderator/Member)
 └─ JoinedAt
 
@@ -548,9 +548,9 @@ VoiceParticipants
 ## Repository Structure
 
 ```
-miscord-csharp/
+snacka-csharp/
 ├── src/
-│   ├── Miscord.Server/
+│   ├── Snacka.Server/
 │   │   ├── Controllers/          (REST endpoints)
 │   │   ├── Hubs/                 (SignalR hubs)
 │   │   ├── Services/             (business logic)
@@ -559,7 +559,7 @@ miscord-csharp/
 │   │   ├── Middleware/           (auth, error handling)
 │   │   ├── Migrations/           (EF Core migrations)
 │   │   └── Program.cs
-│   ├── Miscord.Client/
+│   ├── Snacka.Client/
 │   │   ├── Views/                (XAML windows ✅)
 │   │   ├── ViewModels/           (MVVM VMs)
 │   │   ├── Services/             (HTTP, SignalR clients)
@@ -567,20 +567,20 @@ miscord-csharp/
 │   │   ├── Converters/           (value converters)
 │   │   ├── App.axaml ✅
 │   │   └── Program.cs ✅
-│   ├── Miscord.Shared/
+│   ├── Snacka.Shared/
 │   │   └── Models/               (entities ✅)
-│   └── Miscord.WebRTC/
+│   └── Snacka.WebRTC/
 │       ├── Handlers/             (WebRTC peer handling)
 │       └── Services/             (media capture, encoding)
 ├── tests/
-│   ├── Miscord.Server.Tests/
-│   └── Miscord.WebRTC.Tests/
+│   ├── Snacka.Server.Tests/
+│   └── Snacka.WebRTC.Tests/
 ├── .github/
 │   └── workflows/                (CI/CD if desired)
 ├── PLAN.md ✅
 ├── AGENTS.md ✅
 ├── README.md ✅
-└── Miscord.sln ✅
+└── Snacka.sln ✅
 ```
 
 ---

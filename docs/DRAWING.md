@@ -1,6 +1,6 @@
 # Screen Share Drawing Annotations
 
-This guide explains how to use the drawing annotation feature during screen shares in Miscord.
+This guide explains how to use the drawing annotation feature during screen shares in Snacka.
 
 ## Overview
 

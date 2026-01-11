@@ -1,6 +1,6 @@
 # Avalonia Development Notes
 
-This document captures lessons learned and gotchas encountered while developing the Miscord client with Avalonia UI.
+This document captures lessons learned and gotchas encountered while developing the Snacka client with Avalonia UI.
 
 ---
 

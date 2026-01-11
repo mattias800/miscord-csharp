@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Miscord.Client\Miscord.Client.csproj" />
+    <ProjectReference Include="..\..\src\Snacka.Client\Snacka.Client.csproj" />
   </ItemGroup>
 
 </Project>

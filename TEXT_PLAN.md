@@ -1,6 +1,6 @@
 # Text Channel & Direct Message Improvement Plan
 
-This document outlines planned improvements for the text channel and direct message experience in Miscord.
+This document outlines planned improvements for the text channel and direct message experience in Snacka.
 
 ## Current State
 
@@ -186,24 +186,24 @@ Lower priority enhancements:
 ### Files to Modify (Text/DM Focus)
 
 **Client-side:**
-- `src/Miscord.Client/Views/MainAppView.axaml` - Channel chat UI
-- `src/Miscord.Client/Views/DirectMessagesView.axaml` - DM chat UI
-- `src/Miscord.Client/ViewModels/MainAppViewModel.cs` - Channel logic
-- `src/Miscord.Client/ViewModels/DirectMessagesViewModel.cs` - DM logic
-- `src/Miscord.Client/Converters/` - New converters for timestamps, etc.
+- `src/Snacka.Client/Views/MainAppView.axaml` - Channel chat UI
+- `src/Snacka.Client/Views/DirectMessagesView.axaml` - DM chat UI
+- `src/Snacka.Client/ViewModels/MainAppViewModel.cs` - Channel logic
+- `src/Snacka.Client/ViewModels/DirectMessagesViewModel.cs` - DM logic
+- `src/Snacka.Client/Converters/` - New converters for timestamps, etc.
 
 **Server-side (for features requiring backend):**
-- `src/Miscord.Server/Services/MessageService.cs`
-- `src/Miscord.Server/Services/DirectMessageService.cs`
-- `src/Miscord.Server/Hubs/MiscordHub.cs` - SignalR events
-- `src/Miscord.Shared/Models/` - New models for reactions, etc.
+- `src/Snacka.Server/Services/MessageService.cs`
+- `src/Snacka.Server/Services/DirectMessageService.cs`
+- `src/Snacka.Server/Hubs/SnackaHub.cs` - SignalR events
+- `src/Snacka.Shared/Models/` - New models for reactions, etc.
 
 ### Coordination with Other Agents
 
 Another agent is currently working on server, community, and user account management. To avoid conflicts:
 
 1. **File ownership**: This plan focuses on messaging UI (Views, ViewModels, Converters)
-2. **Shared files**: Avoid `Program.cs`, `MiscordDbContext.cs`, `User.cs` unless necessary
+2. **Shared files**: Avoid `Program.cs`, `SnackaDbContext.cs`, `User.cs` unless necessary
 3. **Communication**: Check `git status` before editing shared files
 4. **Small commits**: Make focused, atomic commits for easier merging
 

@@ -18,7 +18,7 @@ H264 NAL units → VideoToolbox → CVPixelBuffer/Metal Texture → Display
 
 ### Components to Implement
 
-1. **Native C Library** (`libMiscordLinuxRenderer.so`)
+1. **Native C Library** (`libSnackaLinuxRenderer.so`)
    - VA-API H264 decoder wrapper
    - EGL/OpenGL renderer (works with both X11 and Wayland)
    - C API for P/Invoke
@@ -40,7 +40,7 @@ H264 NAL units → VideoToolbox → CVPixelBuffer/Metal Texture → Display
 The native library must export these functions (matching macOS pattern):
 
 ```c
-// MiscordLinuxRenderer.h
+// SnackaLinuxRenderer.h
 
 #ifndef MISCORD_LINUX_RENDERER_H
 #define MISCORD_LINUX_RENDERER_H
@@ -663,7 +663,7 @@ void position_overlay_window(VaapiDecoder* dec, int x, int y, int width, int hei
 
 ### P/Invoke Wrapper
 
-See `VaapiDecoder.cs` stub file in `src/Miscord.Client/Services/HardwareVideo/`
+See `VaapiDecoder.cs` stub file in `src/Snacka.Client/Services/HardwareVideo/`
 
 ### Integration with Factory
 
@@ -697,7 +697,7 @@ public static IHardwareVideoDecoder? Create()
 
 ```cmake
 cmake_minimum_required(VERSION 3.16)
-project(MiscordLinuxRenderer C)
+project(SnackaLinuxRenderer C)
 
 set(CMAKE_C_STANDARD 11)
 
@@ -708,14 +708,14 @@ pkg_check_modules(GL REQUIRED gl glesv2)
 pkg_check_modules(X11 REQUIRED x11 xfixes)
 pkg_check_modules(DRM REQUIRED libdrm)
 
-add_library(MiscordLinuxRenderer SHARED
+add_library(SnackaLinuxRenderer SHARED
     src/vaapi_decoder.c
     src/egl_renderer.c
     src/x11_window.c
     src/capi.c
 )
 
-target_include_directories(MiscordLinuxRenderer PRIVATE
+target_include_directories(SnackaLinuxRenderer PRIVATE
     ${LIBVA_INCLUDE_DIRS}
     ${EGL_INCLUDE_DIRS}
     ${GL_INCLUDE_DIRS}
@@ -723,7 +723,7 @@ target_include_directories(MiscordLinuxRenderer PRIVATE
     ${DRM_INCLUDE_DIRS}
 )
 
-target_link_libraries(MiscordLinuxRenderer PRIVATE
+target_link_libraries(SnackaLinuxRenderer PRIVATE
     ${LIBVA_LIBRARIES}
     ${EGL_LIBRARIES}
     ${GL_LIBRARIES}
@@ -731,12 +731,12 @@ target_link_libraries(MiscordLinuxRenderer PRIVATE
     ${DRM_LIBRARIES}
 )
 
-set_target_properties(MiscordLinuxRenderer PROPERTIES
+set_target_properties(SnackaLinuxRenderer PROPERTIES
     VERSION 1.0.0
     SOVERSION 1
 )
 
-install(TARGETS MiscordLinuxRenderer
+install(TARGETS SnackaLinuxRenderer
     LIBRARY DESTINATION lib
 )
 ```
@@ -747,7 +747,7 @@ install(TARGETS MiscordLinuxRenderer
 mkdir build && cd build
 cmake ..
 make
-# Output: libMiscordLinuxRenderer.so
+# Output: libSnackaLinuxRenderer.so
 ```
 
 ## Testing Checklist

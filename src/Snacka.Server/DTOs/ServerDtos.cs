@@ -1,0 +1,217 @@
+using System.ComponentModel.DataAnnotations;
+using Snacka.Shared.Models;
+
+namespace Snacka.Server.DTOs;
+
+public record CommunityResponse(
+    Guid Id,
+    string Name,
+    string? Description,
+    string? Icon,
+    Guid OwnerId,
+    string OwnerUsername,
+    string OwnerEffectiveDisplayName,  // DisplayName ?? Username
+    DateTime CreatedAt,
+    int MemberCount
+);
+
+public record CreateCommunityRequest(
+    [Required, StringLength(100, MinimumLength = 1)] string Name,
+    [StringLength(1000)] string? Description
+);
+
+public record UpdateCommunityRequest(
+    [StringLength(100, MinimumLength = 1)] string? Name,
+    [StringLength(1000)] string? Description,
+    string? Icon
+);
+
+public record ChannelResponse(
+    Guid Id,
+    string Name,
+    string? Topic,
+    Guid CommunityId,
+    ChannelType Type,
+    int Position,
+    DateTime CreatedAt,
+    int UnreadCount = 0
+);
+
+public record CreateChannelRequest(
+    [Required, StringLength(100, MinimumLength = 1)] string Name,
+    [StringLength(1000)] string? Topic,
+    ChannelType Type = ChannelType.Text
+);
+
+public record UpdateChannelRequest(
+    [StringLength(100, MinimumLength = 1)] string? Name,
+    [StringLength(1000)] string? Topic,
+    int? Position
+);
+
+public record MessageResponse(
+    Guid Id,
+    string Content,
+    Guid AuthorId,
+    string AuthorUsername,
+    string AuthorEffectiveDisplayName,  // DisplayName ?? Username
+    string? AuthorAvatar,
+    Guid ChannelId,
+    DateTime CreatedAt,
+    DateTime UpdatedAt,
+    bool IsEdited,
+    Guid? ReplyToId = null,
+    ReplyPreview? ReplyTo = null,
+    List<ReactionSummary>? Reactions = null,
+    bool IsPinned = false,
+    DateTime? PinnedAt = null,
+    string? PinnedByUsername = null,
+    string? PinnedByEffectiveDisplayName = null,
+    List<AttachmentResponse>? Attachments = null,
+    // Thread fields
+    Guid? ThreadParentMessageId = null,  // If set, this message is part of a thread
+    int ReplyCount = 0,                   // Number of thread replies (for thread parent messages)
+    DateTime? LastReplyAt = null          // Timestamp of most recent reply (for thread parent messages)
+);
+
+/// <summary>
+/// Response containing a thread with its parent message and replies
+/// </summary>
+public record ThreadResponse(
+    MessageResponse ParentMessage,
+    List<MessageResponse> Replies,
+    int TotalReplyCount,
+    int Page,
+    int PageSize
+);
+
+/// <summary>
+/// Response containing file attachment metadata
+/// </summary>
+public record AttachmentResponse(
+    Guid Id,
+    string FileName,
+    string ContentType,
+    long FileSize,
+    bool IsImage,
+    bool IsAudio,
+    string Url
+);
+
+/// <summary>
+/// Preview of the message being replied to
+/// </summary>
+public record ReplyPreview(
+    Guid Id,
+    string Content,
+    Guid AuthorId,
+    string AuthorUsername,
+    string AuthorEffectiveDisplayName  // DisplayName ?? Username
+);
+
+public record SendMessageRequest(
+    [Required, StringLength(2000, MinimumLength = 1)] string Content,
+    Guid? ReplyToId = null
+);
+
+public record UpdateMessageRequest([Required, StringLength(2000, MinimumLength = 1)] string Content);
+
+public record CommunityMemberResponse(
+    Guid UserId,
+    string Username,
+    string? DisplayName,           // User's global display name
+    string? DisplayNameOverride,   // Community-specific nickname
+    string EffectiveDisplayName,   // Override ?? DisplayName ?? Username
+    string? Avatar,
+    bool IsOnline,
+    UserRole Role,
+    DateTime JoinedAt
+);
+
+public record UpdateMemberRoleRequest([Required] UserRole Role);
+
+public record UpdateNicknameRequest([StringLength(32)] string? Nickname);
+
+public record TransferOwnershipRequest([Required] Guid NewOwnerId);
+
+// Channel reordering
+public record ReorderChannelsRequest([Required] List<Guid> ChannelIds);
+
+// SignalR Event DTOs - used for type-safe event broadcasting
+public record ChannelDeletedEvent(Guid ChannelId);
+
+public record ChannelsReorderedEvent(Guid CommunityId, List<ChannelResponse> Channels);
+
+public record MessageDeletedEvent(Guid ChannelId, Guid MessageId);
+
+public record UserOfflineEvent(Guid UserId);
+
+// Typing indicator events
+public record TypingEvent(Guid ChannelId, Guid UserId, string Username, string EffectiveDisplayName);
+
+public record DMTypingEvent(Guid UserId, string Username, string EffectiveDisplayName);
+
+// Reaction DTOs
+/// <summary>
+/// Summary of reactions for a specific emoji on a message
+/// </summary>
+public record ReactionSummary(
+    string Emoji,
+    int Count,
+    bool HasReacted,
+    List<ReactionUser> Users
+);
+
+/// <summary>
+/// User who reacted with a specific emoji
+/// </summary>
+public record ReactionUser(Guid UserId, string Username, string EffectiveDisplayName);
+
+/// <summary>
+/// Request to add a reaction to a message
+/// </summary>
+public record AddReactionRequest([Required, StringLength(10, MinimumLength = 1)] string Emoji);
+
+/// <summary>
+/// SignalR event when a reaction is added or removed
+/// </summary>
+public record ReactionUpdatedEvent(
+    Guid MessageId,
+    Guid ChannelId,
+    string Emoji,
+    int Count,
+    Guid UserId,
+    string Username,
+    string EffectiveDisplayName,
+    bool Added
+);
+
+/// <summary>
+/// SignalR event when a message is pinned or unpinned
+/// </summary>
+public record MessagePinnedEvent(
+    Guid MessageId,
+    Guid ChannelId,
+    bool IsPinned,
+    DateTime? PinnedAt,
+    Guid? PinnedByUserId,
+    string? PinnedByUsername,
+    string? PinnedByEffectiveDisplayName
+);
+
+/// <summary>
+/// A search result item containing a message and its channel context
+/// </summary>
+public record MessageSearchResult(
+    MessageResponse Message,
+    string ChannelName
+);
+
+/// <summary>
+/// Response from message search containing results and metadata
+/// </summary>
+public record MessageSearchResponse(
+    List<MessageSearchResult> Results,
+    int TotalCount,
+    string Query
+);

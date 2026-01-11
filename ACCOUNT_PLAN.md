@@ -18,7 +18,7 @@ Implement a secure self-hosted server model where:
 
 ### New Models
 
-**ServerInvite** (`src/Miscord.Shared/Models/ServerInvite.cs`)
+**ServerInvite** (`src/Snacka.Shared/Models/ServerInvite.cs`)
 ```csharp
 public class ServerInvite
 {
@@ -34,7 +34,7 @@ public class ServerInvite
 }
 ```
 
-**User Model Updates** (`src/Miscord.Shared/Models/User.cs`)
+**User Model Updates** (`src/Snacka.Shared/Models/User.cs`)
 ```csharp
 // Add to existing User class:
 public bool IsServerAdmin { get; set; } = false;
@@ -45,7 +45,7 @@ public User? InvitedBy { get; set; }
 
 ### DbContext Updates
 
-**File:** `src/Miscord.Server/Data/MiscordDbContext.cs`
+**File:** `src/Snacka.Server/Data/SnackaDbContext.cs`
 
 - Add `DbSet<ServerInvite> ServerInvites`
 - Configure ServerInvite entity with unique index on Code
@@ -55,7 +55,7 @@ public User? InvitedBy { get; set; }
 
 ## Phase 2: Server Invite Service [COMPLETED]
 
-**New File:** `src/Miscord.Server/Services/IServerInviteService.cs`
+**New File:** `src/Snacka.Server/Services/IServerInviteService.cs`
 ```csharp
 public interface IServerInviteService
 {
@@ -69,7 +69,7 @@ public interface IServerInviteService
 }
 ```
 
-**New File:** `src/Miscord.Server/Services/ServerInviteService.cs`
+**New File:** `src/Snacka.Server/Services/ServerInviteService.cs`
 - Implements the interface
 - Code generation: 8 character alphanumeric (e.g., "a1b2c3d4")
 - Validation checks: not revoked, not expired, uses not exceeded
@@ -78,7 +78,7 @@ public interface IServerInviteService
 
 ## Phase 3: Auth Service Updates [COMPLETED]
 
-**File:** `src/Miscord.Server/Services/AuthService.cs`
+**File:** `src/Snacka.Server/Services/AuthService.cs`
 
 Update `RegisterAsync` to:
 1. Require invite code in request
@@ -87,7 +87,7 @@ Update `RegisterAsync` to:
 4. Mark invite as used (increment CurrentUses)
 5. Link user to inviter (InvitedById)
 
-**File:** `src/Miscord.Server/DTOs/AuthDtos.cs`
+**File:** `src/Snacka.Server/DTOs/AuthDtos.cs`
 
 Update `RegisterRequest`:
 ```csharp
@@ -103,7 +103,7 @@ public record RegisterRequest(
 
 ## Phase 4: Server Admin APIs [COMPLETED]
 
-**New File:** `src/Miscord.Server/Controllers/AdminController.cs`
+**New File:** `src/Snacka.Server/Controllers/AdminController.cs`
 
 Endpoints (require server admin):
 - `GET /api/admin/invites` - List all invites
@@ -113,7 +113,7 @@ Endpoints (require server admin):
 - `PUT /api/admin/users/{id}/admin` - Toggle user admin status
 - `DELETE /api/admin/users/{id}` - Delete user account
 
-**New File:** `src/Miscord.Server/DTOs/AdminDtos.cs`
+**New File:** `src/Snacka.Server/DTOs/AdminDtos.cs`
 ```csharp
 public record CreateInviteRequest(int MaxUses = 0, DateTime? ExpiresAt = null);
 public record ServerInviteResponse(Guid Id, string Code, int MaxUses, int CurrentUses,
@@ -126,7 +126,7 @@ public record AdminUserResponse(Guid Id, string Username, string Email, bool IsS
 
 ## Phase 5: Bootstrap Invite Endpoint [COMPLETED]
 
-**File:** `src/Miscord.Server/Controllers/HealthController.cs`
+**File:** `src/Snacka.Server/Controllers/HealthController.cs`
 
 New endpoint (no auth required):
 - `GET /api/health/server-info` - Returns server name, has users, bootstrap invite (if no users)
@@ -145,13 +145,13 @@ This allows the first user to get an invite code to register.
 
 ## Phase 6: Account Settings APIs [COMPLETED]
 
-**File:** `src/Miscord.Server/Controllers/AuthController.cs`
+**File:** `src/Snacka.Server/Controllers/AuthController.cs`
 
 New endpoints:
 - `PUT /api/users/me/password` - Change password
 - `DELETE /api/users/me` - Delete own account
 
-**File:** `src/Miscord.Server/DTOs/AuthDtos.cs`
+**File:** `src/Snacka.Server/DTOs/AuthDtos.cs`
 ```csharp
 public record ChangePasswordRequest(
     [Required] string CurrentPassword,
@@ -168,7 +168,7 @@ Update existing `PUT /api/users/me` to allow updating:
 
 ## Phase 7: Client - API Client Updates [COMPLETED]
 
-**File:** `src/Miscord.Client/Services/ApiClient.cs`
+**File:** `src/Snacka.Client/Services/ApiClient.cs`
 
 Add methods:
 - `GetServerInfoAsync()` - Get server info for login screen
@@ -183,19 +183,19 @@ Add methods:
 
 ## Phase 8: Client - Login/Register UI Updates [COMPLETED]
 
-**File:** `src/Miscord.Client/ViewModels/RegisterViewModel.cs`
+**File:** `src/Snacka.Client/ViewModels/RegisterViewModel.cs`
 
 - Add `InviteCode` property
 - On load, call `GetServerInfoAsync()` to check if server has users
 - If no users, auto-fill the bootstrap invite code
 - Show message: "You will be the server administrator"
 
-**File:** `src/Miscord.Client/Views/RegisterView.axaml`
+**File:** `src/Snacka.Client/Views/RegisterView.axaml`
 
 - Add invite code input field
 - Show bootstrap message when applicable
 
-**File:** `src/Miscord.Client/ViewModels/LoginViewModel.cs`
+**File:** `src/Snacka.Client/ViewModels/LoginViewModel.cs`
 
 - On load, call `GetServerInfoAsync()`
 - If no users exist, show "Set up server" message and switch to register
@@ -204,7 +204,7 @@ Add methods:
 
 ## Phase 9: Client - Account Settings UI [COMPLETED]
 
-**File:** `src/Miscord.Client/ViewModels/SettingsViewModel.cs`
+**File:** `src/Snacka.Client/ViewModels/SettingsViewModel.cs`
 
 Enable "My Account" section:
 - Edit username
@@ -212,7 +212,7 @@ Enable "My Account" section:
 - Change password (current + new + confirm)
 - Delete account (with confirmation)
 
-**File:** `src/Miscord.Client/Views/SettingsView.axaml`
+**File:** `src/Snacka.Client/Views/SettingsView.axaml`
 
 - Implement account settings tab content
 - Add password change form
@@ -222,8 +222,8 @@ Enable "My Account" section:
 
 ## Phase 10: Client - Admin Panel [COMPLETED]
 
-**New File:** `src/Miscord.Client/ViewModels/AdminPanelViewModel.cs`
-**New File:** `src/Miscord.Client/Views/AdminPanelView.axaml`
+**New File:** `src/Snacka.Client/ViewModels/AdminPanelViewModel.cs`
+**New File:** `src/Snacka.Client/Views/AdminPanelView.axaml`
 
 Admin panel accessible from settings (if user is server admin):
 - **Invites Tab:**
@@ -237,7 +237,7 @@ Admin panel accessible from settings (if user is server admin):
   - Toggle admin status
   - Delete user
 
-**File:** `src/Miscord.Client/ViewModels/MainAppViewModel.cs`
+**File:** `src/Snacka.Client/ViewModels/MainAppViewModel.cs`
 - Add `IsServerAdmin` property
 - Load from user info on login
 
@@ -247,43 +247,43 @@ Admin panel accessible from settings (if user is server admin):
 
 | File | Purpose |
 |------|---------|
-| `src/Miscord.Shared/Models/ServerInvite.cs` | ServerInvite model |
-| `src/Miscord.Server/Services/IServerInviteService.cs` | Service interface |
-| `src/Miscord.Server/Services/ServerInviteService.cs` | Service implementation |
-| `src/Miscord.Server/Controllers/AdminController.cs` | Admin API endpoints |
-| `src/Miscord.Server/DTOs/AdminDtos.cs` | Admin DTOs |
-| `src/Miscord.Client/ViewModels/AdminPanelViewModel.cs` | Admin panel VM |
-| `src/Miscord.Client/ViewModels/AccountSettingsViewModel.cs` | Account settings VM |
-| `src/Miscord.Client/Views/AdminPanelView.axaml` | Admin panel view |
-| `src/Miscord.Client/Views/AdminPanelView.axaml.cs` | Admin panel code-behind |
-| `src/Miscord.Client/Views/AccountSettingsView.axaml` | Account settings view |
-| `src/Miscord.Client/Views/AccountSettingsView.axaml.cs` | Account settings code-behind |
-| `tests/Miscord.Server.Tests/Api/AdminApiTests.cs` | Admin API tests |
+| `src/Snacka.Shared/Models/ServerInvite.cs` | ServerInvite model |
+| `src/Snacka.Server/Services/IServerInviteService.cs` | Service interface |
+| `src/Snacka.Server/Services/ServerInviteService.cs` | Service implementation |
+| `src/Snacka.Server/Controllers/AdminController.cs` | Admin API endpoints |
+| `src/Snacka.Server/DTOs/AdminDtos.cs` | Admin DTOs |
+| `src/Snacka.Client/ViewModels/AdminPanelViewModel.cs` | Admin panel VM |
+| `src/Snacka.Client/ViewModels/AccountSettingsViewModel.cs` | Account settings VM |
+| `src/Snacka.Client/Views/AdminPanelView.axaml` | Admin panel view |
+| `src/Snacka.Client/Views/AdminPanelView.axaml.cs` | Admin panel code-behind |
+| `src/Snacka.Client/Views/AccountSettingsView.axaml` | Account settings view |
+| `src/Snacka.Client/Views/AccountSettingsView.axaml.cs` | Account settings code-behind |
+| `tests/Snacka.Server.Tests/Api/AdminApiTests.cs` | Admin API tests |
 
 ## Files Modified
 
 | File | Changes |
 |------|---------|
-| `src/Miscord.Shared/Models/User.cs` | Add IsServerAdmin, EmailVerified, InvitedById |
-| `src/Miscord.Server/Data/MiscordDbContext.cs` | Add ServerInvites DbSet, configure relationships |
-| `src/Miscord.Server/Services/AuthService.cs` | Require invite code, first user = admin |
-| `src/Miscord.Server/Services/IAuthService.cs` | Update interface |
-| `src/Miscord.Server/DTOs/AuthDtos.cs` | Add InviteCode to RegisterRequest, new DTOs |
-| `src/Miscord.Server/Controllers/AuthController.cs` | Add server-info, password change endpoints |
-| `src/Miscord.Server/Controllers/HealthController.cs` | Add server-info endpoint |
-| `src/Miscord.Server/Program.cs` | Register IServerInviteService |
-| `src/Miscord.Client/Services/ApiClient.cs` | Add admin and account methods |
-| `src/Miscord.Client/Services/ApiModels.cs` | Add new DTOs |
-| `src/Miscord.Client/Services/IApiClient.cs` | Add new method signatures |
-| `src/Miscord.Client/Services/ServerConnection.cs` | Update ServerInfoResponse |
-| `src/Miscord.Client/ViewModels/RegisterViewModel.cs` | Add invite code handling |
-| `src/Miscord.Client/Views/RegisterView.axaml` | Add invite code field |
-| `src/Miscord.Client/ViewModels/SettingsViewModel.cs` | Add account settings and admin panel |
-| `src/Miscord.Client/Views/SettingsView.axaml` | Add account settings and admin panel UI |
-| `src/Miscord.Client/ViewModels/MainWindowViewModel.cs` | Pass IsServerAdmin to settings |
-| `tests/Miscord.Server.Tests/Api/AuthApiTests.cs` | Update tests for invite system |
-| `tests/Miscord.Server.Tests/IntegrationTestBase.cs` | Add invite code helpers |
-| `tests/Miscord.Server.Tests/Services/AuthServiceTests.cs` | Update tests for invite system |
+| `src/Snacka.Shared/Models/User.cs` | Add IsServerAdmin, EmailVerified, InvitedById |
+| `src/Snacka.Server/Data/SnackaDbContext.cs` | Add ServerInvites DbSet, configure relationships |
+| `src/Snacka.Server/Services/AuthService.cs` | Require invite code, first user = admin |
+| `src/Snacka.Server/Services/IAuthService.cs` | Update interface |
+| `src/Snacka.Server/DTOs/AuthDtos.cs` | Add InviteCode to RegisterRequest, new DTOs |
+| `src/Snacka.Server/Controllers/AuthController.cs` | Add server-info, password change endpoints |
+| `src/Snacka.Server/Controllers/HealthController.cs` | Add server-info endpoint |
+| `src/Snacka.Server/Program.cs` | Register IServerInviteService |
+| `src/Snacka.Client/Services/ApiClient.cs` | Add admin and account methods |
+| `src/Snacka.Client/Services/ApiModels.cs` | Add new DTOs |
+| `src/Snacka.Client/Services/IApiClient.cs` | Add new method signatures |
+| `src/Snacka.Client/Services/ServerConnection.cs` | Update ServerInfoResponse |
+| `src/Snacka.Client/ViewModels/RegisterViewModel.cs` | Add invite code handling |
+| `src/Snacka.Client/Views/RegisterView.axaml` | Add invite code field |
+| `src/Snacka.Client/ViewModels/SettingsViewModel.cs` | Add account settings and admin panel |
+| `src/Snacka.Client/Views/SettingsView.axaml` | Add account settings and admin panel UI |
+| `src/Snacka.Client/ViewModels/MainWindowViewModel.cs` | Pass IsServerAdmin to settings |
+| `tests/Snacka.Server.Tests/Api/AuthApiTests.cs` | Update tests for invite system |
+| `tests/Snacka.Server.Tests/IntegrationTestBase.cs` | Add invite code helpers |
+| `tests/Snacka.Server.Tests/Services/AuthServiceTests.cs` | Update tests for invite system |
 
 ---
 
@@ -346,7 +346,7 @@ Allow users to customize their profile with:
 
 ### User Model Updates
 
-**File:** `src/Miscord.Shared/Models/User.cs`
+**File:** `src/Snacka.Shared/Models/User.cs`
 
 ```csharp
 // Add to existing User class:
@@ -361,7 +361,7 @@ public string EffectiveDisplayName => DisplayName ?? Username;
 
 ### UserCommunity Model Updates
 
-**File:** `src/Miscord.Shared/Models/UserServer.cs`
+**File:** `src/Snacka.Shared/Models/UserServer.cs`
 
 ```csharp
 // Add to existing UserCommunity class:
@@ -370,7 +370,7 @@ public string? DisplayNameOverride { get; set; }  // Per-community nickname, UTF
 
 ### DbContext Updates
 
-**File:** `src/Miscord.Server/Data/MiscordDbContext.cs`
+**File:** `src/Snacka.Server/Data/SnackaDbContext.cs`
 
 - Configure DisplayName with max length 32
 - Configure DisplayNameOverride with max length 32
@@ -382,7 +382,7 @@ public string? DisplayNameOverride { get; set; }  // Per-community nickname, UTF
 
 ### Image Processing Service
 
-**New File:** `src/Miscord.Server/Services/IImageProcessingService.cs`
+**New File:** `src/Snacka.Server/Services/IImageProcessingService.cs`
 ```csharp
 public interface IImageProcessingService
 {
@@ -396,7 +396,7 @@ public interface IImageProcessingService
 }
 ```
 
-**New File:** `src/Miscord.Server/Services/ImageProcessingService.cs`
+**New File:** `src/Snacka.Server/Services/ImageProcessingService.cs`
 - Uses SkiaSharp or ImageSharp for cross-platform image processing
 - Crops image based on client-provided coordinates
 - Resizes to standard avatar sizes (256x256, with optional 64x64 thumbnail)
@@ -405,7 +405,7 @@ public interface IImageProcessingService
 
 ### Avatar Storage Settings
 
-**File:** `src/Miscord.Server/Services/FileStorageSettings.cs`
+**File:** `src/Snacka.Server/Services/FileStorageSettings.cs`
 ```csharp
 // Add to existing settings:
 public string AvatarsPath { get; set; } = "./uploads/avatars";
@@ -420,7 +420,7 @@ public long AvatarMaxFileSizeBytes { get; set; } = 5 * 1024 * 1024;  // 5MB uplo
 
 ### Avatar Upload Endpoint
 
-**File:** `src/Miscord.Server/Controllers/AuthController.cs` (UsersController)
+**File:** `src/Snacka.Server/Controllers/AuthController.cs` (UsersController)
 
 New endpoints:
 ```csharp
@@ -446,7 +446,7 @@ public async Task<IActionResult> GetAvatar(Guid userId)
 
 ### Profile Update Endpoint Updates
 
-**File:** `src/Miscord.Server/Controllers/AuthController.cs`
+**File:** `src/Snacka.Server/Controllers/AuthController.cs`
 
 Update `PUT /api/users/me`:
 ```csharp
@@ -460,7 +460,7 @@ public record UpdateProfileRequest(
 
 ### DTOs Updates
 
-**File:** `src/Miscord.Server/DTOs/AuthDtos.cs`
+**File:** `src/Snacka.Server/DTOs/AuthDtos.cs`
 ```csharp
 public record UserProfileResponse(
     Guid Id,
@@ -484,7 +484,7 @@ public record AvatarResponse(string AvatarUrl);
 
 ### Community Member Nickname Endpoint
 
-**File:** `src/Miscord.Server/Controllers/CommunityController.cs`
+**File:** `src/Snacka.Server/Controllers/CommunityController.cs`
 
 New endpoint:
 ```csharp
@@ -501,7 +501,7 @@ public async Task<ActionResult> ClearNickname(Guid communityId)
 
 ### DTOs
 
-**File:** `src/Miscord.Server/DTOs/ServerDtos.cs`
+**File:** `src/Snacka.Server/DTOs/ServerDtos.cs`
 ```csharp
 public record UpdateNicknameRequest(
     [StringLength(32)] string? Nickname  // null to clear
@@ -523,7 +523,7 @@ public record CommunityMemberResponse(
 
 ### Service Updates
 
-**File:** `src/Miscord.Server/Services/CommunityMemberService.cs`
+**File:** `src/Snacka.Server/Services/CommunityMemberService.cs`
 ```csharp
 // Add methods:
 Task<CommunityMemberResponse> UpdateNicknameAsync(
@@ -536,7 +536,7 @@ Task<CommunityMemberResponse> UpdateNicknameAsync(
 
 ### Message Responses
 
-**File:** `src/Miscord.Server/DTOs/ServerDtos.cs`
+**File:** `src/Snacka.Server/DTOs/ServerDtos.cs`
 ```csharp
 public record MessageResponse(
     // ... existing fields ...
@@ -551,7 +551,7 @@ public record MessageResponse(
 
 ### Direct Message Responses
 
-**File:** `src/Miscord.Server/DTOs/DirectMessageDtos.cs`
+**File:** `src/Snacka.Server/DTOs/DirectMessageDtos.cs`
 ```csharp
 public record ConversationSummary(
     Guid UserId,
@@ -577,7 +577,7 @@ Update all services that return user info to include display name resolution:
 
 ## Phase 16: Client API Updates
 
-**File:** `src/Miscord.Client/Services/ApiClient.cs`
+**File:** `src/Snacka.Client/Services/ApiClient.cs`
 
 Add methods:
 ```csharp
@@ -596,7 +596,7 @@ Task<ApiResult<CommunityMemberResponse>> UpdateCommunityNicknameAsync(
 Task<ApiResult> ClearCommunityNicknameAsync(Guid communityId);
 ```
 
-**File:** `src/Miscord.Client/Services/ApiModels.cs`
+**File:** `src/Snacka.Client/Services/ApiModels.cs`
 ```csharp
 // Update existing models to include DisplayName fields
 public record UserProfileResponse(
@@ -619,7 +619,7 @@ public record UserProfileResponse(
 
 ### Account Settings Updates
 
-**File:** `src/Miscord.Client/ViewModels/AccountSettingsViewModel.cs`
+**File:** `src/Snacka.Client/ViewModels/AccountSettingsViewModel.cs`
 
 Add properties and commands:
 ```csharp
@@ -633,7 +633,7 @@ public ReactiveCommand<Unit, Unit> UploadAvatarCommand { get; }
 public ReactiveCommand<Unit, Unit> DeleteAvatarCommand { get; }
 ```
 
-**File:** `src/Miscord.Client/Views/AccountSettingsView.axaml`
+**File:** `src/Snacka.Client/Views/AccountSettingsView.axaml`
 
 Add sections:
 - Avatar display with "Change" and "Remove" buttons
@@ -647,8 +647,8 @@ Add sections:
 
 ### Image Cropper Component
 
-**New File:** `src/Miscord.Client/Controls/ImageCropper.axaml`
-**New File:** `src/Miscord.Client/Controls/ImageCropper.axaml.cs`
+**New File:** `src/Snacka.Client/Controls/ImageCropper.axaml`
+**New File:** `src/Snacka.Client/Controls/ImageCropper.axaml.cs`
 
 Features:
 - Load image from file picker
@@ -660,8 +660,8 @@ Features:
 
 ### Avatar Upload Dialog
 
-**New File:** `src/Miscord.Client/ViewModels/AvatarUploadViewModel.cs`
-**New File:** `src/Miscord.Client/Views/AvatarUploadDialog.axaml`
+**New File:** `src/Snacka.Client/ViewModels/AvatarUploadViewModel.cs`
+**New File:** `src/Snacka.Client/Views/AvatarUploadDialog.axaml`
 
 Features:
 - File picker button
@@ -677,15 +677,15 @@ Features:
 
 ### Member Context Menu
 
-**File:** `src/Miscord.Client/Views/MemberListView.axaml` (or similar)
+**File:** `src/Snacka.Client/Views/MemberListView.axaml` (or similar)
 
 Add to user's own context menu:
 - "Change Nickname" option (opens nickname dialog)
 
 ### Nickname Dialog
 
-**New File:** `src/Miscord.Client/ViewModels/NicknameDialogViewModel.cs`
-**New File:** `src/Miscord.Client/Views/NicknameDialog.axaml`
+**New File:** `src/Snacka.Client/ViewModels/NicknameDialogViewModel.cs`
+**New File:** `src/Snacka.Client/Views/NicknameDialog.axaml`
 
 Features:
 - Current nickname display
@@ -704,18 +704,18 @@ If community has a settings view, add nickname section there as well.
 
 ### Server Tests
 
-**New File:** `tests/Miscord.Server.Tests/Api/ProfileApiTests.cs`
+**New File:** `tests/Snacka.Server.Tests/Api/ProfileApiTests.cs`
 - Test display name update with UTF-8/emojis
 - Test avatar upload with crop
 - Test avatar delete
 - Test display name length limits
 
-**New File:** `tests/Miscord.Server.Tests/Api/CommunityNicknameTests.cs`
+**New File:** `tests/Snacka.Server.Tests/Api/CommunityNicknameTests.cs`
 - Test nickname set/update/clear
 - Test nickname in message responses
 - Test nickname in member list
 
-**Update:** `tests/Miscord.Server.Tests/Services/AuthServiceTests.cs`
+**Update:** `tests/Snacka.Server.Tests/Services/AuthServiceTests.cs`
 - Test EffectiveDisplayName resolution
 
 ---
@@ -724,37 +724,37 @@ If community has a settings view, add nickname section there as well.
 
 | File | Purpose |
 |------|---------|
-| `src/Miscord.Server/Services/IImageProcessingService.cs` | Image processing interface |
-| `src/Miscord.Server/Services/ImageProcessingService.cs` | Crop/resize implementation |
-| `src/Miscord.Client/Controls/ImageCropper.axaml` | Image crop control |
-| `src/Miscord.Client/Controls/ImageCropper.axaml.cs` | Image crop code-behind |
-| `src/Miscord.Client/ViewModels/AvatarUploadViewModel.cs` | Avatar upload dialog VM |
-| `src/Miscord.Client/Views/AvatarUploadDialog.axaml` | Avatar upload dialog |
-| `src/Miscord.Client/ViewModels/NicknameDialogViewModel.cs` | Nickname dialog VM |
-| `src/Miscord.Client/Views/NicknameDialog.axaml` | Nickname dialog |
-| `tests/Miscord.Server.Tests/Api/ProfileApiTests.cs` | Profile API tests |
-| `tests/Miscord.Server.Tests/Api/CommunityNicknameTests.cs` | Nickname tests |
+| `src/Snacka.Server/Services/IImageProcessingService.cs` | Image processing interface |
+| `src/Snacka.Server/Services/ImageProcessingService.cs` | Crop/resize implementation |
+| `src/Snacka.Client/Controls/ImageCropper.axaml` | Image crop control |
+| `src/Snacka.Client/Controls/ImageCropper.axaml.cs` | Image crop code-behind |
+| `src/Snacka.Client/ViewModels/AvatarUploadViewModel.cs` | Avatar upload dialog VM |
+| `src/Snacka.Client/Views/AvatarUploadDialog.axaml` | Avatar upload dialog |
+| `src/Snacka.Client/ViewModels/NicknameDialogViewModel.cs` | Nickname dialog VM |
+| `src/Snacka.Client/Views/NicknameDialog.axaml` | Nickname dialog |
+| `tests/Snacka.Server.Tests/Api/ProfileApiTests.cs` | Profile API tests |
+| `tests/Snacka.Server.Tests/Api/CommunityNicknameTests.cs` | Nickname tests |
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/Miscord.Shared/Models/User.cs` | Add DisplayName, AvatarFileName |
-| `src/Miscord.Shared/Models/UserServer.cs` | Add DisplayNameOverride |
-| `src/Miscord.Server/Data/MiscordDbContext.cs` | Configure new fields |
-| `src/Miscord.Server/Controllers/AuthController.cs` | Avatar endpoints, profile updates |
-| `src/Miscord.Server/Controllers/CommunityController.cs` | Nickname endpoints |
-| `src/Miscord.Server/DTOs/AuthDtos.cs` | Update profile DTOs |
-| `src/Miscord.Server/DTOs/ServerDtos.cs` | Update member/message DTOs |
-| `src/Miscord.Server/DTOs/DirectMessageDtos.cs` | Update conversation DTOs |
-| `src/Miscord.Server/Services/AuthService.cs` | Profile service updates |
-| `src/Miscord.Server/Services/CommunityMemberService.cs` | Nickname methods |
-| `src/Miscord.Server/Services/FileStorageSettings.cs` | Avatar settings |
-| `src/Miscord.Server/Program.cs` | Register ImageProcessingService |
-| `src/Miscord.Client/Services/ApiClient.cs` | New API methods |
-| `src/Miscord.Client/Services/ApiModels.cs` | Updated DTOs |
-| `src/Miscord.Client/ViewModels/AccountSettingsViewModel.cs` | Profile editing |
-| `src/Miscord.Client/Views/AccountSettingsView.axaml` | Profile editing UI |
+| `src/Snacka.Shared/Models/User.cs` | Add DisplayName, AvatarFileName |
+| `src/Snacka.Shared/Models/UserServer.cs` | Add DisplayNameOverride |
+| `src/Snacka.Server/Data/SnackaDbContext.cs` | Configure new fields |
+| `src/Snacka.Server/Controllers/AuthController.cs` | Avatar endpoints, profile updates |
+| `src/Snacka.Server/Controllers/CommunityController.cs` | Nickname endpoints |
+| `src/Snacka.Server/DTOs/AuthDtos.cs` | Update profile DTOs |
+| `src/Snacka.Server/DTOs/ServerDtos.cs` | Update member/message DTOs |
+| `src/Snacka.Server/DTOs/DirectMessageDtos.cs` | Update conversation DTOs |
+| `src/Snacka.Server/Services/AuthService.cs` | Profile service updates |
+| `src/Snacka.Server/Services/CommunityMemberService.cs` | Nickname methods |
+| `src/Snacka.Server/Services/FileStorageSettings.cs` | Avatar settings |
+| `src/Snacka.Server/Program.cs` | Register ImageProcessingService |
+| `src/Snacka.Client/Services/ApiClient.cs` | New API methods |
+| `src/Snacka.Client/Services/ApiModels.cs` | Updated DTOs |
+| `src/Snacka.Client/ViewModels/AccountSettingsViewModel.cs` | Profile editing |
+| `src/Snacka.Client/Views/AccountSettingsView.axaml` | Profile editing UI |
 
 ---
 

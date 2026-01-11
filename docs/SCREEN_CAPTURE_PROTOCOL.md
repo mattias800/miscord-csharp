@@ -113,9 +113,9 @@ typedef struct {
 
 ## Implementation Requirements
 
-### macOS (MiscordCapture - Swift)
+### macOS (SnackaCapture - Swift)
 
-**Current implementation:** `src/MiscordCapture/Sources/MiscordCapture/ScreenCapturer.swift`
+**Current implementation:** `src/SnackaCapture/Sources/SnackaCapture/ScreenCapturer.swift`
 
 - Uses ScreenCaptureKit (macOS 13+)
 - Detects input format from AudioStreamBasicDescription (ASBD)

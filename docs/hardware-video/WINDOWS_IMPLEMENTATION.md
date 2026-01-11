@@ -18,7 +18,7 @@ H264 NAL units → VideoToolbox → CVPixelBuffer/Metal Texture → Display
 
 ### Components to Implement
 
-1. **Native C++ Library** (`MiscordWindowsRenderer.dll`)
+1. **Native C++ Library** (`SnackaWindowsRenderer.dll`)
    - Media Foundation H264 decoder wrapper
    - D3D11 renderer with swap chain
    - C API for P/Invoke
@@ -40,7 +40,7 @@ H264 NAL units → VideoToolbox → CVPixelBuffer/Metal Texture → Display
 The native library must export these functions (matching macOS pattern):
 
 ```cpp
-// MiscordWindowsRenderer.h
+// SnackaWindowsRenderer.h
 
 #ifdef __cplusplus
 extern "C" {
@@ -426,13 +426,13 @@ bool MediaFoundationDecoder::CreateOverlayWindow() {
     wc.style = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc = DefWindowProcW;
     wc.hInstance = GetModuleHandle(nullptr);
-    wc.lpszClassName = L"MiscordVideoOverlay";
+    wc.lpszClassName = L"SnackaVideoOverlay";
     RegisterClassExW(&wc);
 
     // Create borderless child window
     m_hwnd = CreateWindowExW(
         WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE,
-        L"MiscordVideoOverlay",
+        L"SnackaVideoOverlay",
         L"",
         WS_POPUP | WS_VISIBLE,
         0, 0, m_width, m_height,
@@ -468,7 +468,7 @@ void MediaFoundationDecoder::AttachToParent(HWND parent) {
 
 ### P/Invoke Wrapper
 
-See `MediaFoundationDecoder.cs` stub file in `src/Miscord.Client/Services/HardwareVideo/`
+See `MediaFoundationDecoder.cs` stub file in `src/Snacka.Client/Services/HardwareVideo/`
 
 ### Integration with Factory
 
@@ -504,23 +504,23 @@ public static IHardwareVideoDecoder? Create()
 2. Add the source files
 3. Link against: `mfplat.lib`, `mfuuid.lib`, `d3d11.lib`, `dxgi.lib`
 4. Build for x64 (and optionally ARM64 for Windows on ARM)
-5. Copy `MiscordWindowsRenderer.dll` to the application output directory
+5. Copy `SnackaWindowsRenderer.dll` to the application output directory
 
 ### CMake Example
 
 ```cmake
 cmake_minimum_required(VERSION 3.16)
-project(MiscordWindowsRenderer)
+project(SnackaWindowsRenderer)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_library(MiscordWindowsRenderer SHARED
+add_library(SnackaWindowsRenderer SHARED
     src/MediaFoundationDecoder.cpp
     src/D3D11Renderer.cpp
     src/CApi.cpp
 )
 
-target_link_libraries(MiscordWindowsRenderer PRIVATE
+target_link_libraries(SnackaWindowsRenderer PRIVATE
     mfplat
     mfuuid
     d3d11
@@ -528,7 +528,7 @@ target_link_libraries(MiscordWindowsRenderer PRIVATE
 )
 
 # Compile shaders
-add_custom_command(TARGET MiscordWindowsRenderer POST_BUILD
+add_custom_command(TARGET SnackaWindowsRenderer POST_BUILD
     COMMAND fxc /T ps_5_0 /E main /Fo ${CMAKE_BINARY_DIR}/nv12_ps.cso
             ${CMAKE_SOURCE_DIR}/shaders/nv12_shader.hlsl
 )

@@ -1,6 +1,6 @@
 # Channel List Improvement Plan
 
-This document outlines planned improvements for the text and voice channel list in Miscord.
+This document outlines planned improvements for the text and voice channel list in Snacka.
 
 ## Current State
 
@@ -200,20 +200,20 @@ This document outlines planned improvements for the text and voice channel list 
 ### Files to Modify
 
 **Controls:**
-- `src/Miscord.Client/Controls/ChannelListView.axaml` - Main channel list UI
-- `src/Miscord.Client/Controls/ChannelListView.axaml.cs` - Code-behind
+- `src/Snacka.Client/Controls/ChannelListView.axaml` - Main channel list UI
+- `src/Snacka.Client/Controls/ChannelListView.axaml.cs` - Code-behind
 
 **ViewModels:**
-- `src/Miscord.Client/ViewModels/MainAppViewModel.cs` - Commands and state
-- `src/Miscord.Client/ViewModels/VoiceChannelViewModel.cs` - Voice channel data
+- `src/Snacka.Client/ViewModels/MainAppViewModel.cs` - Commands and state
+- `src/Snacka.Client/ViewModels/VoiceChannelViewModel.cs` - Voice channel data
 
 **Services:**
-- `src/Miscord.Client/Services/ApiModels.cs` - ChannelResponse model
-- `src/Miscord.Client/Services/ApiClient.cs` - API calls
+- `src/Snacka.Client/Services/ApiModels.cs` - ChannelResponse model
+- `src/Snacka.Client/Services/ApiClient.cs` - API calls
 
 **Server:**
-- `src/Miscord.Server/Controllers/ChannelsController.cs` - Channel endpoints
-- `src/Miscord.Server/Services/ChannelService.cs` - Channel business logic
+- `src/Snacka.Server/Controllers/ChannelsController.cs` - Channel endpoints
+- `src/Snacka.Server/Services/ChannelService.cs` - Channel business logic
 
 ### Data Model Considerations
 

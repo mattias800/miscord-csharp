@@ -1,7 +1,7 @@
-# Miscord Threads Implementation Plan
+# Snacka Threads Implementation Plan
 
 ## Overview
-Add Slack-style message threads to Miscord, allowing users to have organized sub-conversations within channels. Thread replies are regular messages with a parent reference, reusing all existing message infrastructure.
+Add Slack-style message threads to Snacka, allowing users to have organized sub-conversations within channels. Thread replies are regular messages with a parent reference, reusing all existing message infrastructure.
 
 ## Core Design Principle
 
@@ -497,8 +497,8 @@ Add thread indicator when `ReplyCount > 0`:
 
 **Migration commands:**
 ```bash
-dotnet ef migrations add AddThreadSupport --project src/Miscord.Server
-dotnet ef database update --project src/Miscord.Server
+dotnet ef migrations add AddThreadSupport --project src/Snacka.Server
+dotnet ef database update --project src/Snacka.Server
 ```
 
 ---

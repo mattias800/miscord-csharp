@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide covers how to deploy Miscord server and client applications.
+This guide covers how to deploy Snacka server and client applications.
 
 ## Prerequisites
 
@@ -50,7 +50,7 @@ The `VideoLAN.LibVLC.Mac` NuGet package only provides x86_64 libraries. On Apple
 # Option 3: Set environment variables manually
 VLC_PLUGIN_PATH=/Applications/VLC.app/Contents/MacOS/plugins \
 DYLD_LIBRARY_PATH=/Applications/VLC.app/Contents/MacOS/lib \
-dotnet run --project src/Miscord.Client/Miscord.Client.csproj
+dotnet run --project src/Snacka.Client/Snacka.Client.csproj
 ```
 
 #### Testing Audio Playback
@@ -82,7 +82,7 @@ VLC plugins are typically in standard system locations (`/usr/lib/vlc/plugins`) 
 
 ### Quick Start
 
-The easiest way to run Miscord for development is using the provided script:
+The easiest way to run Snacka for development is using the provided script:
 
 ```bash
 ./dev-start.sh
@@ -98,7 +98,7 @@ This will:
 #### 1. Start the Server
 
 ```bash
-cd src/Miscord.Server
+cd src/Snacka.Server
 dotnet run
 ```
 
@@ -107,7 +107,7 @@ The server starts on `http://localhost:5117` by default.
 #### 2. Start a Client
 
 ```bash
-cd src/Miscord.Client
+cd src/Snacka.Client
 dotnet run -- --server http://localhost:5117
 ```
 
@@ -137,12 +137,12 @@ Create `appsettings.Production.json`:
   "AllowedHosts": "*",
   "UseSqlite": false,
   "ConnectionStrings": {
-    "DefaultConnection": "Server=your-db-server;Database=Miscord;User Id=miscord;Password=your-password;"
+    "DefaultConnection": "Server=your-db-server;Database=Snacka;User Id=snacka;Password=your-password;"
   },
   "Jwt": {
     "SecretKey": "YOUR-PRODUCTION-SECRET-KEY-AT-LEAST-32-CHARACTERS-LONG!",
-    "Issuer": "Miscord",
-    "Audience": "Miscord",
+    "Issuer": "Snacka",
+    "Audience": "Snacka",
     "AccessTokenExpirationMinutes": 60,
     "RefreshTokenExpirationDays": 7
   },
@@ -153,7 +153,7 @@ Create `appsettings.Production.json`:
   },
   "Tenor": {
     "ApiKey": "YOUR_TENOR_API_KEY",
-    "ClientKey": "miscord"
+    "ClientKey": "snacka"
   }
 }
 ```
@@ -169,7 +169,7 @@ Create `appsettings.Production.json`:
 #### 2. Build for Production
 
 ```bash
-dotnet publish src/Miscord.Server/Miscord.Server.csproj \
+dotnet publish src/Snacka.Server/Snacka.Server.csproj \
   -c Release \
   -o ./publish/server
 ```
@@ -182,14 +182,14 @@ dotnet publish src/Miscord.Server/Miscord.Server.csproj \
   "UseSqlite": true
 }
 ```
-The database file `miscord.db` will be created in the working directory.
+The database file `snacka.db` will be created in the working directory.
 
 **PostgreSQL (Recommended for Production)**
 ```json
 {
   "UseSqlite": false,
   "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Database=miscord;Username=miscord;Password=your-password"
+    "DefaultConnection": "Host=localhost;Database=snacka;Username=snacka;Password=your-password"
   }
 }
 ```
@@ -198,12 +198,12 @@ The database file `miscord.db` will be created in the working directory.
 
 ```bash
 cd ./publish/server
-dotnet Miscord.Server.dll
+dotnet Snacka.Server.dll
 ```
 
 Or with environment-specific configuration:
 ```bash
-ASPNETCORE_ENVIRONMENT=Production dotnet Miscord.Server.dll
+ASPNETCORE_ENVIRONMENT=Production dotnet Snacka.Server.dll
 ```
 
 #### 5. Reverse Proxy Setup (Recommended)
@@ -213,7 +213,7 @@ For production, run behind a reverse proxy like nginx:
 ```nginx
 server {
     listen 443 ssl http2;
-    server_name miscord.example.com;
+    server_name snacka.example.com;
 
     ssl_certificate /path/to/cert.pem;
     ssl_certificate_key /path/to/key.pem;
@@ -240,14 +240,14 @@ server {
 
 **macOS:**
 ```bash
-dotnet publish src/Miscord.Client/Miscord.Client.csproj \
+dotnet publish src/Snacka.Client/Snacka.Client.csproj \
   -c Release \
   -r osx-x64 \
   --self-contained true \
   -o ./publish/client-macos-x64
 
 # For Apple Silicon
-dotnet publish src/Miscord.Client/Miscord.Client.csproj \
+dotnet publish src/Snacka.Client/Snacka.Client.csproj \
   -c Release \
   -r osx-arm64 \
   --self-contained true \
@@ -256,7 +256,7 @@ dotnet publish src/Miscord.Client/Miscord.Client.csproj \
 
 **Windows:**
 ```bash
-dotnet publish src/Miscord.Client/Miscord.Client.csproj \
+dotnet publish src/Snacka.Client/Snacka.Client.csproj \
   -c Release \
   -r win-x64 \
   --self-contained true \
@@ -265,7 +265,7 @@ dotnet publish src/Miscord.Client/Miscord.Client.csproj \
 
 **Linux:**
 ```bash
-dotnet publish src/Miscord.Client/Miscord.Client.csproj \
+dotnet publish src/Snacka.Client/Snacka.Client.csproj \
   -c Release \
   -r linux-x64 \
   --self-contained true \
@@ -274,7 +274,7 @@ dotnet publish src/Miscord.Client/Miscord.Client.csproj \
 
 ### Docker Deployment (Server)
 
-The easiest way to deploy Miscord is using Docker Compose.
+The easiest way to deploy Snacka is using Docker Compose.
 
 #### Quick Start with Docker Compose
 
@@ -300,7 +300,7 @@ The easiest way to deploy Miscord is using Docker Compose.
    docker-compose down
    ```
 
-The database is persisted in a Docker volume (`miscord-data`).
+The database is persisted in a Docker volume (`snacka-data`).
 
 #### Using PostgreSQL (Recommended for Production)
 
@@ -315,18 +315,18 @@ POSTGRES_PASSWORD=your-secure-password
 docker-compose --profile postgres up -d
 ```
 
-This starts both the Miscord server and a PostgreSQL database container.
+This starts both the Snacka server and a PostgreSQL database container.
 
 #### Environment Variables (.env file)
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `JWT_SECRET_KEY` | JWT signing key (min 32 chars) | **Must change!** |
-| `SERVER_NAME` | Server display name | Miscord Server |
+| `SERVER_NAME` | Server display name | Snacka Server |
 | `SERVER_DESCRIPTION` | Server description | A self-hosted Discord alternative |
 | `ALLOW_REGISTRATION` | Allow new user signups | true |
 | `USE_SQLITE` | Use SQLite instead of PostgreSQL | true |
-| `POSTGRES_PASSWORD` | PostgreSQL password | miscord |
+| `POSTGRES_PASSWORD` | PostgreSQL password | snacka |
 | `TENOR_API_KEY` | Tenor GIF API key (optional) | *(empty)* |
 
 #### Manual Docker Build
@@ -335,14 +335,14 @@ If you prefer not to use docker-compose:
 
 ```bash
 # Build the image
-docker build -t miscord-server .
+docker build -t snacka-server .
 
 # Run the container
 docker run -d -p 5117:5117 \
-  --name miscord-server \
+  --name snacka-server \
   -e Jwt__SecretKey=your-secret-key-at-least-32-characters \
-  -v miscord-data:/app/data \
-  miscord-server
+  -v snacka-data:/app/data \
+  snacka-server
 ```
 
 ## Environment Variables

@@ -1,14 +1,14 @@
-# Agent Guidelines for Miscord
+# Agent Guidelines for Snacka
 
-This document provides guidelines for AI agents working on the Miscord project.
+This document provides guidelines for AI agents working on the Snacka project.
 
 ## Project Overview
 
-Miscord is a self-hosted Discord alternative built with C# and .NET. The project consists of:
-- **Miscord.Server**: ASP.NET Core server application
-- **Miscord.Client**: Avalonia UI desktop client (✅ basic structure with App, MainWindow)
-- **Miscord.Shared**: Shared models and interfaces (✅ 7 database entities defined)
-- **Miscord.WebRTC**: WebRTC/media handling library (planned)
+Snacka is a self-hosted Discord alternative built with C# and .NET. The project consists of:
+- **Snacka.Server**: ASP.NET Core server application
+- **Snacka.Client**: Avalonia UI desktop client (✅ basic structure with App, MainWindow)
+- **Snacka.Shared**: Shared models and interfaces (✅ 7 database entities defined)
+- **Snacka.WebRTC**: WebRTC/media handling library (planned)
 
 ## Core Requirements
 
@@ -65,7 +65,7 @@ public class UserService : IUserService
 
 Avalonia UI is a mature, cross-platform XAML framework that allows building desktop applications for Windows, macOS, and Linux from a single codebase.
 
-### Why Avalonia for Miscord?
+### Why Avalonia for Snacka?
 - **Cross-platform native performance** for all major desktop platforms
 - **XAML-based** - familiar for developers with WPF background
 - **Production-ready** with strong community and commercial backing (used by JetBrains in Rider)
@@ -73,7 +73,7 @@ Avalonia UI is a mature, cross-platform XAML framework that allows building desk
 - **All latest versions** - Built on .NET 9 with latest Avalonia 11.1.3
 
 ### Client Project Structure
-- `Miscord.Client/` - Main executable with Avalonia UI
+- `Snacka.Client/` - Main executable with Avalonia UI
 - `Views/` - XAML view files and code-behind
 - `App.axaml` - Application definition
 - `Program.cs` - Entry point with desktop platform detection
@@ -153,10 +153,10 @@ dotnet build
 dotnet test
 
 # Run the server (development)
-dotnet run --project src/Miscord.Server
+dotnet run --project src/Snacka.Server
 
 # Create a migration
-dotnet ef migrations add MigrationName --project src/Miscord.Server
+dotnet ef migrations add MigrationName --project src/Snacka.Server
 ```
 
 ## Development Startup
@@ -168,7 +168,7 @@ Use the `dev-start.sh` script to start the server and two test clients with auto
 ```
 
 This script:
-1. Kills any existing Miscord processes
+1. Kills any existing Snacka processes
 2. Builds the server and client projects
 3. Starts the server on `http://localhost:5117`
 4. Starts two client instances with auto-login:
@@ -181,11 +181,11 @@ This script:
 The client supports the following CLI arguments for development/testing:
 
 ```bash
-dotnet run --project src/Miscord.Client -- \
+dotnet run --project src/Snacka.Client -- \
     --server "http://localhost:5117" \
     --email "user@test.com" \
     --password "password123" \
-    --title "Miscord - Username" \
+    --title "Snacka - Username" \
     --profile profilename
 ```
 
