@@ -63,7 +63,7 @@
                         Value="{Binding InputGain}"
                         Foreground="{StaticResource PrimaryBrush}"
                         Background="{StaticResource Content1Brush}"/>
-                <TextBlock Text="Adjust microphone sensitivity. Values above 100% amplify quiet audio."
+                <TextBlock Text="Fine-tune your mic volume. Auto gain control keeps your voice at a consistent level. Use this to adjust further if needed."
                            FontSize="12"
                            Foreground="{StaticResource Foreground3Brush}"
                            TextWrapping="Wrap"/>

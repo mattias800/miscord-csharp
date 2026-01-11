@@ -49,6 +49,16 @@ public class AudioDeviceService : IAudioDeviceService
     private bool _isLoopbackEnabled;
     private CancellationTokenSource? _testCts;
 
+    // AGC for microphone test (mirrors WebRtcService AGC)
+    private float _testAgcGain = 1.0f;
+    private const float AgcTargetRms = 6000f;
+    private const float AgcMinGain = 1.0f;
+    private const float AgcMaxGain = 16.0f;
+    private const float AgcAttackCoeff = 0.1f;
+    private const float AgcReleaseCoeff = 0.005f;
+    private const float AgcSilenceThreshold = 200f;
+    private const float BaselineInputBoost = 4.0f;
+
     public bool IsTestingInput => _testAudioSource != null;
     public bool IsLoopbackEnabled => _isLoopbackEnabled;
 
@@ -226,6 +236,9 @@ public class AudioDeviceService : IAudioDeviceService
         // Stop any existing test
         await StopTestAsync();
 
+        // Reset AGC for fresh test
+        _testAgcGain = 1.0f;
+
         _onRmsUpdate = onRmsUpdate;
         _testCts = new CancellationTokenSource();
 
@@ -352,26 +365,56 @@ public class AudioDeviceService : IAudioDeviceService
     {
         if (sample.Length == 0) return;
 
-        // Get gain and gate settings
-        var gain = _settingsStore?.Settings.InputGain ?? 1.0f;
+        // Get user settings
+        var manualGain = _settingsStore?.Settings.InputGain ?? 1.0f;
         var gateEnabled = _settingsStore?.Settings.GateEnabled ?? true;
         var gateThreshold = _settingsStore?.Settings.GateThreshold ?? 0.02f;
 
-        // Apply gain and calculate RMS
+        // Step 1: Calculate input RMS before any processing
         double sumOfSquares = 0;
         for (int i = 0; i < sample.Length; i++)
         {
-            // Apply gain to sample
-            var gainedSample = sample[i] * gain;
-            // Clamp to short range to prevent overflow
-            gainedSample = Math.Clamp(gainedSample, short.MinValue, short.MaxValue);
-            sample[i] = (short)gainedSample;
-            sumOfSquares += gainedSample * gainedSample;
+            sumOfSquares += (double)sample[i] * sample[i];
         }
-        double rms = Math.Sqrt(sumOfSquares / sample.Length);
+        float inputRms = (float)Math.Sqrt(sumOfSquares / sample.Length);
 
-        // Normalize to 0-1 range (short.MaxValue = 32767)
-        float normalizedRms = (float)Math.Min(1.0, rms / 10000.0);
+        // Step 2: Update AGC gain (only if not silence)
+        if (inputRms > AgcSilenceThreshold)
+        {
+            float desiredGain = AgcTargetRms / inputRms;
+            desiredGain = Math.Clamp(desiredGain, AgcMinGain, AgcMaxGain);
+
+            if (desiredGain < _testAgcGain)
+                _testAgcGain += (desiredGain - _testAgcGain) * AgcAttackCoeff;
+            else
+                _testAgcGain += (desiredGain - _testAgcGain) * AgcReleaseCoeff;
+        }
+
+        // Step 3: Calculate total gain = baseline boost * AGC * manual adjustment
+        float totalGain = BaselineInputBoost * _testAgcGain * manualGain;
+
+        // Step 4: Apply total gain to samples
+        for (int i = 0; i < sample.Length; i++)
+        {
+            float gainedSample = sample[i] * totalGain;
+            // Soft clipping to prevent harsh distortion
+            if (gainedSample > 30000f)
+                gainedSample = 30000f + (gainedSample - 30000f) * 0.1f;
+            else if (gainedSample < -30000f)
+                gainedSample = -30000f + (gainedSample + 30000f) * 0.1f;
+            sample[i] = (short)Math.Clamp(gainedSample, short.MinValue, short.MaxValue);
+        }
+
+        // Step 5: Calculate output RMS for level display
+        sumOfSquares = 0;
+        for (int i = 0; i < sample.Length; i++)
+        {
+            sumOfSquares += (double)sample[i] * sample[i];
+        }
+        double outputRms = Math.Sqrt(sumOfSquares / sample.Length);
+
+        // Normalize to 0-1 range
+        float normalizedRms = (float)Math.Min(1.0, outputRms / 10000.0);
 
         // Check if above gate threshold
         var isAboveGate = normalizedRms > gateThreshold;
@@ -380,6 +423,7 @@ public class AudioDeviceService : IAudioDeviceService
         if (gateEnabled && !isAboveGate)
         {
             Array.Clear(sample, 0, sample.Length);
+            normalizedRms = 0; // Show zero level when gated
         }
 
         _onRmsUpdate?.Invoke(normalizedRms);
@@ -387,7 +431,6 @@ public class AudioDeviceService : IAudioDeviceService
         // If loopback is enabled, send audio to output
         if (_isLoopbackEnabled && _testAudioSink != null)
         {
-            // Convert short[] to byte[] for the sink
             byte[] pcmBytes = new byte[sample.Length * 2];
             Buffer.BlockCopy(sample, 0, pcmBytes, 0, pcmBytes.Length);
             _testAudioSink.GotAudioSample(pcmBytes);
