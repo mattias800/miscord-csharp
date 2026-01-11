@@ -25,6 +25,18 @@ public unsafe class OpenGLVideoRenderer : IGpuVideoRenderer
     private bool _isInitialized;
     private bool _isDisposed;
     private readonly object _renderLock = new();
+    private bool _renderFailed;
+    private int _consecutiveFailures;
+    private const int MaxConsecutiveFailures = 3;
+
+    // Static flag to track if OpenGL is actually working (set after first successful render)
+    private static bool _openGlProbed;
+    private static bool _openGlWorking;
+
+    /// <summary>
+    /// Event raised when rendering fails and GPU mode should be disabled.
+    /// </summary>
+    public event Action? RenderingFailed;
 
     // Vertex shader - passes through position and texture coordinates
     private const string VertexShaderSource = @"
@@ -99,7 +111,27 @@ void main()
     public static bool IsAvailable()
     {
         // OpenGL is available on Windows and Linux (not used on macOS where Metal is preferred)
-        return OperatingSystem.IsWindows() || OperatingSystem.IsLinux();
+        if (!OperatingSystem.IsWindows() && !OperatingSystem.IsLinux())
+            return false;
+
+        // If we've already probed and it failed, don't try again
+        if (_openGlProbed && !_openGlWorking)
+        {
+            Console.WriteLine("OpenGLVideoRenderer: Skipping - previously failed");
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Marks OpenGL as not working. Called when rendering fails.
+    /// </summary>
+    public static void MarkAsNotWorking()
+    {
+        _openGlProbed = true;
+        _openGlWorking = false;
+        Console.WriteLine("OpenGLVideoRenderer: Marked as not working - will use software rendering");
     }
 
     public bool Initialize(int width, int height)
@@ -297,10 +329,36 @@ void main()
                 {
                     window.SwapBuffers();
                 }
+
+                // Mark OpenGL as working after first successful render
+                if (!_openGlProbed)
+                {
+                    _openGlProbed = true;
+                    _openGlWorking = true;
+                    Console.WriteLine("OpenGLVideoRenderer: OpenGL rendering verified working");
+                }
+                _consecutiveFailures = 0;
             }
             catch (Exception ex)
             {
+                _consecutiveFailures++;
                 Console.WriteLine($"OpenGLVideoRenderer: Render error - {ex.Message}");
+
+                // Check if this is a native symbol loading failure
+                if (ex.Message.Contains("Native symbol not found"))
+                {
+                    Console.WriteLine($"OpenGLVideoRenderer: OpenGL function loading failed - falling back to software rendering");
+                    MarkAsNotWorking();
+                    _renderFailed = true;
+                    RenderingFailed?.Invoke();
+                }
+                else if (_consecutiveFailures >= MaxConsecutiveFailures)
+                {
+                    Console.WriteLine($"OpenGLVideoRenderer: Too many consecutive failures ({_consecutiveFailures}) - falling back to software rendering");
+                    MarkAsNotWorking();
+                    _renderFailed = true;
+                    RenderingFailed?.Invoke();
+                }
             }
         }
     }

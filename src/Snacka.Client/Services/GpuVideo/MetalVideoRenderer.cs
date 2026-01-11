@@ -175,6 +175,10 @@ public class MetalVideoRenderer : IGpuVideoRenderer
     }
 
     /// <inheritdoc />
+    /// <remarks>Metal rendering on macOS is very stable, so this event is never raised.</remarks>
+    public event Action? RenderingFailed;
+
+    /// <inheritdoc />
     public void Dispose()
     {
         if (_disposed)

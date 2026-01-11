@@ -53,6 +53,12 @@ public interface IGpuVideoRenderer : IDisposable
     /// <param name="width">Display width</param>
     /// <param name="height">Display height</param>
     void SetDisplaySize(int width, int height);
+
+    /// <summary>
+    /// Event raised when rendering fails and GPU mode should be disabled.
+    /// Subscribers should fall back to software rendering.
+    /// </summary>
+    event Action? RenderingFailed;
 }
 
 /// <summary>
