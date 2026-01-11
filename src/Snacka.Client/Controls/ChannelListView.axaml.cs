@@ -617,7 +617,7 @@ public partial class ChannelListView : UserControl
     {
         if (_dragGhost is null || _dragGhostIcon is null || _dragGhostName is null) return;
 
-        _dragGhostIcon.Text = isVoiceChannel ? "🔊" : "#";
+        _dragGhostIcon.Text = isVoiceChannel ? "♪" : "#";
         _dragGhostName.Text = name;
         _dragGhost.IsVisible = true;
     }

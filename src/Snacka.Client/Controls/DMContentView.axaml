@@ -6,6 +6,7 @@
              xmlns:conv="using:Snacka.Client.Converters"
              xmlns:services="using:Snacka.Client.Services"
              xmlns:vm="using:Snacka.Client.ViewModels"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
              mc:Ignorable="d"
              x:Class="Snacka.Client.Controls.DMContentView"
              x:DataType="controls:DMContentView">
@@ -36,7 +37,7 @@
                             Padding="8,4"
                             Cursor="Hand"
                             ToolTip.Tip="Close DM">
-                        <TextBlock Text="✕"
+                        <ui:SymbolIcon Symbol="Dismiss"
                                    Foreground="#72767d"
                                    FontSize="16"/>
                     </Button>

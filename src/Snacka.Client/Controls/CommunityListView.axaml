@@ -5,6 +5,7 @@
              xmlns:controls="using:Snacka.Client.Controls"
              xmlns:services="using:Snacka.Client.Services"
              xmlns:conv="using:Snacka.Client.Converters"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
              mc:Ignorable="d"
              x:Class="Snacka.Client.Controls.CommunityListView"
              x:DataType="controls:CommunityListView">
@@ -22,10 +23,9 @@
                     IsEnabled="{Binding IsLoading, RelativeSource={RelativeSource AncestorType=controls:CommunityListView}, Converter={x:Static BoolConverters.Not}}">
                 <Border Width="48" Height="48" CornerRadius="24"
                         Background="#36393f">
-                    <TextBlock Text="+"
+                    <ui:SymbolIcon Symbol="Add"
                                Foreground="#3ba55c"
-                               FontSize="28"
-                               FontWeight="Light"
+                               FontSize="24"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"/>
                 </Border>
@@ -45,7 +45,7 @@
                         <Border Width="48" Height="48"
                                 CornerRadius="24"
                                 Background="#36393f">
-                            <TextBlock Text="✉"
+                            <ui:SymbolIcon Symbol="Mail"
                                        Foreground="White"
                                        FontSize="20"
                                        HorizontalAlignment="Center"

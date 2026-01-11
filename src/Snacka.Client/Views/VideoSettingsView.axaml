@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Snacka.Client.ViewModels"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
              x:Class="Snacka.Client.Views.VideoSettingsView"
              x:DataType="vm:VideoSettingsViewModel">
 
@@ -69,7 +70,7 @@
                                 CornerRadius="4"
                                 Cursor="Hand"
                                 ToolTip.Tip="Refresh camera devices">
-                            <TextBlock Text="↻" Foreground="#b9bbbe" FontSize="16"/>
+                            <ui:SymbolIcon Symbol="Sync" Foreground="#b9bbbe" FontSize="16"/>
                         </Button>
                     </StackPanel>
 

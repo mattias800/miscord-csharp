@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Snacka.Client.ViewModels"
         xmlns:conv="using:Snacka.Client.Converters"
+        xmlns:ui="using:FluentAvalonia.UI.Controls"
         x:Class="Snacka.Client.Views.AnnotationToolbarWindow"
         x:DataType="vm:ScreenAnnotationViewModel"
         Title="Drawing Tools"
@@ -32,7 +33,7 @@
                           FontWeight="SemiBold"
                           ToolTip.Tip="Enable drawing mode for yourself">
                 <StackPanel Orientation="Horizontal" Spacing="6">
-                    <TextBlock Text="✏️" VerticalAlignment="Center" FontSize="14"/>
+                    <ui:SymbolIcon Symbol="Edit" VerticalAlignment="Center" FontSize="14" Foreground="White"/>
                     <TextBlock Text="Draw" VerticalAlignment="Center"/>
                 </StackPanel>
             </ToggleButton>
@@ -81,7 +82,7 @@
                     CornerRadius="6"
                     Click="OnCloseClick"
                     ToolTip.Tip="Close drawing tools">
-                <TextBlock Text="✕" FontSize="12"/>
+                <ui:SymbolIcon Symbol="Dismiss" FontSize="12" Foreground="White"/>
             </Button>
         </StackPanel>
     </Border>

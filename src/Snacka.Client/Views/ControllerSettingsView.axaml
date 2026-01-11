@@ -3,6 +3,7 @@
              xmlns:vm="using:Snacka.Client.ViewModels"
              xmlns:services="using:Snacka.Client.Services"
              xmlns:conv="using:Snacka.Client.Converters"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
              x:Class="Snacka.Client.Views.ControllerSettingsView"
              x:DataType="vm:ControllerSettingsViewModel">
 
@@ -63,7 +64,7 @@
                             Margin="8,0,0,0"
                             CornerRadius="4"
                             ToolTip.Tip="Refresh controller list">
-                        <TextBlock Text="↻" FontSize="14"/>
+                        <ui:SymbolIcon Symbol="Sync" FontSize="14"/>
                     </Button>
 
                     <Button Grid.Column="2"

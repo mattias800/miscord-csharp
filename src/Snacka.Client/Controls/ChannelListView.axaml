@@ -6,6 +6,7 @@
              xmlns:controls="using:Snacka.Client.Controls"
              xmlns:services="using:Snacka.Client.Services"
              xmlns:vm="using:Snacka.Client.ViewModels"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
              mc:Ignorable="d"
              x:Class="Snacka.Client.Controls.ChannelListView"
              x:DataType="controls:ChannelListView">
@@ -104,7 +105,7 @@
                 ZIndex="1000">
             <StackPanel Orientation="Horizontal" Spacing="6">
                 <TextBlock x:Name="DragGhostIcon"
-                           Text="🔊"
+                           Text="#"
                            Foreground="#72767d"
                            FontSize="14"
                            VerticalAlignment="Center"/>
@@ -145,10 +146,9 @@
                         ToolTip.Tip="Create Text Channel"
                         IsEnabled="{Binding IsLoading, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}, Converter={x:Static BoolConverters.Not}}"
                         IsVisible="{Binding CanManageChannels, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}">
-                    <TextBlock Text="+"
+                    <ui:SymbolIcon Symbol="Add"
                                Foreground="#72767d"
-                               FontSize="16"
-                               FontWeight="Bold"/>
+                               FontSize="16"/>
                 </Button>
             </Grid>
 
@@ -186,7 +186,7 @@
                                                   Click="OnRenameChannelClick"
                                                   Tag="{Binding}">
                                             <MenuItem.Icon>
-                                                <TextBlock Text="✎" FontSize="12"/>
+                                                <ui:SymbolIcon Symbol="Edit" FontSize="12"/>
                                             </MenuItem.Icon>
                                         </MenuItem>
                                         <Separator x:Name="TextChannelSeparator"/>
@@ -196,7 +196,7 @@
                                                   Tag="{Binding}"
                                                   Foreground="#ed4245">
                                             <MenuItem.Icon>
-                                                <TextBlock Text="🗑" FontSize="12"/>
+                                                <ui:SymbolIcon Symbol="Delete" FontSize="12"/>
                                             </MenuItem.Icon>
                                         </MenuItem>
                                     </ContextMenu>
@@ -238,7 +238,7 @@
                                             Cursor="Hand"
                                             ToolTip.Tip="Rename Channel"
                                             IsVisible="{Binding CanManageChannels, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}">
-                                        <TextBlock Text="✎"
+                                        <ui:SymbolIcon Symbol="Edit"
                                                    Foreground="#72767d"
                                                    FontSize="12"/>
                                     </Button>
@@ -272,10 +272,9 @@
                         ToolTip.Tip="Create Voice Channel"
                         IsEnabled="{Binding IsLoading, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}, Converter={x:Static BoolConverters.Not}}"
                         IsVisible="{Binding CanManageChannels, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}">
-                    <TextBlock Text="+"
+                    <ui:SymbolIcon Symbol="Add"
                                Foreground="#72767d"
-                               FontSize="16"
-                               FontWeight="Bold"/>
+                               FontSize="16"/>
                 </Button>
             </Grid>
 
@@ -308,7 +307,7 @@
                                                   Click="OnRenameChannelClick"
                                                   Tag="{Binding Channel}">
                                             <MenuItem.Icon>
-                                                <TextBlock Text="✎" FontSize="12"/>
+                                                <ui:SymbolIcon Symbol="Edit" FontSize="12"/>
                                             </MenuItem.Icon>
                                         </MenuItem>
                                         <Separator x:Name="VoiceChannelSeparator"/>
@@ -318,13 +317,13 @@
                                                   Tag="{Binding Channel}"
                                                   Foreground="#ed4245">
                                             <MenuItem.Icon>
-                                                <TextBlock Text="🗑" FontSize="12"/>
+                                                <ui:SymbolIcon Symbol="Delete" FontSize="12"/>
                                             </MenuItem.Icon>
                                         </MenuItem>
                                     </ContextMenu>
                                 </Border.ContextMenu>
                                 <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <TextBlock Text="🔊"
+                                    <ui:SymbolIcon Symbol="Speaker2"
                                                Foreground="#72767d"
                                                FontSize="14"
                                                VerticalAlignment="Center"/>
@@ -345,7 +344,7 @@
                                                     <MenuItem Header="User Volume" IsEnabled="False"
                                                               IsVisible="{Binding !IsCurrentUser}">
                                                         <MenuItem.Icon>
-                                                            <TextBlock Text="🔊" FontSize="12"/>
+                                                            <ui:SymbolIcon Symbol="Speaker2" FontSize="12"/>
                                                         </MenuItem.Icon>
                                                     </MenuItem>
                                                     <MenuItem IsVisible="{Binding !IsCurrentUser}">
@@ -375,7 +374,7 @@
                                                             </MultiBinding>
                                                         </MenuItem.IsVisible>
                                                         <MenuItem.Icon>
-                                                            <TextBlock Text="🔇" FontSize="12"/>
+                                                            <ui:SymbolIcon Symbol="SpeakerMute" FontSize="12"/>
                                                         </MenuItem.Icon>
                                                     </MenuItem>
                                                     <!-- Server Deafen (admin only, not for current user) -->
@@ -389,7 +388,7 @@
                                                             </MultiBinding>
                                                         </MenuItem.IsVisible>
                                                         <MenuItem.Icon>
-                                                            <TextBlock Text="🔕" FontSize="12"/>
+                                                            <ui:SymbolIcon Symbol="SpeakerMute" FontSize="12"/>
                                                         </MenuItem.Icon>
                                                     </MenuItem>
                                                     <MenuItem Header="(You)" IsEnabled="False"
@@ -404,46 +403,46 @@
                                                            FontSize="13"
                                                            VerticalAlignment="Center"/>
                                                 <!-- Self muted (red) - only show if self-muted but not server-muted -->
-                                                <TextBlock Text="🔇"
+                                                <ui:SymbolIcon Symbol="Mute"
                                                            FontSize="10"
                                                            Foreground="#ed4245"
                                                            VerticalAlignment="Center"
                                                            ToolTip.Tip="Muted">
-                                                    <TextBlock.IsVisible>
+                                                    <ui:SymbolIcon.IsVisible>
                                                         <MultiBinding Converter="{x:Static BoolConverters.And}">
                                                             <Binding Path="IsMuted"/>
                                                             <Binding Path="!IsServerMuted"/>
                                                         </MultiBinding>
-                                                    </TextBlock.IsVisible>
-                                                </TextBlock>
+                                                    </ui:SymbolIcon.IsVisible>
+                                                </ui:SymbolIcon>
                                                 <!-- Server muted (orange) -->
-                                                <TextBlock Text="🔇"
+                                                <ui:SymbolIcon Symbol="Mute"
                                                            FontSize="10"
                                                            Foreground="#faa61a"
                                                            VerticalAlignment="Center"
                                                            ToolTip.Tip="Server Muted"
                                                            IsVisible="{Binding IsServerMuted}"/>
                                                 <!-- Self deafened (red) - only show if self-deafened but not server-deafened -->
-                                                <TextBlock Text="🔕"
+                                                <ui:SymbolIcon Symbol="SpeakerMute"
                                                            FontSize="10"
                                                            Foreground="#ed4245"
                                                            VerticalAlignment="Center"
                                                            ToolTip.Tip="Deafened">
-                                                    <TextBlock.IsVisible>
+                                                    <ui:SymbolIcon.IsVisible>
                                                         <MultiBinding Converter="{x:Static BoolConverters.And}">
                                                             <Binding Path="IsDeafened"/>
                                                             <Binding Path="!IsServerDeafened"/>
                                                         </MultiBinding>
-                                                    </TextBlock.IsVisible>
-                                                </TextBlock>
+                                                    </ui:SymbolIcon.IsVisible>
+                                                </ui:SymbolIcon>
                                                 <!-- Server deafened (orange) -->
-                                                <TextBlock Text="🔕"
+                                                <ui:SymbolIcon Symbol="SpeakerMute"
                                                            FontSize="10"
                                                            Foreground="#faa61a"
                                                            VerticalAlignment="Center"
                                                            ToolTip.Tip="Server Deafened"
                                                            IsVisible="{Binding IsServerDeafened}"/>
-                                                <TextBlock Text="📹"
+                                                <ui:SymbolIcon Symbol="Video"
                                                            FontSize="10"
                                                            Foreground="#3ba55c"
                                                            VerticalAlignment="Center"

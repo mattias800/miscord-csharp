@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:controls="using:Snacka.Client.Controls"
              xmlns:services="using:Snacka.Client.Services"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
              mc:Ignorable="d"
              x:Class="Snacka.Client.Controls.PinnedMessagesContent"
              x:DataType="controls:PinnedMessagesContent">
@@ -19,17 +20,20 @@
             <!-- Header -->
             <Border DockPanel.Dock="Top" Margin="0,0,0,12">
                 <Grid>
-                    <TextBlock Text="📌 Pinned Messages"
-                               Foreground="White"
-                               FontWeight="SemiBold"
-                               FontSize="16"
-                               VerticalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <ui:SymbolIcon Symbol="Pin" Foreground="White" FontSize="16"/>
+                        <TextBlock Text="Pinned Messages"
+                                   Foreground="White"
+                                   FontWeight="SemiBold"
+                                   FontSize="16"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
                     <Button HorizontalAlignment="Right"
                             Background="Transparent"
                             Padding="4"
                             Command="{Binding ClosePinnedPopupCommand, RelativeSource={RelativeSource AncestorType=controls:PinnedMessagesContent}}"
                             ToolTip.Tip="Close">
-                        <TextBlock Text="✕" Foreground="#72767d" FontSize="14"/>
+                        <ui:SymbolIcon Symbol="Dismiss" Foreground="#72767d" FontSize="14"/>
                     </Button>
                 </Grid>
             </Border>

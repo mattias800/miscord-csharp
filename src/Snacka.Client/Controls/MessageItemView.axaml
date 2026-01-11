@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:conv="using:Snacka.Client.Converters"
              xmlns:controls="using:Snacka.Client.Controls"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
              mc:Ignorable="d"
              x:Class="Snacka.Client.Controls.MessageItemView"
              x:DataType="controls:MessageItemView">
@@ -57,7 +58,7 @@
                             BorderThickness="2,0,0,0"
                             IsVisible="{Binding ReplyTo, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}, Converter={x:Static ObjectConverters.IsNotNull}}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
-                            <TextBlock Text="&#8617;" Foreground="#5865f2" FontSize="12" VerticalAlignment="Center"/>
+                            <ui:SymbolIcon Symbol="MailReply" Foreground="#5865f2" FontSize="12" VerticalAlignment="Center"/>
                             <TextBlock Text="{Binding ReplyTo.AuthorUsername, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
                                        Foreground="#5865f2"
                                        FontSize="12"
@@ -191,7 +192,7 @@
                             Tag="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
                             Click="AddReactionButton_Click"
                             IsVisible="{Binding ShowReactions, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}">
-                        <TextBlock Text="&#128512;" Foreground="#72767d" FontSize="12"/>
+                        <ui:SymbolIcon Symbol="Emoji" Foreground="#72767d" FontSize="12"/>
                     </Button>
 
                     <!-- Start Thread button (only when ShowStartThreadButton is true and no replies yet) -->
@@ -205,7 +206,7 @@
                                 <Binding Path="ReplyCount" RelativeSource="{RelativeSource AncestorType=controls:MessageItemView}" Converter="{x:Static conv:IntEqualsZeroConverter.Instance}"/>
                             </MultiBinding>
                         </Button.IsVisible>
-                        <TextBlock Text="&#128172;" Foreground="#72767d" FontSize="12"/>
+                        <ui:SymbolIcon Symbol="Message" Foreground="#72767d" FontSize="12"/>
                     </Button>
 
                     <!-- Pin button (only when ShowPinButton is true) -->
@@ -214,7 +215,7 @@
                             CommandParameter="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
                             ToolTip.Tip="{Binding IsPinned, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}, Converter={x:Static conv:BoolToStringConverter.Instance}, ConverterParameter='Unpin|Pin'}"
                             IsVisible="{Binding ShowPinButton, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}">
-                        <TextBlock Text="&#128204;"
+                        <ui:SymbolIcon Symbol="Pin"
                                    Foreground="{Binding IsPinned, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}, Converter={x:Static conv:BoolToColorConverter.Instance}, ConverterParameter='#faa61a|#72767d'}"
                                    FontSize="12"/>
                     </Button>
@@ -225,21 +226,21 @@
                             CommandParameter="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
                             ToolTip.Tip="Reply"
                             IsVisible="{Binding ShowReplyButton, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}">
-                        <TextBlock Text="&#8617;" Foreground="#72767d" FontSize="12"/>
+                        <ui:SymbolIcon Symbol="MailReply" Foreground="#72767d" FontSize="12"/>
                     </Button>
 
                     <Button Classes="msg-action-btn"
                             Command="{Binding StartEditMessageCommand, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
                             CommandParameter="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
                             ToolTip.Tip="Edit">
-                        <TextBlock Text="&#9998;" Foreground="#72767d" FontSize="12"/>
+                        <ui:SymbolIcon Symbol="Edit" Foreground="#72767d" FontSize="12"/>
                     </Button>
 
                     <Button Classes="msg-action-btn"
                             Command="{Binding DeleteMessageCommand, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
                             CommandParameter="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
                             ToolTip.Tip="Delete">
-                        <TextBlock Text="&#128465;" Foreground="#72767d" FontSize="12"/>
+                        <ui:SymbolIcon Symbol="Delete" Foreground="#72767d" FontSize="12"/>
                     </Button>
                 </StackPanel>
             </Grid>

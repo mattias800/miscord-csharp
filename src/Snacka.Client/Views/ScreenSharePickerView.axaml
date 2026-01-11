@@ -3,6 +3,7 @@
              xmlns:vm="using:Snacka.Client.ViewModels"
              xmlns:services="using:Snacka.Client.Services"
              xmlns:conv="using:Snacka.Client.Converters"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
              x:Class="Snacka.Client.Views.ScreenSharePickerView"
              x:DataType="vm:ScreenSharePickerViewModel"
              Width="560"
@@ -128,7 +129,7 @@
                         Cursor="Hand"
                         ToolTip.Tip="Refresh sources"
                         VerticalAlignment="Center">
-                    <TextBlock Text="↻" Foreground="#b9bbbe" FontSize="14"/>
+                    <ui:SymbolIcon Symbol="Sync" Foreground="#b9bbbe" FontSize="14"/>
                 </Button>
             </StackPanel>
 
@@ -219,8 +220,9 @@
                                             CornerRadius="4"
                                             Width="48"
                                             Height="32">
-                                        <TextBlock Text="🖥️"
+                                        <ui:SymbolIcon Symbol="Share"
                                                    FontSize="16"
+                                                   Foreground="White"
                                                    HorizontalAlignment="Center"
                                                    VerticalAlignment="Center"/>
                                     </Border>
@@ -265,8 +267,9 @@
                                             CornerRadius="4"
                                             Width="48"
                                             Height="32">
-                                        <TextBlock Text="📱"
+                                        <ui:SymbolIcon Symbol="Document"
                                                    FontSize="16"
+                                                   Foreground="White"
                                                    HorizontalAlignment="Center"
                                                    VerticalAlignment="Center"/>
                                     </Border>
@@ -317,8 +320,9 @@
                                             CornerRadius="4"
                                             Width="48"
                                             Height="32">
-                                        <TextBlock Text="📦"
+                                        <ui:SymbolIcon Symbol="AllApps"
                                                    FontSize="16"
+                                                   Foreground="White"
                                                    HorizontalAlignment="Center"
                                                    VerticalAlignment="Center"/>
                                     </Border>
