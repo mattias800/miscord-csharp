@@ -14,6 +14,7 @@ public class MainWindowViewModel : ViewModelBase
     private readonly Services.IAudioDeviceService _audioDeviceService;
     private readonly Services.IVideoDeviceService _videoDeviceService;
     private readonly Services.IScreenCaptureService _screenCaptureService;
+    private readonly Services.IControllerService _controllerService;
     private ViewModelBase _currentView;
     private AuthResponse? _currentUser;
     private ServerConnection? _currentServer;
@@ -22,7 +23,7 @@ public class MainWindowViewModel : ViewModelBase
     // File picker provider (set from View)
     public Func<Task<IStorageFile?>>? ImageFilePickerProvider { get; set; }
 
-    public MainWindowViewModel(IApiClient apiClient, IServerConnectionStore connectionStore, ISignalRService signalR, IWebRtcService webRtc, Services.ISettingsStore settingsStore, Services.IAudioDeviceService audioDeviceService, Services.IVideoDeviceService videoDeviceService, Services.IScreenCaptureService screenCaptureService, DevLoginConfig? devConfig = null)
+    public MainWindowViewModel(IApiClient apiClient, IServerConnectionStore connectionStore, ISignalRService signalR, IWebRtcService webRtc, Services.ISettingsStore settingsStore, Services.IAudioDeviceService audioDeviceService, Services.IVideoDeviceService videoDeviceService, Services.IScreenCaptureService screenCaptureService, Services.IControllerService controllerService, DevLoginConfig? devConfig = null)
     {
         _apiClient = apiClient;
         _connectionStore = connectionStore;
@@ -32,6 +33,7 @@ public class MainWindowViewModel : ViewModelBase
         _audioDeviceService = audioDeviceService;
         _videoDeviceService = videoDeviceService;
         _screenCaptureService = screenCaptureService;
+        _controllerService = controllerService;
 
         // Dev mode: auto-login with provided credentials
         if (devConfig is not null)
@@ -408,6 +410,7 @@ public class MainWindowViewModel : ViewModelBase
             settingsStore: _settingsStore,
             audioDeviceService: _audioDeviceService,
             videoDeviceService: _videoDeviceService,
+            controllerService: _controllerService,
             apiClient: _apiClient,
             onAccountDeleted: OnLogout,
             isServerAdmin: CurrentUser.IsServerAdmin,

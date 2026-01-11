@@ -76,6 +76,22 @@
                                        FontSize="14"/>
                         </Button>
 
+                        <!-- Controllers -->
+                        <Button Command="{Binding SelectCategoryCommand}"
+                                CommandParameter="Controllers"
+                                Background="{Binding SelectedCategory, Converter={x:Static conv:SettingsCategoryBackgroundConverter.Instance}, ConverterParameter='Controllers'}"
+                                BorderThickness="0"
+                                HorizontalContentAlignment="Left"
+                                Padding="8,8"
+                                Margin="0,2"
+                                CornerRadius="4"
+                                Cursor="Hand"
+                                IsVisible="{Binding HasControllerSettings}">
+                            <TextBlock Text="Controllers"
+                                       Foreground="{Binding SelectedCategory, Converter={x:Static conv:SettingsCategoryForegroundConverter.Instance}, ConverterParameter='Controllers'}"
+                                       FontSize="14"/>
+                        </Button>
+
                         <!-- Placeholder for future settings -->
                         <TextBlock Text="USER SETTINGS"
                                    FontSize="11"
@@ -147,6 +163,9 @@
                     </DataTemplate>
                     <DataTemplate DataType="{x:Type vm:VideoSettingsViewModel}">
                         <Views:VideoSettingsView/>
+                    </DataTemplate>
+                    <DataTemplate DataType="{x:Type vm:ControllerSettingsViewModel}">
+                        <Views:ControllerSettingsView/>
                     </DataTemplate>
                     <DataTemplate DataType="{x:Type vm:AccountSettingsViewModel}">
                         <Views:AccountSettingsView/>

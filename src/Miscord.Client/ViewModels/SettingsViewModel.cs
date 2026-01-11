@@ -11,6 +11,7 @@ public class SettingsViewModel : ViewModelBase
     private readonly ISettingsStore _settingsStore;
     private readonly IAudioDeviceService _audioDeviceService;
     private readonly IVideoDeviceService _videoDeviceService;
+    private readonly IControllerService? _controllerService;
 
     private object? _currentPage;
     private string _selectedCategory = "Voice & Video";
@@ -20,6 +21,7 @@ public class SettingsViewModel : ViewModelBase
         ISettingsStore settingsStore,
         IAudioDeviceService audioDeviceService,
         IVideoDeviceService videoDeviceService,
+        IControllerService? controllerService = null,
         IApiClient? apiClient = null,
         Action? onAccountDeleted = null,
         bool isServerAdmin = false,
@@ -30,6 +32,7 @@ public class SettingsViewModel : ViewModelBase
         _settingsStore = settingsStore;
         _audioDeviceService = audioDeviceService;
         _videoDeviceService = videoDeviceService;
+        _controllerService = controllerService;
         IsServerAdmin = isServerAdmin;
 
         CloseCommand = ReactiveCommand.Create(Close);
@@ -38,6 +41,11 @@ public class SettingsViewModel : ViewModelBase
         // Initialize ViewModels
         AudioSettingsViewModel = new AudioSettingsViewModel(_settingsStore, _audioDeviceService);
         VideoSettingsViewModel = new VideoSettingsViewModel(_settingsStore, _videoDeviceService);
+
+        if (_controllerService != null)
+        {
+            ControllerSettingsViewModel = new ControllerSettingsViewModel(_controllerService);
+        }
 
         if (apiClient is not null && onAccountDeleted is not null)
         {
@@ -70,9 +78,11 @@ public class SettingsViewModel : ViewModelBase
 
     public AudioSettingsViewModel AudioSettingsViewModel { get; }
     public VideoSettingsViewModel VideoSettingsViewModel { get; }
+    public ControllerSettingsViewModel? ControllerSettingsViewModel { get; }
     public AccountSettingsViewModel? AccountSettingsViewModel { get; }
     public AdminPanelViewModel? AdminPanelViewModel { get; }
     public bool IsServerAdmin { get; }
+    public bool HasControllerSettings => ControllerSettingsViewModel != null;
 
     public ICommand CloseCommand { get; }
     public ICommand SelectCategoryCommand { get; }
@@ -93,6 +103,7 @@ public class SettingsViewModel : ViewModelBase
         {
             "Voice & Video" => AudioSettingsViewModel,
             "Video" => VideoSettingsViewModel,
+            "Controllers" => ControllerSettingsViewModel,
             "My Account" => AccountSettingsViewModel,
             "Server Admin" => AdminPanelViewModel,
             _ => AudioSettingsViewModel
