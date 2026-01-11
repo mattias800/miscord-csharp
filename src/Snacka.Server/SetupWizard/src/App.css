@@ -156,6 +156,17 @@
   margin-top: 16px;
 }
 
+.form-group .hint {
+  display: block;
+  margin-top: 6px;
+}
+
+.readonly-input {
+  background: var(--bg-tertiary) !important;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
 .step-indicator {
   display: flex;
   gap: 8px;

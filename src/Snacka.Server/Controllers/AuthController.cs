@@ -27,8 +27,9 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<SetupServerInfoResponse>> GetServerInfo(CancellationToken cancellationToken)
     {
         var hasUsers = await _inviteService.HasAnyUsersAsync(cancellationToken);
+
         return Ok(new SetupServerInfoResponse(
-            NeedsSetup: !hasUsers,
+            HasUsers: hasUsers,
             AllowRegistration: _configuration.GetValue("ServerInfo:AllowRegistration", true)
         ));
     }
@@ -280,4 +281,4 @@ public class UsersController : ControllerBase
     }
 }
 
-public record SetupServerInfoResponse(bool NeedsSetup, bool AllowRegistration);
+public record SetupServerInfoResponse(bool HasUsers, bool AllowRegistration);

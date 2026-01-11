@@ -6,7 +6,7 @@ public record RegisterRequest(
     [Required, StringLength(50, MinimumLength = 3)] string Username,
     [Required, EmailAddress] string Email,
     [Required, StringLength(100, MinimumLength = 8)] string Password,
-    [Required] string InviteCode
+    string? InviteCode  // Optional for first user (server setup)
 );
 
 public record LoginRequest(

@@ -1,31 +1,28 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
 
 interface ServerInfo {
-  serverName: string
   hasUsers: boolean
-  bootstrapInviteCode: string | null
 }
 
 interface SetupData {
-  serverName: string
   adminUsername: string
   adminEmail: string
   adminPassword: string
   confirmPassword: string
+  inviteCode: string
 }
 
-type Step = 'loading' | 'already-setup' | 'welcome' | 'server-name' | 'admin-account' | 'complete'
+type Step = 'loading' | 'already-setup' | 'welcome' | 'admin-account' | 'complete'
 
 function App() {
   const [step, setStep] = useState<Step>('loading')
-  const [serverInfo, setServerInfo] = useState<ServerInfo | null>(null)
   const [setupData, setSetupData] = useState<SetupData>({
-    serverName: 'My Snacka Server',
     adminUsername: '',
     adminEmail: '',
     adminPassword: '',
     confirmPassword: '',
+    inviteCode: '',
   })
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -39,7 +36,6 @@ function App() {
       const response = await fetch('/api/auth/server-info')
       if (response.ok) {
         const info: ServerInfo = await response.json()
-        setServerInfo(info)
         if (info.hasUsers) {
           setStep('already-setup')
         } else {
@@ -76,13 +72,14 @@ function App() {
       return
     }
 
+    if (!setupData.inviteCode) {
+      setError('Please enter the invite code from the server console')
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
-      // First, update server name if needed
-      // For now, we'll just create the admin account
-      // Server name can be added to a setup endpoint later
-
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
@@ -92,7 +89,7 @@ function App() {
           username: setupData.adminUsername,
           email: setupData.adminEmail,
           password: setupData.adminPassword,
-          inviteCode: serverInfo?.bootstrapInviteCode,
+          inviteCode: setupData.inviteCode,
         }),
       })
 
@@ -143,41 +140,9 @@ function App() {
             <p className="description">
               Let's set up your server. This will only take a minute.
             </p>
-            <button className="button primary" onClick={() => setStep('server-name')}>
+            <button className="button primary" onClick={() => setStep('admin-account')}>
               Get Started
             </button>
-          </div>
-        )
-
-      case 'server-name':
-        return (
-          <div className="setup-card">
-            <h1>Name Your Server</h1>
-            <p className="description">
-              Choose a name that your community will recognize.
-            </p>
-            <div className="form-group">
-              <label htmlFor="serverName">Server Name</label>
-              <input
-                id="serverName"
-                type="text"
-                value={setupData.serverName}
-                onChange={(e) => setSetupData({ ...setupData, serverName: e.target.value })}
-                placeholder="My Snacka Server"
-              />
-            </div>
-            <div className="button-group">
-              <button className="button secondary" onClick={() => setStep('welcome')}>
-                Back
-              </button>
-              <button 
-                className="button primary" 
-                onClick={() => setStep('admin-account')}
-                disabled={!setupData.serverName.trim()}
-              >
-                Continue
-              </button>
-            </div>
           </div>
         )
 
@@ -233,12 +198,23 @@ function App() {
                 autoComplete="new-password"
               />
             </div>
+            <div className="form-group">
+              <label htmlFor="inviteCode">Invite Code</label>
+              <input
+                id="inviteCode"
+                type="text"
+                value={setupData.inviteCode}
+                onChange={(e) => setSetupData({ ...setupData, inviteCode: e.target.value })}
+                placeholder="Enter invite code from server console"
+              />
+              <small className="hint">Copy the invite code from the server console output</small>
+            </div>
             <div className="button-group">
-              <button className="button secondary" onClick={() => setStep('server-name')}>
+              <button className="button secondary" onClick={() => setStep('welcome')}>
                 Back
               </button>
-              <button 
-                className="button primary" 
+              <button
+                className="button primary"
                 onClick={handleSubmit}
                 disabled={isSubmitting}
               >
@@ -257,7 +233,6 @@ function App() {
               Your server is ready. You can now connect using the Snacka desktop app.
             </p>
             <div className="info-box">
-              <p><strong>Server:</strong> {setupData.serverName}</p>
               <p><strong>Admin:</strong> {setupData.adminUsername}</p>
             </div>
             <p className="hint">
@@ -274,8 +249,7 @@ function App() {
       <div className="step-indicator">
         {step !== 'loading' && step !== 'already-setup' && (
           <>
-            <div className={`step ${['welcome', 'server-name', 'admin-account', 'complete'].includes(step) ? 'active' : ''}`} />
-            <div className={`step ${['server-name', 'admin-account', 'complete'].includes(step) ? 'active' : ''}`} />
+            <div className={`step ${['welcome', 'admin-account', 'complete'].includes(step) ? 'active' : ''}`} />
             <div className={`step ${['admin-account', 'complete'].includes(step) ? 'active' : ''}`} />
             <div className={`step ${step === 'complete' ? 'active' : ''}`} />
           </>

@@ -294,6 +294,10 @@ using (var scope = app.Services.CreateScope())
     var hasUsers = db.Users.Any();
     if (!hasUsers)
     {
+        // Get or create the bootstrap invite code
+        var inviteService = scope.ServiceProvider.GetRequiredService<IServerInviteService>();
+        var inviteCode = inviteService.GetOrCreateBootstrapInviteAsync(CancellationToken.None).GetAwaiter().GetResult();
+
         Console.WriteLine("");
         Console.WriteLine("╔══════════════════════════════════════════════════════════════╗");
         Console.WriteLine("║                    FIRST TIME SETUP                          ║");
@@ -308,6 +312,8 @@ using (var scope = app.Services.CreateScope())
         Console.WriteLine("║  If using a reverse proxy with SSL:                          ║");
         Console.WriteLine("║                                                              ║");
         Console.WriteLine("║    https://<your-domain>/setup                               ║");
+        Console.WriteLine("║                                                              ║");
+        Console.WriteLine($"║  Invite Code: {inviteCode,-46} ║");
         Console.WriteLine("║                                                              ║");
         Console.WriteLine("╚══════════════════════════════════════════════════════════════╝");
         Console.WriteLine("");
