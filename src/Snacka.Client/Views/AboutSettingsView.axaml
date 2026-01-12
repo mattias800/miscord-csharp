@@ -126,6 +126,72 @@
                     </Grid>
                 </StackPanel>
             </Border>
+
+            <!-- Diagnostics / Bug Reporting -->
+            <Border Background="{StaticResource Content1Brush}"
+                    CornerRadius="12"
+                    Padding="20">
+                <StackPanel Spacing="16">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Diagnostics"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource ForegroundBrush}"/>
+                        <TextBlock Text="Logs to help with bug reports"
+                                   FontSize="12"
+                                   Foreground="{StaticResource Foreground3Brush}"/>
+                    </StackPanel>
+
+                    <!-- Log file path -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Log File"
+                                   FontSize="12"
+                                   Foreground="{StaticResource Foreground3Brush}"/>
+                        <TextBlock Text="{Binding LogFilePath}"
+                                   FontSize="11"
+                                   Foreground="{StaticResource Foreground2Brush}"
+                                   TextWrapping="Wrap"
+                                   FontFamily="Consolas, Monaco, monospace"/>
+                    </StackPanel>
+
+                    <!-- Action buttons -->
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Button Command="{Binding CopyLogsCommand}"
+                                Classes="btn-primary"
+                                Padding="16,10">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <ui:SymbolIcon Symbol="Copy" FontSize="14"/>
+                                <TextBlock Text="Copy Logs for Bug Report"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding OpenLogsFolderCommand}"
+                                Classes="btn-secondary"
+                                Padding="16,10">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <ui:SymbolIcon Symbol="OpenFolder" FontSize="14"/>
+                                <TextBlock Text="Open Logs Folder"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Status message -->
+                    <TextBlock Text="{Binding CopyStatus}"
+                               FontSize="12"
+                               Foreground="{StaticResource SuccessBrush}"
+                               IsVisible="{Binding CopyStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+                    <!-- Instructions -->
+                    <Border Background="{StaticResource Content2Brush}"
+                            CornerRadius="8"
+                            Padding="12">
+                        <TextBlock Text="When reporting a bug, click 'Copy Logs for Bug Report' to copy diagnostic information to your clipboard. Then paste it in your bug report on GitHub."
+                                   FontSize="12"
+                                   Foreground="{StaticResource Foreground3Brush}"
+                                   TextWrapping="Wrap"/>
+                    </Border>
+                </StackPanel>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </UserControl>
