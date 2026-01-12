@@ -200,13 +200,55 @@ Native Capture (NV12) → ffmpeg (hardware encoder) → H.264 NAL units → WebR
 
 ### Future Optimization: Direct Hardware Encoding
 
-For even lower latency (~2-5ms), bypass FFmpeg entirely:
+For even lower latency (~1-5ms), bypass FFmpeg entirely with API-specific capture tools.
 
-**macOS**: Modify SnackaCapture to output H.264 directly via VTCompressionSession
-**Windows**: Modify SnackaCaptureWindows to output H.264 via Media Foundation
-**Linux**: Use VA-API or NVENC directly
+#### Architecture: One Tool Per Encoding API
 
-This would eliminate the ffmpeg process overhead and enable zero-copy encoding from GPU capture surfaces.
+```
+src/
+├── SnackaCapture/                    # macOS (ScreenCaptureKit + VideoToolbox)
+├── SnackaCaptureWindows/             # Windows (Desktop Duplication + NV12 output) - CURRENT
+│
+├── SnackaCaptureNvenc/               # Windows/Linux (NVENC SDK) - PLANNED
+├── SnackaCaptureAmf/                 # Windows (AMD AMF SDK) - PLANNED
+├── SnackaCaptureMediaFoundation/     # Windows (Intel QSV fallback) - PLANNED
+│
+├── SnackaCaptureVaapi/               # Linux (VA-API for Intel/AMD) - PLANNED
+└── SnackaCapturePipeWire/            # Linux (PipeWire capture + VA-API) - PLANNED
+```
+
+#### Tool Selection at Runtime
+
+```
+WebRtcService selects tool based on detected GPU:
+├── macOS           → SnackaCapture (VideoToolbox)
+├── Windows NVIDIA  → SnackaCaptureNvenc (NVENC SDK)
+├── Windows AMD     → SnackaCaptureAmf (AMF SDK)
+├── Windows Intel   → SnackaCaptureMediaFoundation (QSV)
+├── Windows fallback→ SnackaCaptureWindows (current, uses ffmpeg)
+├── Linux NVIDIA    → SnackaCaptureNvenc (NVENC SDK)
+├── Linux Intel/AMD → SnackaCaptureVaapi (VA-API)
+└── Linux fallback  → ffmpeg x11grab
+```
+
+#### Implementation Priority
+
+| Tool | Platform | Effort | Latency Gain |
+|------|----------|--------|--------------|
+| SnackaCapture + VideoToolbox | macOS | 1-2 days | ~10-15ms |
+| SnackaCaptureNvenc | Windows/Linux | 3-4 days | ~10-15ms |
+| SnackaCaptureAmf | Windows | 2-3 days | ~10-15ms |
+| SnackaCaptureMediaFoundation | Windows | 2-3 days | ~10-15ms |
+| SnackaCaptureVaapi | Linux | 3-4 days | ~10-15ms |
+| SnackaCapturePipeWire | Linux | 1-2 weeks | Native Wayland |
+
+#### Benefits of Separate Tools
+
+1. **Clean code** - Each tool focuses on one API
+2. **Independent builds** - Don't need NVENC SDK to build AMF version
+3. **Easier testing** - Test each encoder independently
+4. **Graceful fallback** - If tool missing, use ffmpeg path
+5. **Future-proof** - Easy to add new APIs (e.g., Vulkan Video)
 
 ---
 
@@ -302,7 +344,7 @@ Compare to current: ~150-200ms (not playable for fast games)
 ```
 src/
 ├── SnackaCapture/              # macOS (Swift) ✅
-│   ├── Package.swift
+│   ├── Package.swift           # ScreenCaptureKit + VideoToolbox (direct H.264 planned)
 │   └── Sources/
 │       └── SnackaCapture/
 │           ├── SnackaCaptureApp.swift
@@ -310,30 +352,52 @@ src/
 │           ├── SourceLister.swift
 │           └── Models.swift
 │
-├── SnackaCaptureWindows/       # Windows (C++) ✅
-│   ├── CMakeLists.txt
+├── SnackaCaptureWindows/       # Windows fallback (C++) ✅
+│   ├── CMakeLists.txt          # Desktop Duplication + NV12 output (uses ffmpeg for encoding)
 │   └── src/
-│       ├── main.cpp              # CLI entry point
-│       ├── DisplayCapturer.cpp/h # Desktop Duplication API
-│       ├── WindowCapturer.cpp/h  # Window capture
-│       ├── AudioCapturer.cpp/h   # WASAPI loopback
-│       ├── ColorConverter.cpp/h  # GPU color conversion
-│       ├── SourceLister.cpp/h    # JSON source listing
-│       └── Protocol.h            # Audio packet protocol
+│       ├── main.cpp
+│       ├── DisplayCapturer.cpp/h
+│       ├── WindowCapturer.cpp/h
+│       ├── AudioCapturer.cpp/h
+│       ├── ColorConverter.cpp/h
+│       ├── SourceLister.cpp/h
+│       └── Protocol.h
 │
-├── SnackaCapture.Linux/        # Linux (C or Rust) - Future
-│   └── ...
+├── SnackaCaptureNvenc/         # Windows/Linux NVIDIA (C++) - PLANNED
+│   ├── CMakeLists.txt          # Desktop Duplication/X11 + NVENC SDK
+│   └── src/
+│       ├── main.cpp
+│       ├── NvencEncoder.cpp/h
+│       └── ...
+│
+├── SnackaCaptureAmf/           # Windows AMD (C++) - PLANNED
+│   ├── CMakeLists.txt          # Desktop Duplication + AMF SDK
+│   └── src/
+│       ├── main.cpp
+│       ├── AmfEncoder.cpp/h
+│       └── ...
+│
+├── SnackaCaptureMediaFoundation/ # Windows Intel (C++) - PLANNED
+│   ├── CMakeLists.txt          # Desktop Duplication + Media Foundation (QSV)
+│   └── src/
+│       ├── main.cpp
+│       ├── MfEncoder.cpp/h
+│       └── ...
+│
+├── SnackaCaptureVaapi/         # Linux Intel/AMD (C) - PLANNED
+│   ├── CMakeLists.txt          # X11/Wayland + VA-API
+│   └── src/
+│       └── ...
+│
+├── SnackaCapturePipeWire/      # Linux native (C/Rust) - PLANNED
+│   └── ...                     # PipeWire capture + VA-API encoding
 │
 └── Snacka.Client/
     └── Services/
         ├── IScreenCaptureService.cs
-        ├── ScreenCaptureService.cs      # Platform detection, source listing
-        ├── WebRtcService.cs             # Uses appropriate capture tool
-        └── CaptureProviders/            # Future: abstraction layer
-            ├── ICaptureProvider.cs
-            ├── MacOSCaptureProvider.cs
-            ├── WindowsCaptureProvider.cs
-            └── LinuxCaptureProvider.cs
+        ├── ScreenCaptureService.cs      # Platform/GPU detection, source listing
+        ├── WebRtcService.cs             # Selects appropriate capture tool
+        └── GpuDetection.cs              # Detect NVIDIA/AMD/Intel GPU - PLANNED
 ```
 
 ---
