@@ -12,11 +12,11 @@ This document outlines the cross-platform screen capture strategy and future gam
 - **Encoding**: Software H.264 via ffmpeg (NV12 input from native capture)
 - **Latency**: ~80-120ms end-to-end
 
-### Windows 🟡
-- **Video**: ffmpeg with gdigrab (SnackaCaptureWindows ready but not integrated)
-- **Audio**: None currently (WASAPI capture ready in SnackaCaptureWindows)
-- **Encoding**: Software H.264 via ffmpeg
-- **Source listing**: Uses SnackaCaptureWindows for display/window enumeration
+### Windows ✅
+- **Video**: SnackaCaptureWindows (Desktop Duplication API) on Windows 10+, ffmpeg fallback on older
+- **Audio**: System audio via WASAPI loopback
+- **Encoding**: Software H.264 via ffmpeg (NV12 input from native capture)
+- **Latency**: ~80-120ms end-to-end
 
 ### Linux
 - **Video**: ffmpeg with x11grab
@@ -103,9 +103,9 @@ SnackaCapture capture --window 12345 --width 1920 --height 1080 --fps 30 --audio
 
 ---
 
-### 1.2 Windows - SnackaCaptureWindows (C++) 🟡 PARTIAL
+### 1.2 Windows - SnackaCaptureWindows (C++) ✅ COMPLETE
 
-**Status**: Native tool complete, WebRtcService integration pending
+**Status**: Fully implemented and integrated
 
 **Location**: `src/SnackaCaptureWindows/`
 
@@ -123,8 +123,8 @@ SnackaCapture capture --window 12345 --width 1920 --height 1080 --fps 30 --audio
 **Integration Tasks**:
 - [x] SnackaCaptureWindows CLI tool complete
 - [x] ScreenCaptureService uses SnackaCaptureWindows for source listing
-- [ ] Update WebRtcService to use SnackaCaptureWindows for capture (currently uses ffmpeg gdigrab)
-- [ ] Parse audio packets from stderr (same format as macOS)
+- [x] WebRtcService uses SnackaCaptureWindows for capture on Windows 10+
+- [x] Audio packets parsed from stderr (same format as macOS)
 
 **CLI Interface** (implemented):
 ```bash
@@ -304,7 +304,7 @@ Compare to current: ~150-200ms (not playable for fast games)
 3. ✅ Screen share audio transmission (PT 112, separate Opus decoder in UserAudioMixer)
 
 ### Medium Priority
-4. 🟡 Windows SnackaCaptureWindows - native tool complete, WebRtcService integration pending
+4. ✅ Windows SnackaCaptureWindows with Desktop Duplication + WASAPI
 5. ⬜ Linux SnackaCapture with PipeWire
 6. ⬜ Hardware encoding (VideoToolbox first)
 
@@ -368,7 +368,9 @@ src/
 - [x] Windows: SnackaCaptureWindows captures windows
 - [x] Windows: SnackaCaptureWindows captures WASAPI audio
 - [x] Windows: ScreenCaptureService uses SnackaCaptureWindows for source listing
-- [ ] Windows: WebRtcService integrated with SnackaCaptureWindows for capture
+- [x] Windows: WebRtcService integrated with SnackaCaptureWindows for capture
+- [x] Windows: Audio transmitted alongside screen share video
+- [x] Windows: Fallback to ffmpeg on Windows < 10 1803
 - [ ] Linux: Capture with PipeWire audio
 
 ### Phase 2: Hardware Encoding
