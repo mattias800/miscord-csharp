@@ -10,5 +10,7 @@ public record LinkPreview(
     string? ImageUrl,
     string? SiteName,
     string? Type,
-    string? FaviconUrl
+    string? FaviconUrl,
+    string? PreviewUrl = null,
+    string? ArtistName = null
 );

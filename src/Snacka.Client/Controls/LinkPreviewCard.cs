@@ -19,6 +19,8 @@ public class LinkPreviewCard : Border
     private static readonly IBrush BackgroundBrush = new SolidColorBrush(Color.Parse("#2f3136"));
     private static readonly IBrush CardBorderBrush = new SolidColorBrush(Color.Parse("#202225"));
     private static readonly IBrush AccentBrush = new SolidColorBrush(Color.Parse("#5865f2"));
+    private static readonly IBrush SpotifyAccentBrush = new SolidColorBrush(Color.Parse("#1DB954"));
+    private static readonly IBrush YouTubeAccentBrush = new SolidColorBrush(Color.Parse("#FF0000"));
     private static readonly IBrush TitleBrush = new SolidColorBrush(Color.Parse("#00aff4"));
     private static readonly IBrush DescriptionBrush = new SolidColorBrush(Color.Parse("#b9bbbe"));
     private static readonly IBrush SiteNameBrush = new SolidColorBrush(Color.Parse("#72767d"));
@@ -136,11 +138,12 @@ public class LinkPreviewCard : Border
             LastChildFill = true
         };
 
-        // Left accent bar
+        // Left accent bar - use site-specific color
+        var accentColor = GetAccentColor(Preview.SiteName);
         var accentBar = new Border
         {
             Width = 4,
-            Background = AccentBrush,
+            Background = accentColor,
             CornerRadius = new CornerRadius(4, 0, 0, 4)
         };
         DockPanel.SetDock(accentBar, Dock.Left);
@@ -223,6 +226,19 @@ public class LinkPreviewCard : Border
             return description;
 
         return description[..(maxLength - 3)] + "...";
+    }
+
+    /// <summary>
+    /// Returns the appropriate accent color based on the site name.
+    /// </summary>
+    private static IBrush GetAccentColor(string? siteName)
+    {
+        return siteName?.ToLowerInvariant() switch
+        {
+            "spotify" => SpotifyAccentBrush,
+            "youtube" => YouTubeAccentBrush,
+            _ => AccentBrush
+        };
     }
 
     private static void LoadImageAsync(string imageUrl, Border container)

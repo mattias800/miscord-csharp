@@ -21,6 +21,11 @@ public partial class LinkPreviewService : ILinkPreviewService
         @"(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/)([a-zA-Z0-9_-]{11})",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+    // Spotify URL patterns - matches track, album, playlist, artist, episode, show
+    private static readonly Regex SpotifyRegex = new(
+        @"open\.spotify\.com/(track|album|playlist|artist|episode|show)/([a-zA-Z0-9]+)",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
     // SECURITY: Blocked hostnames to prevent SSRF attacks
     private static readonly HashSet<string> BlockedHosts = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -248,6 +253,13 @@ public partial class LinkPreviewService : ILinkPreviewService
             return await FetchYouTubePreviewAsync(uri.ToString(), youtubeMatch.Groups[1].Value, cancellationToken);
         }
 
+        // Check for Spotify URLs and use oEmbed API
+        var spotifyMatch = SpotifyRegex.Match(uri.ToString());
+        if (spotifyMatch.Success)
+        {
+            return await FetchSpotifyPreviewAsync(uri.ToString(), spotifyMatch.Groups[1].Value, spotifyMatch.Groups[2].Value, cancellationToken);
+        }
+
         using var request = new HttpRequestMessage(HttpMethod.Get, uri);
         request.Headers.Accept.ParseAdd("text/html,application/xhtml+xml");
 
@@ -439,5 +451,73 @@ public partial class LinkPreviewService : ILinkPreviewService
         string? Thumbnail_Url,
         int? Thumbnail_Width,
         int? Thumbnail_Height
+    );
+
+    /// <summary>
+    /// Fetches Spotify content preview using the oEmbed API.
+    /// </summary>
+    private async Task<LinkPreview?> FetchSpotifyPreviewAsync(string originalUrl, string contentType, string contentId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var oEmbedUrl = $"https://open.spotify.com/oembed?url={Uri.EscapeDataString(originalUrl)}";
+
+            _logger.LogInformation("Fetching Spotify oEmbed for {ContentType} {ContentId}", contentType, contentId);
+
+            var response = await _httpClient.GetAsync(oEmbedUrl, cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Spotify oEmbed returned {StatusCode} for {ContentType} {ContentId}", response.StatusCode, contentType, contentId);
+                return null;
+            }
+
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            var oEmbed = JsonSerializer.Deserialize<SpotifyOEmbed>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            if (oEmbed == null)
+                return null;
+
+            // Determine display type based on Spotify content type
+            var displayType = contentType.ToLower() switch
+            {
+                "track" => "music.song",
+                "album" => "music.album",
+                "playlist" => "music.playlist",
+                "artist" => "music.artist",
+                "episode" => "music.episode",
+                "show" => "music.podcast",
+                _ => "music"
+            };
+
+            return new LinkPreview(
+                Url: originalUrl,
+                Title: oEmbed.Title,
+                Description: contentType.ToLower() == "track" ? "Track" : contentType,
+                ImageUrl: oEmbed.Thumbnail_Url,
+                SiteName: "Spotify",
+                Type: displayType,
+                FaviconUrl: "https://open.spotify.com/favicon.ico"
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch Spotify preview for {ContentType} {ContentId}", contentType, contentId);
+            return null;
+        }
+    }
+
+    private record SpotifyOEmbed(
+        string? Title,
+        string? Thumbnail_Url,
+        int? Thumbnail_Width,
+        int? Thumbnail_Height,
+        string? Provider_Name,
+        string? Provider_Url,
+        string? Type,
+        string? Html
     );
 }
