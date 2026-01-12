@@ -316,12 +316,29 @@ Send over WebRTC DataChannel for lowest latency:
 
 ## Implementation Phases
 
-### Phase 1: Windows + Linux MVP
-- [ ] Create `IControllerInputService` interface
-- [ ] Implement `DesktopControllerInputService` using HIDSharp (Windows/Linux/macOS)
+### Phase 1: Windows + Linux MVP (PARTIAL - Input Capture Done)
+
+#### Input Capture (Guest Side) ✅ COMPLETE
+- [x] Create `IControllerService` interface
+- [x] Implement `ControllerService` using HIDSharp (Windows/Linux/macOS)
+- [x] `ControllerDevice` record with Id, Name, Manufacturer, VendorId, ProductId
+- [x] `ControllerState` class with 8 axes, 32 buttons, hat switch
+- [x] Controller enumeration (GamePad, Joystick, MultiAxisController usage pages)
+- [x] HID report parsing for axes and buttons
+- [x] Settings UI: `ControllerSettingsView.axaml` with full test visualization
+  - [x] Controller dropdown selection with refresh
+  - [x] Left/right stick visualization (circular with crosshairs)
+  - [x] Trigger bars (Rx/Ry)
+  - [x] 16 button indicators with press highlighting
+  - [x] D-pad/hat switch visualization
+- [x] Custom converters: `AxisToPositionConverter`, `BoolToButtonColorConverter`, `HatToDPadConverter`
+
+#### Virtual Controller (Host Side) - NOT STARTED
 - [ ] Create `IVirtualControllerService` interface
 - [ ] Implement `WindowsVirtualControllerService` using ViGEm.NET
 - [ ] Implement `LinuxVirtualControllerService` using uinput P/Invoke
+
+#### Network Transport - NOT STARTED
 - [ ] Define `ControllerStateMessage` protocol
 - [ ] Add WebRTC DataChannel for controller data
 - [ ] UI: "Share Controller" button during screen share viewing
@@ -490,3 +507,8 @@ public record ControllerInfo(
 - [HIDSharp](https://www.nuget.org/packages/HidSharp)
 - [HIDDevices](https://github.com/DevDecoder/HIDDevices)
 - [gamepad-osx](https://github.com/suzukiplan/gamepad-osx)
+
+---
+
+**Last Updated:** 2026-01-12
+**Status:** ~30% - Input capture complete (HIDSharp, settings UI, test visualization). Network transport and virtual controller creation not started.
