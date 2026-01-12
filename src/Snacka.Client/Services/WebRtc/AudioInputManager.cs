@@ -25,13 +25,13 @@ public class AudioInputManager : IAsyncDisposable
 
     // Automatic Gain Control (AGC) for consistent microphone levels
     private float _agcGain = 1.0f;
-    private const float AgcTargetRms = 6000f;
+    private const float AgcTargetRms = 3000f;         // Target RMS level (reduced from 6000)
     private const float AgcMinGain = 1.0f;
-    private const float AgcMaxGain = 16.0f;
+    private const float AgcMaxGain = 8.0f;            // Max 8x boost (reduced from 16x)
     private const float AgcAttackCoeff = 0.1f;
     private const float AgcReleaseCoeff = 0.005f;
     private const float AgcSilenceThreshold = 200f;
-    private const float BaselineInputBoost = 4.0f;
+    private const float BaselineInputBoost = 1.5f;    // 1.5x baseline (reduced from 4x)
 
     /// <summary>
     /// Gets whether the user is currently speaking (voice activity detected).

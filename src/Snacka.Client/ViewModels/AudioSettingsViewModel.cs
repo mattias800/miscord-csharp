@@ -194,15 +194,15 @@ public class AudioSettingsViewModel : ViewModelBase
     public string AgcGainDisplay => $"{_agcGain:F1}x";
 
     // AGC boost as percentage (0-100 where 100 = max boost)
-    // AGC goes from 1x to 16x, so we map that to 0-100%
-    public float AgcBoostPercent => Math.Min(100f, (_agcGain - 1f) / 15f * 100f);
+    // AGC goes from 1x to 8x, so we map that to 0-100%
+    public float AgcBoostPercent => Math.Min(100f, (_agcGain - 1f) / 7f * 100f);
 
     // Status text based on AGC level
     public string AgcStatus => _agcGain switch
     {
         < 1.5f => "Normal",
-        < 4f => "Boosting",
-        < 8f => "High boost",
+        < 3f => "Boosting",
+        < 6f => "High boost",
         _ => "Max boost"
     };
 

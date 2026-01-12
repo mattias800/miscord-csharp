@@ -53,13 +53,13 @@ public class AudioDeviceService : IAudioDeviceService
     // AGC for microphone test (mirrors WebRtcService AGC)
     private float _testAgcGain = 1.0f;
     private Action<float>? _onAgcUpdate;
-    private const float AgcTargetRms = 6000f;
+    private const float AgcTargetRms = 3000f;         // Target RMS level (reduced from 6000)
     private const float AgcMinGain = 1.0f;
-    private const float AgcMaxGain = 16.0f;
+    private const float AgcMaxGain = 8.0f;            // Max 8x boost (reduced from 16x)
     private const float AgcAttackCoeff = 0.1f;
     private const float AgcReleaseCoeff = 0.005f;
     private const float AgcSilenceThreshold = 200f;
-    private const float BaselineInputBoost = 4.0f;
+    private const float BaselineInputBoost = 1.5f;    // 1.5x baseline (reduced from 4x)
 
     public bool IsTestingInput => _testAudioSource != null;
     public float CurrentAgcGain => _testAgcGain;
