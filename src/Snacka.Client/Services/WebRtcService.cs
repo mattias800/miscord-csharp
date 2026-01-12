@@ -1890,8 +1890,8 @@ public class WebRtcService : IWebRtcService
             }
 
             _isUsingNativeCapture = nativeCapturePath != null;
-            // SnackaCaptureVideoToolbox with --encode outputs H.264 directly
-            _isUsingDirectH264 = ShouldUseSnackaCaptureVideoToolbox() && nativeCapturePath != null;
+            // Both SnackaCaptureVideoToolbox (macOS) and SnackaCaptureWindows (Windows) with --encode output H.264 directly
+            _isUsingDirectH264 = (ShouldUseSnackaCaptureVideoToolbox() || ShouldUseSnackaCaptureWindows()) && nativeCapturePath != null;
 
             // Only create ffmpeg encoder if we're not getting direct H.264
             if (!_isUsingDirectH264)
@@ -1906,7 +1906,8 @@ public class WebRtcService : IWebRtcService
             }
             else
             {
-                Console.WriteLine("WebRTC: Using direct H.264 encoding from VideoToolbox (bypassing ffmpeg)");
+                var encoderName = OperatingSystem.IsMacOS() ? "VideoToolbox" : "Media Foundation (NVENC/AMF/QSV)";
+                Console.WriteLine($"WebRTC: Using direct H.264 encoding from {encoderName} (bypassing ffmpeg)");
             }
 
             if (_isUsingNativeCapture)
@@ -2257,6 +2258,10 @@ public class WebRtcService : IWebRtcService
         {
             args.Add("--audio");
         }
+
+        // Use direct H.264 encoding via Media Foundation (NVENC/AMF/QuickSync)
+        args.Add("--encode");
+        args.Add("--bitrate 6");  // 6 Mbps for screen share
 
         return string.Join(" ", args);
     }

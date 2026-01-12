@@ -26,6 +26,8 @@ add_executable(SnackaCaptureWindows
     src/AudioCapturer.h
     src/ColorConverter.cpp
     src/ColorConverter.h
+    src/MediaFoundationEncoder.cpp
+    src/MediaFoundationEncoder.h
     src/Protocol.h
 )
 
@@ -37,6 +39,12 @@ target_link_libraries(SnackaCaptureWindows PRIVATE
     windowsapp  # For WinRT
     ole32
     uuid
+    # Media Foundation for hardware H.264 encoding
+    mf
+    mfplat
+    mfuuid
+    mfreadwrite
+    ws2_32  # For htonl in AVCC format
 )
 
 # Include directories

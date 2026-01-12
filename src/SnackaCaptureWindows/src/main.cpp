@@ -3,6 +3,7 @@
 #include "DisplayCapturer.h"
 #include "WindowCapturer.h"
 #include "AudioCapturer.h"
+#include "MediaFoundationEncoder.h"
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -49,12 +50,15 @@ OPTIONS:
     --height <pixels>   Output height (default: 1080)
     --fps <rate>        Frames per second (default: 30)
     --audio             Capture system audio
+    --encode            Output H.264 encoded video (instead of raw NV12)
+    --bitrate <mbps>    Encoding bitrate in Mbps (default: 6)
     --json              Output source list as JSON (with 'list' command)
     --help              Show this help message
 
 EXAMPLES:
     SnackaCaptureWindows list --json
     SnackaCaptureWindows --display 0 --width 1920 --height 1080 --fps 30
+    SnackaCaptureWindows --display 0 --encode --bitrate 8 --audio
     SnackaCaptureWindows --window 12345678 --audio
 )";
 }
@@ -71,7 +75,7 @@ int ListSources(bool asJson) {
     return 0;
 }
 
-int Capture(int displayIndex, HWND windowHandle, int width, int height, int fps, bool captureAudio) {
+int Capture(int displayIndex, HWND windowHandle, int width, int height, int fps, bool captureAudio, bool encodeH264, int bitrateMbps) {
     // Set stdout to binary mode for raw frame output
     _setmode(_fileno(stdout), _O_BINARY);
     _setmode(_fileno(stderr), _O_BINARY);
@@ -84,31 +88,88 @@ int Capture(int displayIndex, HWND windowHandle, int width, int height, int fps,
 
     std::cerr << "SnackaCaptureWindows: Starting capture "
               << width << "x" << height << " @ " << fps << "fps"
-              << (captureAudio ? ", audio=true" : ", audio=false") << "\n";
+              << (captureAudio ? ", audio=true" : ", audio=false")
+              << (encodeH264 ? ", encode=H.264 @ " + std::to_string(bitrateMbps) + "Mbps" : ", encode=raw NV12") << "\n";
 
     // Frame and audio statistics
     uint64_t frameCount = 0;
     uint64_t audioPacketCount = 0;
+    uint64_t encodedFrameCount = 0;
 
-    // Write video frames to stdout
+    // Initialize H.264 encoder if requested
+    std::unique_ptr<MediaFoundationEncoder> encoder;
+    if (encodeH264) {
+        if (!MediaFoundationEncoder::IsHardwareEncoderAvailable()) {
+            std::cerr << "SnackaCaptureWindows: WARNING - No hardware H.264 encoder available, falling back to raw NV12\n";
+            encodeH264 = false;
+        } else {
+            encoder = std::make_unique<MediaFoundationEncoder>(width, height, fps, bitrateMbps);
+
+            // Initialize encoder (creates its own D3D device)
+            if (!encoder->Initialize()) {
+                std::cerr << "SnackaCaptureWindows: WARNING - Failed to initialize encoder, falling back to raw NV12\n";
+                encoder.reset();
+                encodeH264 = false;
+            } else {
+                std::cerr << "SnackaCaptureWindows: Using " << encoder->GetEncoderName() << " encoder\n";
+            }
+        }
+    }
+
+    if (encodeH264 && encoder) {
+        // Set callback for encoded data
+        encoder->SetCallback([&](const uint8_t* data, size_t size, bool isKeyframe) {
+            if (!g_running) return;
+
+            size_t written = 0;
+            while (written < size && g_running) {
+                int result = _write(_fileno(stdout), data + written, static_cast<unsigned int>(size - written));
+                if (result < 0) {
+                    std::cerr << "SnackaCaptureWindows: Error writing encoded frame\n";
+                    g_running = false;
+                    return;
+                }
+                written += result;
+            }
+
+            encodedFrameCount++;
+            if (encodedFrameCount <= 5 || encodedFrameCount % 100 == 0) {
+                std::cerr << "SnackaCaptureWindows: Encoded frame " << encodedFrameCount
+                          << " (" << size << " bytes" << (isKeyframe ? ", keyframe" : "") << ")\n";
+            }
+        });
+    }
+
+    // Write video frames to stdout (raw NV12 or encode to H.264)
     auto videoCallback = [&](const uint8_t* data, size_t size, uint64_t timestamp) {
         if (!g_running) return;
 
-        size_t written = 0;
-        while (written < size && g_running) {
-            int result = _write(_fileno(stdout), data + written, static_cast<unsigned int>(size - written));
-            if (result < 0) {
-                std::cerr << "SnackaCaptureWindows: Error writing video frame\n";
-                g_running = false;
-                return;
-            }
-            written += result;
-        }
-
         frameCount++;
-        if (frameCount <= 5 || frameCount % 100 == 0) {
-            std::cerr << "SnackaCaptureWindows: Video frame " << frameCount
-                      << " (" << width << "x" << height << " NV12, " << size << " bytes)\n";
+
+        if (encodeH264 && encoder) {
+            // Encode to H.264
+            if (!encoder->EncodeNV12(data, size, static_cast<int64_t>(timestamp))) {
+                if (frameCount <= 5) {
+                    std::cerr << "SnackaCaptureWindows: Warning - Failed to encode frame " << frameCount << "\n";
+                }
+            }
+        } else {
+            // Output raw NV12
+            size_t written = 0;
+            while (written < size && g_running) {
+                int result = _write(_fileno(stdout), data + written, static_cast<unsigned int>(size - written));
+                if (result < 0) {
+                    std::cerr << "SnackaCaptureWindows: Error writing video frame\n";
+                    g_running = false;
+                    return;
+                }
+                written += result;
+            }
+
+            if (frameCount <= 5 || frameCount % 100 == 0) {
+                std::cerr << "SnackaCaptureWindows: Video frame " << frameCount
+                          << " (" << width << "x" << height << " NV12, " << size << " bytes)\n";
+            }
         }
     };
 
@@ -185,6 +246,11 @@ int Capture(int displayIndex, HWND windowHandle, int width, int height, int fps,
         audioCapturer->Stop();
     }
 
+    // Stop encoder
+    if (encoder) {
+        encoder->Stop();
+    }
+
     if (!captureStarted) {
         std::cerr << "SnackaCaptureWindows: Failed to start capture\n";
         CoUninitialize();
@@ -192,6 +258,7 @@ int Capture(int displayIndex, HWND windowHandle, int width, int height, int fps,
     }
 
     std::cerr << "SnackaCaptureWindows: Capture stopped (frames: " << frameCount
+              << ", encoded: " << encodedFrameCount
               << ", audio packets: " << audioPacketCount << ")\n";
 
     CoUninitialize();
@@ -228,6 +295,8 @@ int main(int argc, char* argv[]) {
     int height = 1080;
     int fps = 30;
     bool captureAudio = false;
+    bool encodeH264 = false;
+    int bitrateMbps = 6;
 
     for (size_t i = 1; i < args.size(); i++) {
         if (args[i] == "--display" && i + 1 < args.size()) {
@@ -242,6 +311,10 @@ int main(int argc, char* argv[]) {
             fps = std::stoi(args[++i]);
         } else if (args[i] == "--audio") {
             captureAudio = true;
+        } else if (args[i] == "--encode") {
+            encodeH264 = true;
+        } else if (args[i] == "--bitrate" && i + 1 < args.size()) {
+            bitrateMbps = std::stoi(args[++i]);
         }
     }
 
@@ -258,6 +331,10 @@ int main(int argc, char* argv[]) {
         std::cerr << "SnackaCaptureWindows: Invalid fps (must be 1-120)\n";
         return 1;
     }
+    if (bitrateMbps <= 0 || bitrateMbps > 100) {
+        std::cerr << "SnackaCaptureWindows: Invalid bitrate (must be 1-100 Mbps)\n";
+        return 1;
+    }
 
-    return Capture(displayIndex, windowHandle, width, height, fps, captureAudio);
+    return Capture(displayIndex, windowHandle, width, height, fps, captureAudio, encodeH264, bitrateMbps);
 }
