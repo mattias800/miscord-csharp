@@ -7,7 +7,7 @@ on:
       - 'src/Snacka.Client/**'
       - 'src/Snacka.Shared/**'
       - 'src/Snacka.WebRTC/**'
-      - 'src/SnackaCapture/**'
+      - 'src/SnackaCaptureVideoToolbox/**'
       - 'src/SnackaCaptureWindows/**'
       - 'src/SnackaMetalRenderer/**'
       - 'installers/**'
@@ -20,7 +20,7 @@ on:
       - 'src/Snacka.Client/**'
       - 'src/Snacka.Shared/**'
       - 'src/Snacka.WebRTC/**'
-      - 'src/SnackaCapture/**'
+      - 'src/SnackaCaptureVideoToolbox/**'
       - 'src/SnackaMetalRenderer/**'
       - 'installers/**'
       - '.github/workflows/build-client.yml'
@@ -77,9 +77,9 @@ jobs:
           brew install ffmpeg@6 libvpx
           echo "$(brew --prefix ffmpeg@6)/lib" >> $GITHUB_PATH
 
-      - name: Build SnackaCapture
+      - name: Build SnackaCaptureVideoToolbox
         run: |
-          cd src/SnackaCapture
+          cd src/SnackaCaptureVideoToolbox
           swift build -c release
 
       - name: Build SnackaMetalRenderer
@@ -96,7 +96,7 @@ jobs:
 
       - name: Copy native binaries
         run: |
-          cp src/SnackaCapture/.build/arm64-apple-macosx/release/SnackaCapture publish/
+          cp src/SnackaCaptureVideoToolbox/.build/arm64-apple-macosx/release/SnackaCaptureVideoToolbox publish/
           cp src/SnackaMetalRenderer/.build/arm64-apple-macosx/release/libSnackaMetalRenderer.dylib publish/
 
       - name: Create .app bundle

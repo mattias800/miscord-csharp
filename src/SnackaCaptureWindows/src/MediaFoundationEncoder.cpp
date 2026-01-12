@@ -3,7 +3,10 @@
 #include <mfreadwrite.h>
 #include <Mfobjects.h>
 #include <iostream>
-#include <winsock2.h>  // For htonl
+#include <cstdlib>  // For _byteswap_ulong
+
+// Use Windows byte swap instead of winsock's htonl to avoid header conflicts
+#define htonl(x) _byteswap_ulong(x)
 
 #pragma comment(lib, "mf.lib")
 #pragma comment(lib, "mfplat.lib")
