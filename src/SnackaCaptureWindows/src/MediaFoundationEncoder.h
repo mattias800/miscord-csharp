@@ -5,6 +5,7 @@
 #include <mftransform.h>
 #include <mferror.h>
 #include <codecapi.h>
+#include <strmif.h>    // For ICodecAPI
 #include <d3d11.h>
 #include <dxgi.h>
 #include <wrl/client.h>
