@@ -208,14 +208,9 @@
                         <!-- Start Thread button -->
                         <Button Classes="btn-message-action"
                                 Tag="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
-                                ToolTip.Tip="Start Thread"
-                                Click="StartThreadButton_Click">
-                            <Button.IsVisible>
-                                <MultiBinding Converter="{x:Static BoolConverters.And}">
-                                    <Binding Path="ShowStartThreadButton" RelativeSource="{RelativeSource AncestorType=controls:MessageItemView}"/>
-                                    <Binding Path="ReplyCount" RelativeSource="{RelativeSource AncestorType=controls:MessageItemView}" Converter="{x:Static conv:IntEqualsZeroConverter.Instance}"/>
-                                </MultiBinding>
-                            </Button.IsVisible>
+                                ToolTip.Tip="Reply in Thread"
+                                Click="StartThreadButton_Click"
+                                IsVisible="{Binding ShowStartThreadButton, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}">
                             <ui:SymbolIcon Symbol="Message" FontSize="14"/>
                         </Button>
 
@@ -228,24 +223,30 @@
                             <Button.Flyout>
                                 <MenuFlyout Placement="BottomEdgeAlignedRight">
                                     <!-- Reply -->
-                                    <MenuItem Header="Reply"
-                                              Command="{Binding ReplyToMessageCommand, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
-                                              CommandParameter="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
-                                              IsVisible="{Binding ShowReplyButton, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"/>
+                                    <MenuItem Header="Reply" Click="ReplyMenuItem_Click">
+                                        <MenuItem.Icon>
+                                            <ui:SymbolIcon Symbol="MailReply" FontSize="14"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
                                     <!-- Pin/Unpin -->
-                                    <MenuItem Header="{Binding IsPinned, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}, Converter={x:Static conv:BoolToStringConverter.Instance}, ConverterParameter='Unpin|Pin'}"
-                                              Command="{Binding TogglePinCommand, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
-                                              CommandParameter="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
-                                              IsVisible="{Binding ShowPinButton, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"/>
+                                    <MenuItem x:Name="PinMenuItem" Header="Pin" Click="PinMenuItem_Click">
+                                        <MenuItem.Icon>
+                                            <ui:SymbolIcon Symbol="Pin" FontSize="14"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
                                     <Separator/>
                                     <!-- Edit -->
-                                    <MenuItem Header="Edit"
-                                              Command="{Binding StartEditMessageCommand, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
-                                              CommandParameter="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"/>
+                                    <MenuItem Header="Edit" Click="EditMenuItem_Click">
+                                        <MenuItem.Icon>
+                                            <ui:SymbolIcon Symbol="Edit" FontSize="14"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
                                     <!-- Delete -->
-                                    <MenuItem Header="Delete"
-                                              Command="{Binding DeleteMessageCommand, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
-                                              CommandParameter="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"/>
+                                    <MenuItem Header="Delete" Click="DeleteMenuItem_Click">
+                                        <MenuItem.Icon>
+                                            <ui:SymbolIcon Symbol="Delete" FontSize="14"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
                                 </MenuFlyout>
                             </Button.Flyout>
                         </Button>

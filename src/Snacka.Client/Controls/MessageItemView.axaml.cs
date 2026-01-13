@@ -338,6 +338,40 @@ public partial class MessageItemView : UserControl
 
     private void MoreOptionsButton_Click(object? sender, RoutedEventArgs e)
     {
+        // Update Pin menu item text based on current state
+        PinMenuItem.Header = IsPinned ? "Unpin" : "Pin";
         MoreOptionsButton.Flyout?.ShowAt(MoreOptionsButton);
+    }
+
+    private void ReplyMenuItem_Click(object? sender, RoutedEventArgs e)
+    {
+        if (Message != null)
+        {
+            ReplyToMessageCommand?.Execute(Message);
+        }
+    }
+
+    private void PinMenuItem_Click(object? sender, RoutedEventArgs e)
+    {
+        if (Message != null)
+        {
+            TogglePinCommand?.Execute(Message);
+        }
+    }
+
+    private void EditMenuItem_Click(object? sender, RoutedEventArgs e)
+    {
+        if (Message != null)
+        {
+            StartEditMessageCommand?.Execute(Message);
+        }
+    }
+
+    private void DeleteMenuItem_Click(object? sender, RoutedEventArgs e)
+    {
+        if (Message != null)
+        {
+            DeleteMessageCommand?.Execute(Message);
+        }
     }
 }
