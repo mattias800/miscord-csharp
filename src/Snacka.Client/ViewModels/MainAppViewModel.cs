@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Linq;
 using Avalonia.Threading;
+using Snacka.Client.Controls;
 using Snacka.Client.Services;
 using Snacka.Client.Services.Autocomplete;
 using Snacka.Client.Services.HardwareVideo;
@@ -112,6 +113,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     // Unified autocomplete for @ mentions and / commands
     private readonly AutocompleteManager _autocomplete = new();
     private bool _isSelectingAutocomplete;
+
+    // Self-contained GIF picker (appears in message list)
+    private GifPickerViewModel? _gifPicker;
 
     // File attachment state
     private ObservableCollection<PendingAttachment> _pendingAttachments = new();
@@ -226,6 +230,13 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             else if (e.PropertyName == nameof(AutocompleteManager.SelectedIndex))
                 this.RaisePropertyChanged(nameof(SelectedAutocompleteIndex));
         };
+
+        // Initialize GIF picker (only if GIFs are enabled)
+        if (_isGifsEnabled)
+        {
+            _gifPicker = new GifPickerViewModel(apiClient);
+            _gifPicker.SendRequested += OnGifPickerSendRequested;
+        }
 
         // Create the inline DM ViewModel
         _dmContent = new DMContentViewModel(
@@ -1116,6 +1127,11 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         set => _autocomplete.SelectedIndex = value;
     }
 
+    /// <summary>
+    /// Self-contained GIF picker ViewModel (appears in message list).
+    /// </summary>
+    public GifPickerViewModel? GifPicker => _gifPicker;
+
     public bool IsPinnedPopupOpen
     {
         get => _isPinnedPopupOpen;
@@ -1496,6 +1512,14 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         }
     }
 
+    /// <summary>
+    /// Handler for when user clicks Send in the GIF picker.
+    /// </summary>
+    private async void OnGifPickerSendRequested(GifResult gif)
+    {
+        await SendGifMessageAsync(gif);
+    }
+
     public void ClearGifResults()
     {
         _gifResults.Clear();
@@ -1505,47 +1529,14 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
     /// <summary>
     /// Initiates a GIF preview search for the /gif command.
-    /// Shows the first result as a preview that can be sent or shuffled.
+    /// Uses the self-contained GIF picker that appears in the message list.
     /// </summary>
     private async Task ShowGifPreviewAsync(string query)
     {
-        if (string.IsNullOrWhiteSpace(query))
-        {
-            CancelGifPreview();
+        if (_gifPicker == null || string.IsNullOrWhiteSpace(query))
             return;
-        }
 
-        IsLoadingGifs = true;
-        GifPreviewQuery = query;
-        _gifPreviewResults.Clear();
-        _gifPreviewIndex = 0;
-
-        try
-        {
-            var result = await _apiClient.SearchGifsAsync(query.Trim(), 10);
-
-            if (result.Success && result.Data != null && result.Data.Results.Count > 0)
-            {
-                _gifPreviewResults = result.Data.Results.ToList();
-                GifPreviewResult = _gifPreviewResults[0];
-                IsGifPreviewVisible = true;
-            }
-            else
-            {
-                // No results found - show message to user
-                ErrorMessage = $"No GIFs found for \"{query}\"";
-                CancelGifPreview();
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Failed to search GIFs for preview: {ex.Message}");
-            CancelGifPreview();
-        }
-        finally
-        {
-            IsLoadingGifs = false;
-        }
+        await _gifPicker.StartSearchAsync(query);
     }
 
     /// <summary>

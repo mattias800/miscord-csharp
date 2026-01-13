@@ -81,6 +81,9 @@ public partial class ChatAreaView : UserControl
     public static readonly StyledProperty<string?> GifPreviewQueryProperty =
         AvaloniaProperty.Register<ChatAreaView, string?>(nameof(GifPreviewQuery));
 
+    public static readonly StyledProperty<GifPickerViewModel?> GifPickerProperty =
+        AvaloniaProperty.Register<ChatAreaView, GifPickerViewModel?>(nameof(GifPicker));
+
     public static readonly StyledProperty<string?> MessageInputProperty =
         AvaloniaProperty.Register<ChatAreaView, string?>(nameof(MessageInput));
 
@@ -265,6 +268,12 @@ public partial class ChatAreaView : UserControl
     {
         get => GetValue(GifPreviewQueryProperty);
         set => SetValue(GifPreviewQueryProperty, value);
+    }
+
+    public GifPickerViewModel? GifPicker
+    {
+        get => GetValue(GifPickerProperty);
+        set => SetValue(GifPickerProperty, value);
     }
 
     public string? MessageInput

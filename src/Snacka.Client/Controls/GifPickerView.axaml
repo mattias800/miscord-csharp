@@ -1,0 +1,92 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="using:Snacka.Client.Controls"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             mc:Ignorable="d"
+             x:Class="Snacka.Client.Controls.GifPickerView"
+             x:DataType="controls:GifPickerViewModel"
+             IsVisible="{Binding IsVisible}">
+
+    <Border Background="{StaticResource Content1Brush}"
+            CornerRadius="12"
+            Padding="16"
+            Margin="0,8,0,0"
+            HorizontalAlignment="Left"
+            MaxWidth="400">
+        <StackPanel Spacing="12">
+            <!-- Header with search query -->
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Left"
+                           Classes="text-caption">
+                    <Run Text="GIF: "/>
+                    <Run Text="{Binding Query}" FontWeight="SemiBold"/>
+                </TextBlock>
+                <Button DockPanel.Dock="Right"
+                        Classes="btn-icon"
+                        Command="{Binding CancelCommand}"
+                        ToolTip.Tip="Cancel"
+                        HorizontalAlignment="Right">
+                    <ui:SymbolIcon Symbol="Dismiss" Foreground="#80848e" FontSize="14"/>
+                </Button>
+            </DockPanel>
+
+            <!-- Loading State -->
+            <StackPanel IsVisible="{Binding IsLoading}"
+                        HorizontalAlignment="Center"
+                        Spacing="8">
+                <ui:ProgressRing IsIndeterminate="True"
+                                 Width="32"
+                                 Height="32"/>
+                <TextBlock Text="Searching for GIFs..."
+                           Classes="text-muted"
+                           HorizontalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- Error State -->
+            <Border IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                    Background="{StaticResource Content3Brush}"
+                    CornerRadius="8"
+                    Padding="16">
+                <TextBlock Text="{Binding ErrorMessage}"
+                           Classes="text-muted"
+                           HorizontalAlignment="Center"/>
+            </Border>
+
+            <!-- GIF Preview (only visible when we have a GIF and not loading) -->
+            <StackPanel Spacing="12">
+                <StackPanel.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="CurrentGif" Converter="{x:Static ObjectConverters.IsNotNull}"/>
+                        <Binding Path="IsLoading" Converter="{x:Static BoolConverters.Not}"/>
+                    </MultiBinding>
+                </StackPanel.IsVisible>
+
+                <!-- GIF Image -->
+                <Border Background="{StaticResource Content3Brush}"
+                        CornerRadius="8"
+                        ClipToBounds="True"
+                        HorizontalAlignment="Left"
+                        MaxWidth="300"
+                        MaxHeight="200">
+                    <Image Source="{Binding CurrentGif.PreviewUrl}"
+                           Stretch="Uniform"/>
+                </Border>
+
+                <!-- Action Buttons -->
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Classes="btn-primary"
+                            Command="{Binding SendCommand}"
+                            Content="Send"/>
+                    <Button Classes="btn-secondary"
+                            Command="{Binding NextGifCommand}"
+                            Content="New GIF"/>
+                    <Button Classes="btn-ghost"
+                            Command="{Binding CancelCommand}"
+                            Content="Cancel"/>
+                </StackPanel>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

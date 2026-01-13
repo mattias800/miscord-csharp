@@ -202,6 +202,7 @@
                                    IsAutocompletePopupOpen="{Binding IsAutocompletePopupOpen}"
                                    AutocompleteSuggestions="{Binding AutocompleteSuggestions}"
                                    SelectedAutocompleteIndex="{Binding SelectedAutocompleteIndex}"
+                                   GifPicker="{Binding GifPicker}"
                                    IsGifsEnabled="{Binding IsGifsEnabled}"
                                    IsGifPreviewVisible="{Binding IsGifPreviewVisible}"
                                    GifPreviewResult="{Binding GifPreviewResult}"

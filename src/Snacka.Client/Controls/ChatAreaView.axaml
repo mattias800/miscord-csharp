@@ -171,52 +171,6 @@
                         </DockPanel>
                     </Border>
 
-                    <!-- GIF Preview (shown when /gif command is used) -->
-                    <Border Background="{StaticResource Content1Brush}"
-                            CornerRadius="12"
-                            Padding="16"
-                            Margin="0,0,0,8"
-                            IsVisible="{Binding IsGifPreviewVisible, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}">
-                        <StackPanel Spacing="12">
-                            <!-- Header with search query -->
-                            <DockPanel>
-                                <TextBlock DockPanel.Dock="Left"
-                                           Classes="text-caption">
-                                    <Run Text="GIF: "/>
-                                    <Run Text="{Binding GifPreviewQuery, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}" FontWeight="SemiBold"/>
-                                </TextBlock>
-                                <Button DockPanel.Dock="Right"
-                                        Classes="btn-icon"
-                                        Command="{Binding CancelGifPreviewCommand, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
-                                        ToolTip.Tip="Cancel"
-                                        HorizontalAlignment="Right">
-                                    <ui:SymbolIcon Symbol="Dismiss" Foreground="#80848e" FontSize="14"/>
-                                </Button>
-                            </DockPanel>
-
-                            <!-- GIF Image Preview -->
-                            <Border Background="{StaticResource Content3Brush}"
-                                    CornerRadius="8"
-                                    ClipToBounds="True"
-                                    HorizontalAlignment="Left"
-                                    MaxWidth="300"
-                                    MaxHeight="200">
-                                <Image Source="{Binding GifPreviewResult.PreviewUrl, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
-                                       Stretch="Uniform"/>
-                            </Border>
-
-                            <!-- Action Buttons -->
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Button Classes="btn-primary"
-                                        Command="{Binding SendGifPreviewCommand, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
-                                        Content="Send"/>
-                                <Button Classes="btn-secondary"
-                                        Command="{Binding ShuffleGifPreviewCommand, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
-                                        Content="Shuffle"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-
                     <!-- Autocomplete Popup (Mentions and Slash Commands) -->
                     <Border Background="{StaticResource GlassBrush}"
                             CornerRadius="16"
@@ -332,56 +286,62 @@
 
             <!-- Messages List -->
             <ScrollViewer x:Name="MessagesScrollViewer" Margin="0,8" HorizontalScrollBarVisibility="Disabled">
-                <ItemsControl x:Name="MessagesList"
-                              ItemsSource="{Binding Messages, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
-                              Margin="16,0"
-                              HorizontalAlignment="Stretch"
-                              Width="{Binding $parent[ScrollViewer].Viewport.Width}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="services:MessageResponse">
-                            <controls:MessageItemView
-                                Message="{Binding}"
-                                AuthorUsername="{Binding AuthorUsername}"
-                                MessageContent="{Binding Content}"
-                                CreatedAt="{Binding CreatedAt}"
-                                IsEdited="{Binding IsEdited}"
-                                ReplyTo="{Binding ReplyTo}"
-                                Reactions="{Binding Reactions}"
-                                Attachments="{Binding Attachments}"
-                                IsPinned="{Binding IsPinned}"
-                                ReplyCount="{Binding ReplyCount}"
-                                BaseUrl="{Binding BaseUrl, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
-                                AccessToken="{Binding AccessToken, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
-                                TogglePinCommand="{Binding TogglePinCommand, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
-                                ReplyToMessageCommand="{Binding ReplyToMessageCommand, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
-                                StartEditMessageCommand="{Binding StartEditMessageCommand, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
-                                DeleteMessageCommand="{Binding DeleteMessageCommand, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
-                                ShowThreadIndicator="True"
-                                ShowStartThreadButton="True"
-                                ShowPinButton="True"
-                                ShowReplyButton="True"
-                                ShowReactions="True"
-                                ShowAttachments="True"
-                                AddReactionRequested="OnMessageAddReactionRequested"
-                                StartThreadRequested="OnMessageStartThreadRequested"
-                                ViewThreadRequested="OnMessageViewThreadRequested"
-                                ReactionToggleRequested="OnMessageReactionToggleRequested"
-                                ImageClicked="OnAttachmentImageClicked">
-                                <controls:MessageItemView.ShowDateSeparator>
-                                    <MultiBinding Converter="{x:Static conv:ShowDateSeparatorConverter.Instance}">
-                                        <Binding />
-                                        <Binding Path="Messages" RelativeSource="{RelativeSource AncestorType=controls:ChatAreaView}" />
-                                    </MultiBinding>
-                                </controls:MessageItemView.ShowDateSeparator>
-                            </controls:MessageItemView>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                <StackPanel>
+                    <ItemsControl x:Name="MessagesList"
+                                  ItemsSource="{Binding Messages, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
+                                  Margin="16,0"
+                                  HorizontalAlignment="Stretch"
+                                  Width="{Binding $parent[ScrollViewer].Viewport.Width}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="services:MessageResponse">
+                                <controls:MessageItemView
+                                    Message="{Binding}"
+                                    AuthorUsername="{Binding AuthorUsername}"
+                                    MessageContent="{Binding Content}"
+                                    CreatedAt="{Binding CreatedAt}"
+                                    IsEdited="{Binding IsEdited}"
+                                    ReplyTo="{Binding ReplyTo}"
+                                    Reactions="{Binding Reactions}"
+                                    Attachments="{Binding Attachments}"
+                                    IsPinned="{Binding IsPinned}"
+                                    ReplyCount="{Binding ReplyCount}"
+                                    BaseUrl="{Binding BaseUrl, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
+                                    AccessToken="{Binding AccessToken, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
+                                    TogglePinCommand="{Binding TogglePinCommand, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
+                                    ReplyToMessageCommand="{Binding ReplyToMessageCommand, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
+                                    StartEditMessageCommand="{Binding StartEditMessageCommand, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
+                                    DeleteMessageCommand="{Binding DeleteMessageCommand, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
+                                    ShowThreadIndicator="True"
+                                    ShowStartThreadButton="True"
+                                    ShowPinButton="True"
+                                    ShowReplyButton="True"
+                                    ShowReactions="True"
+                                    ShowAttachments="True"
+                                    AddReactionRequested="OnMessageAddReactionRequested"
+                                    StartThreadRequested="OnMessageStartThreadRequested"
+                                    ViewThreadRequested="OnMessageViewThreadRequested"
+                                    ReactionToggleRequested="OnMessageReactionToggleRequested"
+                                    ImageClicked="OnAttachmentImageClicked">
+                                    <controls:MessageItemView.ShowDateSeparator>
+                                        <MultiBinding Converter="{x:Static conv:ShowDateSeparatorConverter.Instance}">
+                                            <Binding />
+                                            <Binding Path="Messages" RelativeSource="{RelativeSource AncestorType=controls:ChatAreaView}" />
+                                        </MultiBinding>
+                                    </controls:MessageItemView.ShowDateSeparator>
+                                </controls:MessageItemView>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- GIF Picker (local-only, appears at bottom of messages) -->
+                    <controls:GifPickerView DataContext="{Binding GifPicker, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
+                                            Margin="16,0"/>
+                </StackPanel>
             </ScrollViewer>
 
             <!-- Message Edit Overlay -->
