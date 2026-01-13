@@ -164,6 +164,12 @@ public partial class ChatAreaView : UserControl
 
         // Subscribe to collection changes for auto-scrolling
         this.GetObservable(MessagesProperty).Subscribe(OnMessagesChanged);
+
+        // Set Popup content DataContext (Popups have separate visual tree)
+        if (AutocompletePopup.Child is Border popupBorder)
+        {
+            popupBorder.DataContext = this;
+        }
     }
 
     #region Property Accessors

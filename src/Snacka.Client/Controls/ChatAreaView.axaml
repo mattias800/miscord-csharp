@@ -215,7 +215,7 @@
                         <Popup x:Name="AutocompletePopup"
                                PlacementTarget="{Binding #MessageInputBox}"
                                Placement="Top"
-                               IsOpen="{Binding IsAutocompletePopupOpen, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
+                               IsOpen="{Binding IsAutocompletePopupOpen}"
                                IsLightDismissEnabled="False"
                                HorizontalOffset="0"
                                VerticalOffset="-4">
@@ -224,7 +224,7 @@
                                     Padding="8"
                                     MinWidth="300"
                                     BoxShadow="{StaticResource ShadowLg}">
-                                <ItemsControl ItemsSource="{Binding AutocompleteSuggestions, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}">
+                                <ItemsControl ItemsSource="{Binding AutocompleteSuggestions}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="autocomplete:IAutocompleteSuggestion">
                                             <Border Classes="member-item"
@@ -235,8 +235,8 @@
                                                 <Border.Background>
                                                     <MultiBinding Converter="{x:Static conv:AutocompleteSelectedBackgroundConverter.Instance}">
                                                         <Binding />
-                                                        <Binding Path="AutocompleteSuggestions" RelativeSource="{RelativeSource AncestorType=controls:ChatAreaView}" />
-                                                        <Binding Path="SelectedAutocompleteIndex" RelativeSource="{RelativeSource AncestorType=controls:ChatAreaView}" />
+                                                        <Binding Path="AutocompleteSuggestions" RelativeSource="{RelativeSource AncestorType=ItemsControl}" />
+                                                        <Binding Path="DataContext.SelectedAutocompleteIndex" RelativeSource="{RelativeSource AncestorType=ItemsControl}" />
                                                     </MultiBinding>
                                                 </Border.Background>
                                                 <Grid>
