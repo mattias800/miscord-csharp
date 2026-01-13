@@ -12,9 +12,9 @@
              x:DataType="controls:ChatAreaView">
 
     <Border Background="{StaticResource Content2Brush}">
-        <DockPanel>
+        <Grid RowDefinitions="Auto,*,Auto">
             <!-- Channel Header -->
-            <Border DockPanel.Dock="Top" Classes="panel-header">
+            <Border Grid.Row="0" Classes="panel-header">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <TextBlock Text="#"
                                Foreground="{StaticResource Foreground3Brush}"
@@ -48,7 +48,7 @@
             </Border>
 
             <!-- Message Input -->
-            <Border DockPanel.Dock="Bottom" Classes="panel-footer">
+            <Border Grid.Row="2" Classes="panel-footer">
                 <StackPanel Spacing="8">
                     <!-- Formatting Toolbar -->
                     <StackPanel Orientation="Horizontal" Spacing="4">
@@ -290,18 +290,20 @@
             </Border>
 
             <!-- Messages List -->
-            <ScrollViewer x:Name="MessagesScrollViewer" Margin="0,8" HorizontalScrollBarVisibility="Disabled">
-                <StackPanel>
-                    <ItemsControl x:Name="MessagesList"
-                                  ItemsSource="{Binding Messages, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
-                                  Margin="16,0"
-                                  HorizontalAlignment="Stretch"
-                                  Width="{Binding $parent[ScrollViewer].Viewport.Width}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
+            <ScrollViewer x:Name="MessagesScrollViewer" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" HorizontalAlignment="Stretch">
+                <ItemsControl x:Name="MessagesList"
+                              ItemsSource="{Binding Messages, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <VirtualizingStackPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemContainerTheme>
+                        <ControlTheme TargetType="ContentPresenter">
+                            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                        </ControlTheme>
+                    </ItemsControl.ItemContainerTheme>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="services:MessageResponse">
                                 <controls:MessageItemView
@@ -342,16 +344,12 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-
-                    <!-- GIF Picker (local-only, appears at bottom of messages) -->
-                    <controls:GifPickerView DataContext="{Binding GifPicker, RelativeSource={RelativeSource AncestorType=controls:ChatAreaView}}"
-                                            Margin="16,0"/>
-                </StackPanel>
             </ScrollViewer>
 
             <!-- Message Edit Overlay -->
-            <Border Background="{StaticResource GlassBrush}"
-                    DockPanel.Dock="Bottom"
+            <Border Grid.Row="1"
+                    Background="{StaticResource GlassBrush}"
+                    VerticalAlignment="Bottom"
                     Padding="16"
                     CornerRadius="16"
                     Margin="16,0,16,16"
@@ -389,6 +387,6 @@
                     </Grid>
                 </StackPanel>
             </Border>
-        </DockPanel>
+        </Grid>
     </Border>
 </UserControl>

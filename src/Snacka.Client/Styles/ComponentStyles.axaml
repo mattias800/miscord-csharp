@@ -156,6 +156,27 @@
         <Setter Property="Background" Value="#3f3f46"/>
     </Style>
 
+    <!-- Message Action Button - Larger, more visible variant for message actions -->
+    <Style Selector="Button.btn-message-action">
+        <Setter Property="Background" Value="#2a2a30"/>
+        <Setter Property="Foreground" Value="#a1a1aa"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="8"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="MinWidth" Value="32"/>
+        <Setter Property="MinHeight" Value="32"/>
+    </Style>
+    <Style Selector="Button.btn-message-action:pointerover">
+        <Setter Property="Foreground" Value="#ffffff"/>
+    </Style>
+    <Style Selector="Button.btn-message-action:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#3f3f46"/>
+    </Style>
+    <Style Selector="Button.btn-message-action:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="#52525b"/>
+    </Style>
+
     <!-- =====================================================
          GLASSMORPHISM CARD STYLES
          Semi-transparent with blur simulation, large radius
@@ -390,6 +411,20 @@
     </Style>
     <Style Selector="Button.msg-action-btn:pressed /template/ ContentPresenter">
         <Setter Property="Background" Value="#3f3f46"/>
+    </Style>
+
+    <!-- Message Row - Hover highlight for the entire message -->
+    <Style Selector="Border.message-row">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="CornerRadius" Value="0"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.1"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Border.message-row:pointerover">
+        <Setter Property="Background" Value="#222228"/>
     </Style>
 
     <!-- =====================================================

@@ -92,6 +92,20 @@ public partial class MessageItemView : UserControl
     public MessageItemView()
     {
         InitializeComponent();
+
+        // Show/hide action buttons on hover
+        MessageBorder.PointerEntered += OnMessagePointerEntered;
+        MessageBorder.PointerExited += OnMessagePointerExited;
+    }
+
+    private void OnMessagePointerEntered(object? sender, PointerEventArgs e)
+    {
+        ActionButtonsContainer.IsVisible = true;
+    }
+
+    private void OnMessagePointerExited(object? sender, PointerEventArgs e)
+    {
+        ActionButtonsContainer.IsVisible = false;
     }
 
     // Source message (any type)

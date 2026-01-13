@@ -7,9 +7,10 @@
              xmlns:ui="using:FluentAvalonia.UI.Controls"
              mc:Ignorable="d"
              x:Class="Snacka.Client.Controls.MessageItemView"
-             x:DataType="controls:MessageItemView">
+             x:DataType="controls:MessageItemView"
+             HorizontalAlignment="Stretch">
 
-    <StackPanel>
+    <StackPanel HorizontalAlignment="Stretch">
         <!-- Date separator (optional) -->
         <Border Margin="0,16,0,8" Padding="0"
                 IsVisible="{Binding ShowDateSeparator, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}">
@@ -22,16 +23,17 @@
             </Grid>
         </Border>
 
-        <Border Margin="0,8" Padding="8" x:Name="MessageBorder" HorizontalAlignment="Stretch" CornerRadius="12">
-            <Grid HorizontalAlignment="Stretch">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+        <Border Margin="0" Padding="8,12" x:Name="MessageBorder" Classes="message-row" HorizontalAlignment="Stretch">
+            <!-- Use Panel to allow action buttons to overlay content -->
+            <Panel>
+                <Grid HorizontalAlignment="Stretch">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
 
-                <!-- Avatar -->
-                <Border Grid.Column="0"
+                    <!-- Avatar -->
+                    <Border Grid.Column="0"
                         Width="40" Height="40"
                         CornerRadius="20"
                         Background="{StaticResource PrimaryGradient}"
@@ -181,67 +183,89 @@
                         </StackPanel>
                     </Border>
                 </StackPanel>
+                </Grid>
 
-                <!-- Action Buttons -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Top">
-                    <!-- Add Reaction button (only when ShowReactions is true) -->
-                    <Button Classes="btn-icon"
-                            ToolTip.Tip="Add Reaction"
-                            Tag="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
-                            Click="AddReactionButton_Click"
-                            IsVisible="{Binding ShowReactions, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}">
-                        <ui:SymbolIcon Symbol="Emoji" Foreground="{StaticResource Foreground3Brush}" FontSize="12"/>
-                    </Button>
+                <!-- Action Buttons - Overlay on hover, positioned top-right -->
+                <Border x:Name="ActionButtonsContainer"
+                        Background="{StaticResource Content1Brush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="4"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        IsVisible="False">
+                    <StackPanel Orientation="Horizontal" Spacing="2">
+                        <!-- Add Reaction button -->
+                        <Button Classes="btn-message-action"
+                                ToolTip.Tip="Add Reaction"
+                                Tag="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
+                                Click="AddReactionButton_Click"
+                                IsVisible="{Binding ShowReactions, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}">
+                            <ui:SymbolIcon Symbol="Emoji" FontSize="14"/>
+                        </Button>
 
-                    <!-- Start Thread button (only when ShowStartThreadButton is true and no replies yet) -->
-                    <Button Classes="btn-icon"
-                            Tag="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
-                            ToolTip.Tip="Start Thread"
-                            Click="StartThreadButton_Click">
-                        <Button.IsVisible>
-                            <MultiBinding Converter="{x:Static BoolConverters.And}">
-                                <Binding Path="ShowStartThreadButton" RelativeSource="{RelativeSource AncestorType=controls:MessageItemView}"/>
-                                <Binding Path="ReplyCount" RelativeSource="{RelativeSource AncestorType=controls:MessageItemView}" Converter="{x:Static conv:IntEqualsZeroConverter.Instance}"/>
-                            </MultiBinding>
-                        </Button.IsVisible>
-                        <ui:SymbolIcon Symbol="Message" Foreground="{StaticResource Foreground3Brush}" FontSize="12"/>
-                    </Button>
+                        <!-- Start Thread button -->
+                        <Button Classes="btn-message-action"
+                                Tag="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
+                                ToolTip.Tip="Start Thread"
+                                Click="StartThreadButton_Click">
+                            <Button.IsVisible>
+                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                    <Binding Path="ShowStartThreadButton" RelativeSource="{RelativeSource AncestorType=controls:MessageItemView}"/>
+                                    <Binding Path="ReplyCount" RelativeSource="{RelativeSource AncestorType=controls:MessageItemView}" Converter="{x:Static conv:IntEqualsZeroConverter.Instance}"/>
+                                </MultiBinding>
+                            </Button.IsVisible>
+                            <ui:SymbolIcon Symbol="Message" FontSize="14"/>
+                        </Button>
 
-                    <!-- Pin button (only when ShowPinButton is true) -->
-                    <Button Classes="btn-icon"
-                            Command="{Binding TogglePinCommand, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
-                            CommandParameter="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
-                            ToolTip.Tip="{Binding IsPinned, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}, Converter={x:Static conv:BoolToStringConverter.Instance}, ConverterParameter='Unpin|Pin'}"
-                            IsVisible="{Binding ShowPinButton, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}">
-                        <ui:SymbolIcon Symbol="Pin"
-                                   Foreground="{Binding IsPinned, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}, Converter={x:Static conv:BoolToColorConverter.Instance}, ConverterParameter='#faa61a|#80848e'}"
-                                   FontSize="12"/>
-                    </Button>
-
-                    <!-- Reply button (only when ShowReplyButton is true) -->
-                    <Button Classes="btn-icon"
-                            Command="{Binding ReplyToMessageCommand, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
-                            CommandParameter="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
-                            ToolTip.Tip="Reply"
-                            IsVisible="{Binding ShowReplyButton, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}">
-                        <ui:SymbolIcon Symbol="MailReply" Foreground="{StaticResource Foreground3Brush}" FontSize="12"/>
-                    </Button>
-
-                    <Button Classes="btn-icon"
-                            Command="{Binding StartEditMessageCommand, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
-                            CommandParameter="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
-                            ToolTip.Tip="Edit">
-                        <ui:SymbolIcon Symbol="Edit" Foreground="{StaticResource Foreground3Brush}" FontSize="12"/>
-                    </Button>
-
-                    <Button Classes="btn-icon"
-                            Command="{Binding DeleteMessageCommand, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
-                            CommandParameter="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
-                            ToolTip.Tip="Delete">
-                        <ui:SymbolIcon Symbol="Delete" Foreground="{StaticResource Foreground3Brush}" FontSize="12"/>
-                    </Button>
-                </StackPanel>
-            </Grid>
+                        <!-- More Options button with flyout menu -->
+                        <Button Classes="btn-message-action"
+                                ToolTip.Tip="More actions">
+                            <ui:SymbolIcon Symbol="MoreVertical" FontSize="14"/>
+                            <Button.Flyout>
+                                <ui:FAMenuFlyout Placement="BottomEdgeAlignedRight">
+                                    <!-- Reply -->
+                                    <ui:MenuFlyoutItem Text="Reply"
+                                                       Command="{Binding ReplyToMessageCommand, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
+                                                       CommandParameter="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
+                                                       IsVisible="{Binding ShowReplyButton, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}">
+                                        <ui:MenuFlyoutItem.IconSource>
+                                            <ui:SymbolIconSource Symbol="MailReply"/>
+                                        </ui:MenuFlyoutItem.IconSource>
+                                    </ui:MenuFlyoutItem>
+                                    <!-- Pin/Unpin -->
+                                    <ui:MenuFlyoutItem Text="{Binding IsPinned, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}, Converter={x:Static conv:BoolToStringConverter.Instance}, ConverterParameter='Unpin|Pin'}"
+                                                       Command="{Binding TogglePinCommand, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
+                                                       CommandParameter="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
+                                                       IsVisible="{Binding ShowPinButton, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}">
+                                        <ui:MenuFlyoutItem.IconSource>
+                                            <ui:SymbolIconSource Symbol="Pin"/>
+                                        </ui:MenuFlyoutItem.IconSource>
+                                    </ui:MenuFlyoutItem>
+                                    <ui:MenuFlyoutSeparator/>
+                                    <!-- Edit -->
+                                    <ui:MenuFlyoutItem Text="Edit"
+                                                       Command="{Binding StartEditMessageCommand, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
+                                                       CommandParameter="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}">
+                                        <ui:MenuFlyoutItem.IconSource>
+                                            <ui:SymbolIconSource Symbol="Edit"/>
+                                        </ui:MenuFlyoutItem.IconSource>
+                                    </ui:MenuFlyoutItem>
+                                    <!-- Delete -->
+                                    <ui:MenuFlyoutItem Text="Delete"
+                                                       Command="{Binding DeleteMessageCommand, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
+                                                       CommandParameter="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}">
+                                        <ui:MenuFlyoutItem.IconSource>
+                                            <ui:SymbolIconSource Symbol="Delete"/>
+                                        </ui:MenuFlyoutItem.IconSource>
+                                    </ui:MenuFlyoutItem>
+                                </ui:FAMenuFlyout>
+                            </Button.Flyout>
+                        </Button>
+                    </StackPanel>
+                </Border>
+            </Panel>
         </Border>
     </StackPanel>
 </UserControl>
