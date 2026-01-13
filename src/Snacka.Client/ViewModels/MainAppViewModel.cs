@@ -213,7 +213,12 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
         // Initialize unified autocomplete with @ mentions and / commands
         _autocomplete.RegisterSource(new MentionAutocompleteSource(() => Members, auth.UserId));
-        _autocomplete.RegisterSource(new SlashCommandAutocompleteSource());
+
+        // Only register slash commands if GIFs are enabled (all current commands are GIF-related)
+        if (_isGifsEnabled)
+        {
+            _autocomplete.RegisterSource(new SlashCommandAutocompleteSource());
+        }
         _autocomplete.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(AutocompleteManager.IsPopupOpen))
@@ -1518,6 +1523,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         try
         {
             var result = await _apiClient.SearchGifsAsync(query.Trim(), 10);
+
             if (result.Success && result.Data != null && result.Data.Results.Count > 0)
             {
                 _gifPreviewResults = result.Data.Results.ToList();
@@ -1526,7 +1532,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             }
             else
             {
-                // No results - show error or just cancel
+                // No results found - show message to user
+                ErrorMessage = $"No GIFs found for \"{query}\"";
                 CancelGifPreview();
             }
         }
