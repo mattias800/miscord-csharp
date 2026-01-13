@@ -26,7 +26,6 @@ public class MentionAutocompleteSource : IAutocompleteSource
     public IEnumerable<IAutocompleteSuggestion> GetSuggestions(string filterText)
     {
         return _getMembersFunc()
-            .Where(m => m.UserId != _currentUserId)
             .Where(m => string.IsNullOrEmpty(filterText) ||
                         m.Username.Contains(filterText, StringComparison.OrdinalIgnoreCase))
             .Take(5)
