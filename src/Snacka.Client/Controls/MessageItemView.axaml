@@ -220,47 +220,33 @@
                         </Button>
 
                         <!-- More Options button with flyout menu -->
-                        <Button Classes="btn-message-action"
-                                ToolTip.Tip="More actions">
+                        <Button x:Name="MoreOptionsButton"
+                                Classes="btn-message-action"
+                                ToolTip.Tip="More actions"
+                                Click="MoreOptionsButton_Click">
                             <ui:SymbolIcon Symbol="MoreVertical" FontSize="14"/>
                             <Button.Flyout>
-                                <ui:FAMenuFlyout Placement="BottomEdgeAlignedRight">
+                                <MenuFlyout Placement="BottomEdgeAlignedRight">
                                     <!-- Reply -->
-                                    <ui:MenuFlyoutItem Text="Reply"
-                                                       Command="{Binding ReplyToMessageCommand, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
-                                                       CommandParameter="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
-                                                       IsVisible="{Binding ShowReplyButton, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}">
-                                        <ui:MenuFlyoutItem.IconSource>
-                                            <ui:SymbolIconSource Symbol="MailReply"/>
-                                        </ui:MenuFlyoutItem.IconSource>
-                                    </ui:MenuFlyoutItem>
+                                    <MenuItem Header="Reply"
+                                              Command="{Binding ReplyToMessageCommand, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
+                                              CommandParameter="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
+                                              IsVisible="{Binding ShowReplyButton, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"/>
                                     <!-- Pin/Unpin -->
-                                    <ui:MenuFlyoutItem Text="{Binding IsPinned, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}, Converter={x:Static conv:BoolToStringConverter.Instance}, ConverterParameter='Unpin|Pin'}"
-                                                       Command="{Binding TogglePinCommand, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
-                                                       CommandParameter="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
-                                                       IsVisible="{Binding ShowPinButton, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}">
-                                        <ui:MenuFlyoutItem.IconSource>
-                                            <ui:SymbolIconSource Symbol="Pin"/>
-                                        </ui:MenuFlyoutItem.IconSource>
-                                    </ui:MenuFlyoutItem>
-                                    <ui:MenuFlyoutSeparator/>
+                                    <MenuItem Header="{Binding IsPinned, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}, Converter={x:Static conv:BoolToStringConverter.Instance}, ConverterParameter='Unpin|Pin'}"
+                                              Command="{Binding TogglePinCommand, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
+                                              CommandParameter="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
+                                              IsVisible="{Binding ShowPinButton, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"/>
+                                    <Separator/>
                                     <!-- Edit -->
-                                    <ui:MenuFlyoutItem Text="Edit"
-                                                       Command="{Binding StartEditMessageCommand, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
-                                                       CommandParameter="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}">
-                                        <ui:MenuFlyoutItem.IconSource>
-                                            <ui:SymbolIconSource Symbol="Edit"/>
-                                        </ui:MenuFlyoutItem.IconSource>
-                                    </ui:MenuFlyoutItem>
+                                    <MenuItem Header="Edit"
+                                              Command="{Binding StartEditMessageCommand, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
+                                              CommandParameter="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"/>
                                     <!-- Delete -->
-                                    <ui:MenuFlyoutItem Text="Delete"
-                                                       Command="{Binding DeleteMessageCommand, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
-                                                       CommandParameter="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}">
-                                        <ui:MenuFlyoutItem.IconSource>
-                                            <ui:SymbolIconSource Symbol="Delete"/>
-                                        </ui:MenuFlyoutItem.IconSource>
-                                    </ui:MenuFlyoutItem>
-                                </ui:FAMenuFlyout>
+                                    <MenuItem Header="Delete"
+                                              Command="{Binding DeleteMessageCommand, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"
+                                              CommandParameter="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:MessageItemView}}"/>
+                                </MenuFlyout>
                             </Button.Flyout>
                         </Button>
                     </StackPanel>

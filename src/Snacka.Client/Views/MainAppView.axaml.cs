@@ -41,6 +41,9 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         // Subscribe to ViewModel changes for annotation redraw
         this.DataContextChanged += OnDataContextChanged;
 
+        // Handle emoji picker popup closed (for light dismiss)
+        EmojiPickerPopup.Closed += OnEmojiPickerPopupClosed;
+
         // Note: Autocomplete events are wired in XAML, not here
     }
 
@@ -358,8 +361,9 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         }
     }
 
-    // Store the current message for the emoji picker
+    // Store the current message and view for the emoji picker
     private Services.MessageResponse? _emojiPickerMessage;
+    private MessageItemView? _emojiPickerMessageView;
 
     // ==================== ChatAreaView Event Handlers ====================
 
@@ -368,10 +372,12 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         if (ViewModel == null || message is not Services.MessageResponse msgResponse) return;
 
         _emojiPickerMessage = msgResponse;
+        _emojiPickerMessageView = sender as MessageItemView;
         var popup = this.FindControl<Popup>("EmojiPickerPopup");
-        if (popup != null && sender is Control control)
+        if (popup != null && _emojiPickerMessageView != null)
         {
-            popup.PlacementTarget = control;
+            // Anchor to the action buttons container for proper positioning
+            popup.PlacementTarget = _emojiPickerMessageView.GetActionButtonsContainer();
             popup.IsOpen = true;
         }
     }
@@ -522,10 +528,12 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         if (ViewModel == null || message is not Services.MessageResponse msgResponse) return;
 
         _emojiPickerMessage = msgResponse;
+        _emojiPickerMessageView = sender as MessageItemView;
         var popup = this.FindControl<Popup>("EmojiPickerPopup");
-        if (popup != null && sender is Control control)
+        if (popup != null && _emojiPickerMessageView != null)
         {
-            popup.PlacementTarget = control;
+            // Anchor to the action buttons container for proper positioning
+            popup.PlacementTarget = _emojiPickerMessageView.GetActionButtonsContainer();
             popup.IsOpen = true;
         }
     }
@@ -547,9 +555,24 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         if (_emojiPickerMessage != null && ViewModel != null)
         {
             ViewModel.AddReactionCommand.Execute((_emojiPickerMessage, emoji)).Subscribe();
-            EmojiPickerPopup.IsOpen = false;
-            _emojiPickerMessage = null;
+            CloseEmojiPicker();
         }
+    }
+
+    // Called when the emoji picker popup is closed (e.g., by light dismiss)
+    private void OnEmojiPickerPopupClosed(object? sender, EventArgs e)
+    {
+        _emojiPickerMessageView?.NotifyReactionPickerClosed();
+        _emojiPickerMessageView = null;
+        _emojiPickerMessage = null;
+    }
+
+    private void CloseEmojiPicker()
+    {
+        EmojiPickerPopup.IsOpen = false;
+        _emojiPickerMessageView?.NotifyReactionPickerClosed();
+        _emojiPickerMessageView = null;
+        _emojiPickerMessage = null;
     }
 
     // Legacy handler - Called when an emoji is selected from the picker (unused, kept for reference)

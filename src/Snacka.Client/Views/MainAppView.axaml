@@ -559,11 +559,11 @@
                                       SaveNicknameCommand="{Binding SaveNicknameCommand}"
                                       CancelNicknameEditCommand="{Binding CancelNicknameEditCommand}"/>
 
-        <!-- Emoji Picker Popup -->
+        <!-- Emoji Picker Popup - anchored so bottom-right aligns with top-right of target -->
         <Popup x:Name="EmojiPickerPopup"
                IsLightDismissEnabled="True"
-               Placement="Top"
-               PlacementGravity="Top">
+               Placement="TopEdgeAlignedRight"
+               VerticalOffset="-4">
             <controls:EmojiPickerContent EmojiSelected="OnEmojiPickerEmojiSelected"/>
         </Popup>
 

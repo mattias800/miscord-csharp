@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Snacka.Client.Services;
@@ -14,6 +15,8 @@ namespace Snacka.Client.Controls;
 /// </summary>
 public partial class MessageItemView : UserControl
 {
+    private bool _isFlyoutOpen;
+    private bool _isReactionPickerOpen;
     // The source message object (can be MessageResponse, DirectMessageResponse, or any other type)
     // Used for command parameters and event args
     public static readonly StyledProperty<object?> MessageProperty =
@@ -96,6 +99,13 @@ public partial class MessageItemView : UserControl
         // Show/hide action buttons on hover
         MessageBorder.PointerEntered += OnMessagePointerEntered;
         MessageBorder.PointerExited += OnMessagePointerExited;
+
+        // Track flyout state to keep buttons visible while flyout is open
+        if (MoreOptionsButton.Flyout is FlyoutBase flyout)
+        {
+            flyout.Opened += OnFlyoutOpened;
+            flyout.Closed += OnFlyoutClosed;
+        }
     }
 
     private void OnMessagePointerEntered(object? sender, PointerEventArgs e)
@@ -105,6 +115,36 @@ public partial class MessageItemView : UserControl
 
     private void OnMessagePointerExited(object? sender, PointerEventArgs e)
     {
+        // Don't hide if flyout or reaction picker is open
+        if (!_isFlyoutOpen && !_isReactionPickerOpen)
+        {
+            ActionButtonsContainer.IsVisible = false;
+        }
+    }
+
+    /// <summary>
+    /// Call this when the reaction picker is closed to allow hiding the action buttons.
+    /// </summary>
+    public void NotifyReactionPickerClosed()
+    {
+        _isReactionPickerOpen = false;
+        ActionButtonsContainer.IsVisible = false;
+    }
+
+    /// <summary>
+    /// Gets the action buttons container for popup anchoring.
+    /// </summary>
+    public Control GetActionButtonsContainer() => ActionButtonsContainer;
+
+    private void OnFlyoutOpened(object? sender, EventArgs e)
+    {
+        _isFlyoutOpen = true;
+    }
+
+    private void OnFlyoutClosed(object? sender, EventArgs e)
+    {
+        _isFlyoutOpen = false;
+        // Hide buttons after flyout closes if pointer is not over the message
         ActionButtonsContainer.IsVisible = false;
     }
 
@@ -262,6 +302,7 @@ public partial class MessageItemView : UserControl
     {
         if (Message != null)
         {
+            _isReactionPickerOpen = true;
             AddReactionRequested?.Invoke(this, Message);
         }
     }
@@ -293,5 +334,10 @@ public partial class MessageItemView : UserControl
     private void AttachmentPreview_ImageClicked(object? sender, AttachmentResponse attachment)
     {
         ImageClicked?.Invoke(this, attachment);
+    }
+
+    private void MoreOptionsButton_Click(object? sender, RoutedEventArgs e)
+    {
+        MoreOptionsButton.Flyout?.ShowAt(MoreOptionsButton);
     }
 }
