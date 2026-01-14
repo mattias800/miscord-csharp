@@ -546,6 +546,32 @@ public partial class ChatAreaView : UserControl
             }
         }
 
+        // Handle emoji shortcode replacement on space
+        if (e.Key == Key.Space)
+        {
+            var textBox = MessageInputBox;
+            if (textBox != null && !string.IsNullOrEmpty(textBox.Text))
+            {
+                var result = EmojiShortcodeService.TryReplaceShortcode(textBox.Text, textBox.SelectionStart);
+                if (result.HasValue)
+                {
+                    // Replace the shortcode with emoji, then add the space
+                    var newText = result.Value.newText + " ";
+                    var cursorPos = result.Value.cursorPosition + 1;
+
+                    textBox.Text = newText;
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        textBox.SelectionStart = cursorPos;
+                        textBox.SelectionEnd = cursorPos;
+                    }, DispatcherPriority.Render);
+
+                    e.Handled = true;
+                    return;
+                }
+            }
+        }
+
         if (e.Key == Key.Enter && !e.KeyModifiers.HasFlag(KeyModifiers.Shift))
         {
             e.Handled = true;
