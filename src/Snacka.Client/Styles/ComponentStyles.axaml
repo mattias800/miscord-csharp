@@ -422,6 +422,15 @@
         <Setter Property="Background" Value="#222228"/>
     </Style>
 
+    <!-- Autocomplete Item - No transition to prevent flashing -->
+    <Style Selector="Border.autocomplete-item">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="CornerRadius" Value="10"/>
+    </Style>
+    <Style Selector="Border.autocomplete-item:pointerover">
+        <Setter Property="Background" Value="#27272a"/>
+    </Style>
+
     <!-- Thread Indicator - Clickable button to view thread -->
     <Style Selector="Border.thread-indicator">
         <Setter Property="Background" Value="#1e1e24"/>

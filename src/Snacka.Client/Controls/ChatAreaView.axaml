@@ -227,7 +227,7 @@
                                 <ItemsControl ItemsSource="{Binding AutocompleteSuggestions}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="autocomplete:IAutocompleteSuggestion">
-                                            <Border Classes="member-item"
+                                            <Border Classes="autocomplete-item"
                                                     Padding="10,8"
                                                     CornerRadius="6"
                                                     Cursor="Hand"
