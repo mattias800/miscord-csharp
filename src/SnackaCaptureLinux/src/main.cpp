@@ -10,6 +10,7 @@
 #include <atomic>
 #include <csignal>
 #include <unistd.h>
+#include <ctime>
 
 using namespace snacka;
 
@@ -43,6 +44,8 @@ OPTIONS:
     --fps <rate>        Frames per second (default: 30, camera: 15)
     --encode            Output H.264 encoded video (instead of raw NV12)
     --bitrate <mbps>    Encoding bitrate in Mbps (default: 6, camera: 2)
+    --preview           Output preview frames to stderr for local display
+    --preview-fps <n>   Preview frame rate (default: 10)
     --json              Output source list as JSON (with 'list' command)
     --help              Show this help message
 
@@ -71,7 +74,7 @@ int ListSources(bool asJson) {
     return 0;
 }
 
-int Capture(int displayIndex, const std::string& cameraId, int width, int height, int fps, bool encodeH264, int bitrateMbps) {
+int Capture(int displayIndex, const std::string& cameraId, int width, int height, int fps, bool encodeH264, int bitrateMbps, bool outputPreview, int previewFps) {
     // Set up signal handlers for clean shutdown
     signal(SIGINT, SignalHandler);
     signal(SIGTERM, SignalHandler);
@@ -86,6 +89,15 @@ int Capture(int displayIndex, const std::string& cameraId, int width, int height
     // Frame statistics
     uint64_t frameCount = 0;
     uint64_t encodedFrameCount = 0;
+    uint64_t previewFrameCount = 0;
+
+    // Preview timing
+    double previewIntervalUs = 1000000.0 / previewFps;  // Microseconds
+    struct timespec lastPreviewTime = {0, 0};
+
+    if (outputPreview) {
+        std::cerr << "SnackaCaptureLinux: Preview output enabled at " << previewFps << " fps\n";
+    }
 
     // Initialize H.264 encoder if requested
     std::unique_ptr<VaapiEncoder> encoder;
@@ -140,6 +152,19 @@ int Capture(int displayIndex, const std::string& cameraId, int width, int height
 
         frameCount++;
 
+        // Check if we should output a preview frame
+        bool shouldOutputPreview = false;
+        if (outputPreview) {
+            struct timespec currentTime;
+            clock_gettime(CLOCK_MONOTONIC, &currentTime);
+            double elapsedUs = (currentTime.tv_sec - lastPreviewTime.tv_sec) * 1000000.0 +
+                              (currentTime.tv_nsec - lastPreviewTime.tv_nsec) / 1000.0;
+            if (elapsedUs >= previewIntervalUs) {
+                shouldOutputPreview = true;
+                lastPreviewTime = currentTime;
+            }
+        }
+
         if (encodeH264 && encoder) {
             // Encode to H.264
             if (!encoder->EncodeNV12(data, size, static_cast<int64_t>(timestamp))) {
@@ -168,6 +193,23 @@ int Capture(int displayIndex, const std::string& cameraId, int width, int height
                 std::cerr << "SnackaCaptureLinux: Video frame " << frameCount
                           << " (" << width << "x" << height << " NV12, " << size << " bytes)\n";
             }
+        }
+
+        // Output preview frame if needed
+        if (shouldOutputPreview) {
+            PreviewPacketHeader header(
+                static_cast<uint16_t>(width),
+                static_cast<uint16_t>(height),
+                PreviewFormat::NV12,
+                timestamp,
+                static_cast<uint32_t>(size)
+            );
+
+            // Write header + pixel data to stderr
+            write(STDERR_FILENO, &header, sizeof(header));
+            write(STDERR_FILENO, data, size);
+
+            previewFrameCount++;
         }
     };
 
@@ -254,6 +296,8 @@ int main(int argc, char* argv[]) {
     int fps = -1;
     bool encodeH264 = false;
     int bitrateMbps = -1;
+    bool outputPreview = false;
+    int previewFps = 10;
 
     for (size_t i = 1; i < args.size(); i++) {
         if (args[i] == "--display" && i + 1 < args.size()) {
@@ -270,6 +314,10 @@ int main(int argc, char* argv[]) {
             encodeH264 = true;
         } else if (args[i] == "--bitrate" && i + 1 < args.size()) {
             bitrateMbps = std::stoi(args[++i]);
+        } else if (args[i] == "--preview") {
+            outputPreview = true;
+        } else if (args[i] == "--preview-fps" && i + 1 < args.size()) {
+            previewFps = std::stoi(args[++i]);
         }
     }
 
@@ -298,5 +346,5 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    return Capture(displayIndex, cameraId, width, height, fps, encodeH264, bitrateMbps);
+    return Capture(displayIndex, cameraId, width, height, fps, encodeH264, bitrateMbps, outputPreview, previewFps);
 }

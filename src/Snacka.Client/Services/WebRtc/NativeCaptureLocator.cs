@@ -429,21 +429,23 @@ public class NativeCaptureLocator
     /// <param name="height">Output height</param>
     /// <param name="fps">Frames per second</param>
     /// <param name="bitrateMbps">Encoding bitrate in Mbps</param>
-    public string GetNativeCameraCaptureArgs(string cameraId, int width, int height, int fps, int bitrateMbps = 2)
+    /// <param name="outputPreview">Output preview frames to stderr</param>
+    /// <param name="previewFps">Preview frame rate</param>
+    public string GetNativeCameraCaptureArgs(string cameraId, int width, int height, int fps, int bitrateMbps = 2, bool outputPreview = true, int previewFps = 10)
     {
         if (OperatingSystem.IsMacOS())
         {
-            return GetSnackaCaptureVideoToolboxCameraArgs(cameraId, width, height, fps, bitrateMbps);
+            return GetSnackaCaptureVideoToolboxCameraArgs(cameraId, width, height, fps, bitrateMbps, outputPreview, previewFps);
         }
 
         if (OperatingSystem.IsWindows())
         {
-            return GetSnackaCaptureWindowsCameraArgs(cameraId, width, height, fps, bitrateMbps);
+            return GetSnackaCaptureWindowsCameraArgs(cameraId, width, height, fps, bitrateMbps, outputPreview, previewFps);
         }
 
         if (OperatingSystem.IsLinux())
         {
-            return GetSnackaCaptureLinuxCameraArgs(cameraId, width, height, fps, bitrateMbps);
+            return GetSnackaCaptureLinuxCameraArgs(cameraId, width, height, fps, bitrateMbps, outputPreview, previewFps);
         }
 
         throw new PlatformNotSupportedException("Native camera capture not supported on this platform");
@@ -452,7 +454,7 @@ public class NativeCaptureLocator
     /// <summary>
     /// Builds SnackaCaptureVideoToolbox camera capture arguments (macOS).
     /// </summary>
-    private string GetSnackaCaptureVideoToolboxCameraArgs(string cameraId, int width, int height, int fps, int bitrateMbps)
+    private string GetSnackaCaptureVideoToolboxCameraArgs(string cameraId, int width, int height, int fps, int bitrateMbps, bool outputPreview, int previewFps)
     {
         var args = new List<string> { "capture" };
 
@@ -468,13 +470,20 @@ public class NativeCaptureLocator
         args.Add("--encode");
         args.Add($"--bitrate {bitrateMbps}");
 
+        // Preview frames for local display
+        if (outputPreview)
+        {
+            args.Add("--preview");
+            args.Add($"--preview-fps {previewFps}");
+        }
+
         return string.Join(" ", args);
     }
 
     /// <summary>
     /// Builds SnackaCaptureWindows camera capture arguments (Windows).
     /// </summary>
-    private string GetSnackaCaptureWindowsCameraArgs(string cameraId, int width, int height, int fps, int bitrateMbps)
+    private string GetSnackaCaptureWindowsCameraArgs(string cameraId, int width, int height, int fps, int bitrateMbps, bool outputPreview, int previewFps)
     {
         var args = new List<string>();
 
@@ -490,13 +499,20 @@ public class NativeCaptureLocator
         args.Add("--encode");
         args.Add($"--bitrate {bitrateMbps}");
 
+        // Preview frames for local display
+        if (outputPreview)
+        {
+            args.Add("--preview");
+            args.Add($"--preview-fps {previewFps}");
+        }
+
         return string.Join(" ", args);
     }
 
     /// <summary>
     /// Builds SnackaCaptureLinux camera capture arguments (Linux).
     /// </summary>
-    private string GetSnackaCaptureLinuxCameraArgs(string cameraId, int width, int height, int fps, int bitrateMbps)
+    private string GetSnackaCaptureLinuxCameraArgs(string cameraId, int width, int height, int fps, int bitrateMbps, bool outputPreview, int previewFps)
     {
         var args = new List<string>();
 
@@ -511,6 +527,13 @@ public class NativeCaptureLocator
         // Use direct H.264 encoding via VAAPI
         args.Add("--encode");
         args.Add($"--bitrate {bitrateMbps}");
+
+        // Preview frames for local display
+        if (outputPreview)
+        {
+            args.Add("--preview");
+            args.Add($"--preview-fps {previewFps}");
+        }
 
         return string.Join(" ", args);
     }

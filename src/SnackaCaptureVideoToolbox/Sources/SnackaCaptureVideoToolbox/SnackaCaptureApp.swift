@@ -96,6 +96,12 @@ struct Capture: AsyncParsableCommand {
     @Option(name: .long, help: "Encoding bitrate in Mbps (default: 6)")
     var bitrate: Int = 6
 
+    @Flag(name: .long, help: "Output preview frames to stderr for local display")
+    var preview = false
+
+    @Option(name: .long, help: "Preview frame rate (default: 10)")
+    var previewFps: Int = 10
+
     func validate() throws {
         let sourceCount = [display != nil, window != nil, app != nil, camera != nil].filter { $0 }.count
         if sourceCount == 0 {
@@ -137,7 +143,9 @@ struct Capture: AsyncParsableCommand {
             excludeCurrentProcessAudio: excludeSelf,
             excludeAppBundleId: excludeApp,
             encodeH264: encode,
-            bitrateMbps: bitrate
+            bitrateMbps: bitrate,
+            outputPreview: preview,
+            previewFps: previewFps
         )
 
         // Log to stderr so it doesn't interfere with video output

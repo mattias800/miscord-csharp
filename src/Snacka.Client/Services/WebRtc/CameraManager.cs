@@ -22,6 +22,7 @@ public class CameraManager : IAsyncDisposable
     // Native capture
     private Process? _cameraProcess;
     private bool _isUsingNativeCapture;
+    private Task? _stderrTask;
 
     private CancellationTokenSource? _videoCts;
     private Task? _videoCaptureTask;
@@ -139,28 +140,46 @@ public class CameraManager : IAsyncDisposable
         _cameraProcess.Start();
         _isUsingNativeCapture = true;
 
-        // Start reading stderr for logs (don't block on it)
-        _ = Task.Run(async () =>
+        _videoCts = new CancellationTokenSource();
+
+        // Start stderr packet parser for preview frames
+        _stderrTask = Task.Run(() =>
         {
             try
             {
-                while (!_cameraProcess.HasExited)
+                var stream = _cameraProcess.StandardError.BaseStream;
+                var parser = new StderrPacketParser(stream);
+
+                parser.OnPreviewPacket += packet =>
                 {
-                    var line = await _cameraProcess.StandardError.ReadLineAsync();
-                    if (line != null)
+                    // Convert NV12 to RGB for OnLocalFrameCaptured
+                    if (packet.Format == PreviewFormat.NV12)
                     {
-                        Console.WriteLine($"CameraManager [native]: {line}");
+                        var rgbData = VideoDecoderManager.ConvertNv12ToRgb(packet.PixelData, packet.Width, packet.Height);
+                        OnLocalFrameCaptured?.Invoke(packet.Width, packet.Height, rgbData);
                     }
+                };
+
+                parser.OnLogMessage += msg =>
+                {
+                    Console.WriteLine($"CameraManager [native]: {msg}");
+                };
+
+                parser.ParseLoop(_videoCts.Token);
+            }
+            catch (Exception ex)
+            {
+                if (!_videoCts.Token.IsCancellationRequested)
+                {
+                    Console.WriteLine($"CameraManager: Stderr parser error: {ex.Message}");
                 }
             }
-            catch { }
         });
 
         // Start H.264 capture loop
-        _videoCts = new CancellationTokenSource();
         _videoCaptureTask = Task.Run(() => CameraH264Loop(_videoCts.Token, VideoFps));
 
-        Console.WriteLine("CameraManager: Native camera capture started (direct H.264)");
+        Console.WriteLine("CameraManager: Native camera capture started (direct H.264 + preview)");
         await Task.CompletedTask;
     }
 
@@ -239,6 +258,17 @@ public class CameraManager : IAsyncDisposable
             }
             catch (OperationCanceledException) { }
             _videoCaptureTask = null;
+        }
+
+        if (_stderrTask != null)
+        {
+            try
+            {
+                await _stderrTask.WaitAsync(TimeSpan.FromSeconds(1));
+            }
+            catch (TimeoutException) { }
+            catch (OperationCanceledException) { }
+            _stderrTask = null;
         }
 
         _videoCts?.Dispose();
