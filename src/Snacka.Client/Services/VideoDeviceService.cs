@@ -1,69 +1,40 @@
 using System.Text.RegularExpressions;
-using Emgu.CV;
-using Emgu.CV.CvEnum;
 
 namespace Snacka.Client.Services;
 
-public interface IVideoDeviceService : IDisposable
+public interface IVideoDeviceService
 {
     IReadOnlyList<VideoDeviceInfo> GetCameraDevices();
-
-    bool IsTestingCamera { get; }
-
-    Task StartCameraTestAsync(string? devicePath, Action<byte[], int, int> onFrameReceived);
-    Task StopTestAsync();
 }
 
 public record VideoDeviceInfo(string Path, string Name);
 
 /// <summary>
-/// Cross-platform video device service using Emgu CV (OpenCV wrapper).
-/// Supports macOS, Linux, and Windows.
+/// Cross-platform video device enumeration service.
+/// Uses native platform tools for reliable device discovery.
 /// </summary>
 public class VideoDeviceService : IVideoDeviceService
 {
-    private VideoCapture? _capture;
-    private CancellationTokenSource? _testCts;
-    private Action<byte[], int, int>? _onFrameReceived;
-    private Task? _captureTask;
-
-    private const int PreviewWidth = 640;
-    private const int PreviewHeight = 360;
-    private const int TargetFps = 15;
-
-    public bool IsTestingCamera => _capture != null;
-
-    // Constructor accepts ISettingsStore for compatibility, but we don't need it
-    public VideoDeviceService(ISettingsStore? settingsStore = null)
-    {
-    }
-
     public IReadOnlyList<VideoDeviceInfo> GetCameraDevices()
     {
         Console.WriteLine("VideoDeviceService: Enumerating camera devices...");
 
-        // Try platform-specific enumeration first for better device names
-        var devices = GetCameraDevicesViaPlatformTools();
-        if (devices.Count > 0)
-        {
-            return devices;
-        }
-
-        // Fall back to OpenCV probing
-        return GetCameraDevicesViaOpenCV();
-    }
-
-    private IReadOnlyList<VideoDeviceInfo> GetCameraDevicesViaPlatformTools()
-    {
         if (OperatingSystem.IsMacOS())
         {
             return GetCameraDevicesViaMacOS();
         }
+
         if (OperatingSystem.IsLinux())
         {
             return GetCameraDevicesViaLinux();
         }
-        // Windows: fall back to OpenCV
+
+        if (OperatingSystem.IsWindows())
+        {
+            return GetCameraDevicesViaWindows();
+        }
+
+        Console.WriteLine("VideoDeviceService: Unsupported platform");
         return Array.Empty<VideoDeviceInfo>();
     }
 
@@ -193,209 +164,47 @@ for (i, d) in devices.enumerated() {
         }
     }
 
-    private IReadOnlyList<VideoDeviceInfo> GetCameraDevicesViaOpenCV()
+    private IReadOnlyList<VideoDeviceInfo> GetCameraDevicesViaWindows()
     {
-        Console.WriteLine("VideoDeviceService: Falling back to OpenCV enumeration...");
-        var devices = new List<VideoDeviceInfo>();
-
-        for (int i = 0; i < 10; i++)
-        {
-            try
-            {
-                using var testCapture = new VideoCapture(i);
-                if (testCapture.IsOpened)
-                {
-                    var width = testCapture.Get(CapProp.FrameWidth);
-                    var height = testCapture.Get(CapProp.FrameHeight);
-                    var name = $"Camera {i}";
-
-                    var backend = testCapture.BackendName;
-                    if (!string.IsNullOrEmpty(backend))
-                    {
-                        name = $"Camera {i} ({backend})";
-                    }
-
-                    devices.Add(new VideoDeviceInfo(i.ToString(), name));
-                    Console.WriteLine($"  - Found: {name} ({width}x{height})");
-                }
-            }
-            catch
-            {
-                // Camera not available
-            }
-        }
-
-        Console.WriteLine($"VideoDeviceService: Found {devices.Count} cameras via OpenCV");
-        return devices;
-    }
-
-    public async Task StartCameraTestAsync(string? devicePath, Action<byte[], int, int> onFrameReceived)
-    {
-        await StopTestAsync();
-
-        _onFrameReceived = onFrameReceived;
-        _testCts = new CancellationTokenSource();
-
-        // Parse device index (default to 0)
-        var deviceIndex = 0;
-        if (!string.IsNullOrEmpty(devicePath) && int.TryParse(devicePath, out var parsed))
-        {
-            deviceIndex = parsed;
-        }
-
-        Console.WriteLine($"VideoDeviceService: Starting camera capture on device {deviceIndex}...");
-
         try
         {
-            // Use platform-specific backend to match enumeration
-            // macOS: AVFoundation (matches ffmpeg avfoundation enumeration)
-            // Linux: V4L2 (matches /dev/video* enumeration)
-            // Windows: default (MSMF or DirectShow)
-            var backend = VideoCapture.API.Any;
-            if (OperatingSystem.IsMacOS())
+            // Use PowerShell to enumerate cameras via WMI
+            var psi = new System.Diagnostics.ProcessStartInfo
             {
-                backend = VideoCapture.API.AVFoundation;
-            }
-            else if (OperatingSystem.IsLinux())
+                FileName = "powershell",
+                Arguments = "-Command \"Get-CimInstance Win32_PnPEntity | Where-Object { $_.PNPClass -eq 'Camera' -or $_.PNPClass -eq 'Image' } | Select-Object -ExpandProperty Name\"",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var process = System.Diagnostics.Process.Start(psi);
+            if (process == null) return Array.Empty<VideoDeviceInfo>();
+
+            var output = process.StandardOutput.ReadToEnd();
+            process.WaitForExit(5000);
+
+            var devices = new List<VideoDeviceInfo>();
+            var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+            for (int i = 0; i < lines.Length; i++)
             {
-                backend = VideoCapture.API.V4L2;
+                var name = lines[i].Trim();
+                if (!string.IsNullOrWhiteSpace(name))
+                {
+                    devices.Add(new VideoDeviceInfo(i.ToString(), name));
+                    Console.WriteLine($"  - Camera {i}: {name}");
+                }
             }
 
-            Console.WriteLine($"VideoDeviceService: Using backend: {backend}");
-            _capture = new VideoCapture(deviceIndex, backend);
-
-            if (!_capture.IsOpened)
-            {
-                throw new InvalidOperationException($"Failed to open camera {deviceIndex}");
-            }
-
-            // Set capture properties
-            _capture.Set(CapProp.FrameWidth, PreviewWidth);
-            _capture.Set(CapProp.FrameHeight, PreviewHeight);
-            _capture.Set(CapProp.Fps, TargetFps);
-
-            var actualWidth = (int)_capture.Get(CapProp.FrameWidth);
-            var actualHeight = (int)_capture.Get(CapProp.FrameHeight);
-            var actualFps = _capture.Get(CapProp.Fps);
-
-            Console.WriteLine($"VideoDeviceService: Camera opened - {actualWidth}x{actualHeight} @ {actualFps}fps");
-
-            // Start capture loop in background
-            var token = _testCts.Token;
-            _captureTask = Task.Run(() => CaptureLoop(actualWidth, actualHeight, token), token);
-
-            Console.WriteLine("VideoDeviceService: Camera capture started");
+            Console.WriteLine($"VideoDeviceService: Found {devices.Count} cameras via PowerShell/WMI (Windows)");
+            return devices;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"VideoDeviceService: Failed to start camera - {ex.Message}");
-            // Log inner exception for native library loading failures
-            if (ex.InnerException != null)
-            {
-                Console.WriteLine($"VideoDeviceService: Inner exception - {ex.InnerException.Message}");
-                if (ex.InnerException.InnerException != null)
-                {
-                    Console.WriteLine($"VideoDeviceService: Root cause - {ex.InnerException.InnerException.Message}");
-                }
-            }
-            // TypeInitializationException usually means native library failed to load
-            if (ex is TypeInitializationException)
-            {
-                Console.WriteLine("VideoDeviceService: This usually means OpenCV native libraries are not installed.");
-                Console.WriteLine("VideoDeviceService: On Linux, ensure opencv and libgdiplus are installed:");
-                Console.WriteLine("VideoDeviceService:   Ubuntu/Debian: sudo apt install libopencv-dev libgdiplus");
-                Console.WriteLine("VideoDeviceService:   Arch Linux: sudo pacman -S opencv libgdiplus");
-            }
-            await StopTestAsync();
-            throw;
+            Console.WriteLine($"VideoDeviceService: Windows enumeration failed - {ex.Message}");
+            return Array.Empty<VideoDeviceInfo>();
         }
-    }
-
-    private void CaptureLoop(int width, int height, CancellationToken token)
-    {
-        using var frame = new Mat();
-        var frameIntervalMs = 1000 / TargetFps;
-
-        while (!token.IsCancellationRequested && _capture != null)
-        {
-            try
-            {
-                if (!_capture.Read(frame) || frame.IsEmpty)
-                {
-                    Thread.Sleep(10);
-                    continue;
-                }
-
-                // Convert frame to RGB byte array
-                using var rgbFrame = new Mat();
-                CvInvoke.CvtColor(frame, rgbFrame, ColorConversion.Bgr2Rgb);
-
-                // Get raw bytes
-                var frameWidth = rgbFrame.Width;
-                var frameHeight = rgbFrame.Height;
-                var dataSize = frameWidth * frameHeight * 3; // RGB24
-                var data = new byte[dataSize];
-
-                System.Runtime.InteropServices.Marshal.Copy(rgbFrame.DataPointer, data, 0, dataSize);
-
-                // Invoke callback
-                _onFrameReceived?.Invoke(data, frameWidth, frameHeight);
-
-                // Throttle to target FPS
-                Thread.Sleep(frameIntervalMs);
-            }
-            catch (OperationCanceledException)
-            {
-                break;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"VideoDeviceService: Frame capture error - {ex.Message}");
-                Thread.Sleep(100);
-            }
-        }
-
-        Console.WriteLine("VideoDeviceService: Capture loop ended");
-    }
-
-    public async Task StopTestAsync()
-    {
-        Console.WriteLine("VideoDeviceService: Stopping camera test...");
-
-        _testCts?.Cancel();
-
-        if (_captureTask != null)
-        {
-            try
-            {
-                await _captureTask.WaitAsync(TimeSpan.FromSeconds(2));
-            }
-            catch (TimeoutException)
-            {
-                Console.WriteLine("VideoDeviceService: Capture task did not stop in time");
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected
-            }
-            _captureTask = null;
-        }
-
-        _testCts?.Dispose();
-        _testCts = null;
-
-        if (_capture != null)
-        {
-            _capture.Dispose();
-            _capture = null;
-        }
-
-        _onFrameReceived = null;
-        Console.WriteLine("VideoDeviceService: Camera test stopped");
-    }
-
-    public void Dispose()
-    {
-        StopTestAsync().GetAwaiter().GetResult();
     }
 }

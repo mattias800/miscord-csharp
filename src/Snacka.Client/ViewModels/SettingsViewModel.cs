@@ -110,7 +110,6 @@ public class SettingsViewModel : ViewModelBase
     {
         // Stop any tests before closing
         _ = _audioDeviceService.StopTestAsync();
-        _ = _videoDeviceService.StopTestAsync();
         _onClose();
     }
 

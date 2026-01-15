@@ -28,7 +28,7 @@ public partial class App : Application
             var signalR = new SignalRService();
             var settingsStore = new SettingsStore(Program.Profile);
             var audioDeviceService = new AudioDeviceService(settingsStore);
-            var videoDeviceService = new VideoDeviceService(settingsStore);
+            var videoDeviceService = new VideoDeviceService();
             var screenCaptureService = new ScreenCaptureService();
             var controllerService = new ControllerService();
             var webRtc = new WebRtcService(signalR, settingsStore);

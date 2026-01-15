@@ -7,8 +7,6 @@ using SIPSorceryMedia.SDL2;
 using SIPSorceryMedia.Abstractions;
 using SIPSorceryMedia.FFmpeg;
 using SIPSorceryMedia.Encoders;
-using Emgu.CV;
-using Emgu.CV.CvEnum;
 using Snacka.Shared.Models;
 using Snacka.Client.Services.HardwareVideo;
 using Snacka.Client.Services.WebRtc;

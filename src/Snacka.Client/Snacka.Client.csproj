@@ -42,8 +42,6 @@
     <PackageReference Include="SIPSorceryMedia.SDL2" Version="8.0.7" />
     <!-- LibVLCSharp for audio playback -->
     <PackageReference Include="LibVLCSharp" Version="3.9.4" />
-    <!-- Emgu CV for cross-platform camera capture -->
-    <PackageReference Include="Emgu.CV" Version="4.11.0.5746" />
     <!-- Silk.NET for OpenGL GPU rendering on Windows/Linux -->
     <PackageReference Include="Silk.NET.OpenGL" Version="2.22.0" />
     <PackageReference Include="Silk.NET.Windowing" Version="2.22.0" />
@@ -54,15 +52,8 @@
 
   <!-- Platform-specific runtimes -->
   <!-- Note: LibVLC native libraries are loaded from system-installed VLC on macOS (arm64 not available in NuGet) -->
-  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('OSX'))">
-    <PackageReference Include="Emgu.CV.runtime.mini.macos" Version="4.11.0.5746" />
-  </ItemGroup>
   <!-- Linux: LibVLC comes from system packages (apt install libvlc-dev), not NuGet -->
-  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
-    <PackageReference Include="Emgu.CV.runtime.ubuntu-x64" Version="4.11.0.5746" />
-  </ItemGroup>
   <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
-    <PackageReference Include="Emgu.CV.runtime.windows" Version="4.11.0.5746" />
     <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.21" />
     <!-- SDL2 native library for audio device enumeration -->
     <PackageReference Include="sdl2.nuget" Version="2.32.8" />

@@ -1,27 +1,18 @@
 using System.Diagnostics;
-using Emgu.CV;
-using Emgu.CV.CvEnum;
-using SIPSorceryMedia.Abstractions;
 
 namespace Snacka.Client.Services.WebRtc;
 
 /// <summary>
-/// Manages camera capture and H.264 encoding.
-/// Supports native capture tools (macOS VideoToolbox) and OpenCV/FFmpeg fallback.
-/// Extracted from WebRtcService for single responsibility.
+/// Manages camera capture and H.264 encoding using native platform tools.
+/// Requires SnackaCaptureVideoToolbox (macOS), SnackaCaptureWindows, or SnackaCaptureLinux.
 /// </summary>
 public class CameraManager : IAsyncDisposable
 {
     private readonly ISettingsStore? _settingsStore;
     private readonly NativeCaptureLocator _captureLocator;
 
-    // OpenCV capture (fallback)
-    private VideoCapture? _videoCapture;
-    private FfmpegProcessEncoder? _processEncoder;
-
     // Native capture
     private Process? _cameraProcess;
-    private bool _isUsingNativeCapture;
     private Task? _stderrTask;
 
     private CancellationTokenSource? _videoCts;
@@ -113,26 +104,26 @@ public class CameraManager : IAsyncDisposable
     }
 
     /// <summary>
-    /// Starts camera capture and encoding.
+    /// Starts camera capture and encoding using native tools.
     /// </summary>
     public async Task StartAsync()
     {
-        if (_videoCapture != null || _cameraProcess != null) return;
+        if (_cameraProcess != null) return;
+
+        // Get video device from settings
+        var devicePath = _settingsStore?.Settings.VideoDevice ?? "0";
+
+        // Require native camera capture
+        if (!_captureLocator.IsNativeCameraCaptureAvailable())
+        {
+            throw new InvalidOperationException(
+                "Native camera capture tool not available. " +
+                "Please build SnackaCaptureVideoToolbox (macOS), SnackaCaptureWindows, or SnackaCaptureLinux.");
+        }
 
         try
         {
-            // Get video device from settings
-            var devicePath = _settingsStore?.Settings.VideoDevice ?? "0";
-
-            // Check if native camera capture is available
-            if (_captureLocator.IsNativeCameraCaptureAvailable())
-            {
-                await StartNativeCaptureAsync(devicePath);
-            }
-            else
-            {
-                await StartOpenCVCaptureAsync(devicePath);
-            }
+            await StartNativeCaptureAsync(devicePath);
         }
         catch (Exception ex)
         {
@@ -143,7 +134,7 @@ public class CameraManager : IAsyncDisposable
     }
 
     /// <summary>
-    /// Starts camera capture using native tools (VideoToolbox on macOS, etc.)
+    /// Starts camera capture using native tools (VideoToolbox on macOS, Media Foundation on Windows, VAAPI on Linux)
     /// </summary>
     private async Task StartNativeCaptureAsync(string devicePath)
     {
@@ -172,7 +163,6 @@ public class CameraManager : IAsyncDisposable
         };
 
         _cameraProcess.Start();
-        _isUsingNativeCapture = true;
 
         _videoCts = new CancellationTokenSource();
 
@@ -218,62 +208,6 @@ public class CameraManager : IAsyncDisposable
     }
 
     /// <summary>
-    /// Starts camera capture using OpenCV (fallback path).
-    /// </summary>
-    private async Task StartOpenCVCaptureAsync(string devicePath)
-    {
-        var deviceIndex = 0;
-        if (int.TryParse(devicePath, out var parsed))
-        {
-            deviceIndex = parsed;
-        }
-
-        var (videoWidth, videoHeight, videoFps, _) = GetVideoSettings();
-
-        // Use AVFoundation on macOS, V4L2 on Linux for correct device mapping
-        var backend = VideoCapture.API.Any;
-        if (OperatingSystem.IsMacOS())
-        {
-            backend = VideoCapture.API.AVFoundation;
-        }
-        else if (OperatingSystem.IsLinux())
-        {
-            backend = VideoCapture.API.V4L2;
-        }
-
-        Console.WriteLine($"CameraManager: Starting OpenCV video capture on device {deviceIndex} with backend {backend} ({videoWidth}x{videoHeight}@{videoFps}fps)");
-        _videoCapture = new VideoCapture(deviceIndex, backend);
-
-        if (!_videoCapture.IsOpened)
-        {
-            throw new InvalidOperationException($"Failed to open camera {deviceIndex}");
-        }
-
-        // Set capture properties
-        _videoCapture.Set(CapProp.FrameWidth, videoWidth);
-        _videoCapture.Set(CapProp.FrameHeight, videoHeight);
-        _videoCapture.Set(CapProp.Fps, videoFps);
-
-        var actualWidth = (int)_videoCapture.Get(CapProp.FrameWidth);
-        var actualHeight = (int)_videoCapture.Get(CapProp.FrameHeight);
-
-        Console.WriteLine($"CameraManager: Video capture opened - {actualWidth}x{actualHeight}");
-
-        // Create FFmpeg process encoder for H264 (hardware accelerated on most platforms)
-        _processEncoder = new FfmpegProcessEncoder(actualWidth, actualHeight, videoFps, VideoCodecsEnum.H264);
-        _processEncoder.OnEncodedFrame += OnEncoderFrameEncoded;
-        _processEncoder.Start();
-        Console.WriteLine("CameraManager: Video encoder created for H264");
-
-        // Start capture loop
-        _videoCts = new CancellationTokenSource();
-        _videoCaptureTask = Task.Run(() => CaptureLoop(actualWidth, actualHeight, videoFps, _videoCts.Token));
-
-        Console.WriteLine("CameraManager: OpenCV video capture started");
-        await Task.CompletedTask;
-    }
-
-    /// <summary>
     /// Stops camera capture and encoding.
     /// </summary>
     public async Task StopAsync()
@@ -309,7 +243,6 @@ public class CameraManager : IAsyncDisposable
 
         _videoCts?.Dispose();
         _videoCts = null;
-        _isUsingNativeCapture = false;
 
         // Stop native capture process
         if (_cameraProcess != null)
@@ -330,108 +263,8 @@ public class CameraManager : IAsyncDisposable
             _cameraProcess = null;
         }
 
-        // Dispose video encoder (OpenCV path)
-        if (_processEncoder != null)
-        {
-            _processEncoder.OnEncodedFrame -= OnEncoderFrameEncoded;
-            _processEncoder.Dispose();
-            _processEncoder = null;
-        }
-
-        // Dispose OpenCV capture
-        if (_videoCapture != null)
-        {
-            _videoCapture.Dispose();
-            _videoCapture = null;
-        }
-
         _isCameraOn = false;
         Console.WriteLine("CameraManager: Video capture stopped");
-    }
-
-    private void OnEncoderFrameEncoded(uint durationRtpUnits, byte[] encodedSample)
-    {
-        _sentCameraFrameCount++;
-        if (_sentCameraFrameCount <= 5 || _sentCameraFrameCount % 100 == 0)
-        {
-            Console.WriteLine($"CameraManager: Encoded camera frame {_sentCameraFrameCount}, size={encodedSample.Length}");
-        }
-
-        OnFrameEncoded?.Invoke(durationRtpUnits, encodedSample);
-    }
-
-    private void CaptureLoop(int width, int height, int fps, CancellationToken token)
-    {
-        using var frame = new Mat();
-        var frameIntervalMs = 1000 / fps;
-        var frameCount = 0;
-
-        Console.WriteLine($"CameraManager: Video capture loop starting - target {width}x{height} @ {fps}fps");
-
-        while (!token.IsCancellationRequested && _videoCapture != null)
-        {
-            try
-            {
-                if (!_videoCapture.Read(frame) || frame.IsEmpty)
-                {
-                    Thread.Sleep(10);
-                    continue;
-                }
-
-                // Get frame dimensions and raw BGR bytes (OpenCV captures in BGR format)
-                var frameWidth = frame.Width;
-                var frameHeight = frame.Height;
-                var dataSize = frameWidth * frameHeight * 3;
-
-                frameCount++;
-                if (frameCount == 1 || frameCount % 100 == 0)
-                {
-                    Console.WriteLine($"CameraManager: Captured frame {frameCount} - {frameWidth}x{frameHeight}");
-                }
-
-                // Get BGR data from OpenCV frame
-                var bgrData = new byte[dataSize];
-                System.Runtime.InteropServices.Marshal.Copy(frame.DataPointer, bgrData, 0, dataSize);
-
-                // Send frame to encoder (encoding happens asynchronously in FfmpegProcessEncoder)
-                if (_processEncoder != null)
-                {
-                    try
-                    {
-                        // Send to FFmpeg process for encoding
-                        _processEncoder.EncodeFrame(bgrData);
-                    }
-                    catch (Exception encodeEx)
-                    {
-                        if (frameCount <= 5 || frameCount % 100 == 0)
-                        {
-                            Console.WriteLine($"CameraManager: Encoding error on frame {frameCount}: {encodeEx.Message}");
-                        }
-                    }
-                }
-
-                // Fire local preview event (convert BGR to RGB)
-                if (OnLocalFrameCaptured != null && frameCount % 2 == 0) // Every other frame for performance
-                {
-                    var rgbData = ColorSpaceConverter.BgrToRgb(bgrData, frameWidth, frameHeight);
-                    OnLocalFrameCaptured.Invoke(frameWidth, frameHeight, rgbData);
-                }
-
-                Thread.Sleep(frameIntervalMs);
-            }
-            catch (OperationCanceledException)
-            {
-                break;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"CameraManager: Video capture error - {ex.Message}");
-                Console.WriteLine($"CameraManager: Stack trace: {ex.StackTrace}");
-                Thread.Sleep(100);
-            }
-        }
-
-        Console.WriteLine($"CameraManager: Video capture loop ended after {frameCount} frames");
     }
 
     /// <summary>
@@ -509,6 +342,7 @@ public class CameraManager : IAsyncDisposable
                         Console.WriteLine($"CameraManager: Sending H.264 frame {frameCount}, NALs={nalUnitCount}, size={frameBytes.Length}");
                     }
 
+                    _sentCameraFrameCount++;
                     OnFrameEncoded?.Invoke(rtpDuration, frameBytes);
 
                     frameData.SetLength(0);
@@ -534,6 +368,7 @@ public class CameraManager : IAsyncDisposable
                         Console.WriteLine($"CameraManager: Sending H.264 P-frame {frameCount}, size={frameBytes.Length}");
                     }
 
+                    _sentCameraFrameCount++;
                     OnFrameEncoded?.Invoke(rtpDuration, frameBytes);
                     frameData.SetLength(0);
                 }
@@ -548,6 +383,7 @@ public class CameraManager : IAsyncDisposable
                         Console.WriteLine($"CameraManager: Sending H.264 I-frame {frameCount}, size={frameBytes.Length}");
                     }
 
+                    _sentCameraFrameCount++;
                     OnFrameEncoded?.Invoke(rtpDuration, frameBytes);
                     frameData.SetLength(0);
                     isKeyframeInProgress = false;
