@@ -20,6 +20,9 @@ public class CameraManager : IAsyncDisposable
     private bool _isCameraOn;
     private int _sentCameraFrameCount;
 
+    // Local preview decoder
+    private FfmpegProcessDecoder? _localPreviewDecoder;
+
     // Default video capture settings (used if settings not available)
     private const int DefaultVideoWidth = 640;
     private const int DefaultVideoHeight = 360;
@@ -167,23 +170,23 @@ public class CameraManager : IAsyncDisposable
 
         _videoCts = new CancellationTokenSource();
 
-        // Start stderr packet parser for preview frames
+        // Start local preview decoder (decodes H.264 to NV12, then converts to RGB for preview)
+        _localPreviewDecoder = new FfmpegProcessDecoder(width, height, outputFormat: DecoderOutputFormat.Nv12);
+        _localPreviewDecoder.OnDecodedFrame += (frameWidth, frameHeight, nv12Data) =>
+        {
+            // Convert NV12 to RGB for OnLocalFrameCaptured
+            var rgbData = VideoDecoderManager.ConvertNv12ToRgb(nv12Data, frameWidth, frameHeight);
+            OnLocalFrameCaptured?.Invoke(frameWidth, frameHeight, rgbData);
+        };
+        _localPreviewDecoder.Start();
+
+        // Start stderr parser for log messages only
         _stderrTask = Task.Run(() =>
         {
             try
             {
                 var stream = _cameraProcess.StandardError.BaseStream;
                 var parser = new StderrPacketParser(stream);
-
-                parser.OnPreviewPacket += packet =>
-                {
-                    // Convert NV12 to RGB for OnLocalFrameCaptured
-                    if (packet.Format == PreviewFormat.NV12)
-                    {
-                        var rgbData = VideoDecoderManager.ConvertNv12ToRgb(packet.PixelData, packet.Width, packet.Height);
-                        OnLocalFrameCaptured?.Invoke(packet.Width, packet.Height, rgbData);
-                    }
-                };
 
                 parser.OnLogMessage += msg =>
                 {
@@ -244,6 +247,10 @@ public class CameraManager : IAsyncDisposable
 
         _videoCts?.Dispose();
         _videoCts = null;
+
+        // Stop local preview decoder
+        _localPreviewDecoder?.Dispose();
+        _localPreviewDecoder = null;
 
         // Stop native capture process
         if (_cameraProcess != null)
@@ -345,6 +352,7 @@ public class CameraManager : IAsyncDisposable
 
                     _sentCameraFrameCount++;
                     OnFrameEncoded?.Invoke(rtpDuration, frameBytes);
+                    _localPreviewDecoder?.DecodeFrame(frameBytes);
 
                     frameData.SetLength(0);
                     isKeyframeInProgress = true;
@@ -371,6 +379,7 @@ public class CameraManager : IAsyncDisposable
 
                     _sentCameraFrameCount++;
                     OnFrameEncoded?.Invoke(rtpDuration, frameBytes);
+                    _localPreviewDecoder?.DecodeFrame(frameBytes);
                     frameData.SetLength(0);
                 }
                 // NAL type 5 = IDR (keyframe)
@@ -386,6 +395,7 @@ public class CameraManager : IAsyncDisposable
 
                     _sentCameraFrameCount++;
                     OnFrameEncoded?.Invoke(rtpDuration, frameBytes);
+                    _localPreviewDecoder?.DecodeFrame(frameBytes);
                     frameData.SetLength(0);
                     isKeyframeInProgress = false;
                 }

@@ -154,6 +154,8 @@ public class WebRtcService : IWebRtcService
     private readonly ConcurrentDictionary<uint, int> _ssrcPayloadTypeMap = new();
     // UserIds of screen shares we're currently watching (can watch multiple)
     private readonly HashSet<Guid> _watchingScreenShareUserIds = new();
+    // UserIds of users currently sharing their camera (for routing when SSRC mapping unavailable)
+    private readonly HashSet<Guid> _cameraSharingUserIds = new();
 
     // Video format for track negotiation (read from SFU manager)
     private const int VideoFps = 15;
@@ -290,6 +292,31 @@ public class WebRtcService : IWebRtcService
             {
                 _cameraVideoSsrcToUserMap[e.CameraVideoSsrc] = e.UserId;
                 Console.WriteLine($"WebRTC: Mapped camera video SSRC {e.CameraVideoSsrc} to user {e.UserId}");
+            }
+        };
+
+        // Track users who are sharing their camera (for routing when SSRC mapping unavailable)
+        _signalR.VideoStreamStarted += e =>
+        {
+            if (_currentChannelId == e.ChannelId && e.StreamType == VideoStreamType.Camera && e.UserId != _localUserId)
+            {
+                lock (_cameraSharingUserIds)
+                {
+                    _cameraSharingUserIds.Add(e.UserId);
+                    Console.WriteLine($"WebRTC: User {e.UserId} started camera, now tracking {_cameraSharingUserIds.Count} camera sharers");
+                }
+            }
+        };
+
+        _signalR.VideoStreamStopped += e =>
+        {
+            if (_currentChannelId == e.ChannelId && e.StreamType == VideoStreamType.Camera)
+            {
+                lock (_cameraSharingUserIds)
+                {
+                    _cameraSharingUserIds.Remove(e.UserId);
+                    Console.WriteLine($"WebRTC: User {e.UserId} stopped camera, now tracking {_cameraSharingUserIds.Count} camera sharers");
+                }
             }
         };
 
@@ -458,6 +485,7 @@ public class WebRtcService : IWebRtcService
         _ssrcPayloadTypeMap.Clear();
         _cameraVideoSsrcToUserMap.Clear();
         _watchingScreenShareUserIds.Clear();
+        _cameraSharingUserIds.Clear();
         _cameraFrameAssembler.Reset();
         _screenFrameAssembler.Reset();
 
@@ -611,6 +639,32 @@ public class WebRtcService : IWebRtcService
                 if (_cameraVideoSsrcToUserMap.TryGetValue(ssrc, out var mappedUserId))
                 {
                     userId = mappedUserId;
+                }
+                else
+                {
+                    // SSRC not mapped - fall back to known camera sharers
+                    // (SFU may rewrite SSRC when forwarding, so mapping may not work)
+                    lock (_cameraSharingUserIds)
+                    {
+                        if (_cameraSharingUserIds.Count == 1)
+                        {
+                            // Only one camera sharer, use that user
+                            userId = _cameraSharingUserIds.First();
+                            // Cache this SSRC mapping for future frames
+                            _cameraVideoSsrcToUserMap[ssrc] = userId;
+                            Console.WriteLine($"WebRTC: Auto-mapped camera SSRC {ssrc} to sole sharer {userId}");
+                        }
+                        else if (_cameraSharingUserIds.Count > 1)
+                        {
+                            Console.WriteLine($"WebRTC: Received camera video from unmapped SSRC {ssrc}, {_cameraSharingUserIds.Count} sharers - cannot determine user");
+                            return;
+                        }
+                        else
+                        {
+                            Console.WriteLine($"WebRTC: Received camera video from unmapped SSRC {ssrc}, no known camera sharers");
+                            return;
+                        }
+                    }
                 }
             }
 

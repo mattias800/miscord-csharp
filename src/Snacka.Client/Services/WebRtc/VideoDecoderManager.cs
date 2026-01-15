@@ -130,6 +130,10 @@ public class VideoDecoderManager : IAsyncDisposable
                 Console.WriteLine($"VideoDecoderManager: Error writing to software decoder: {ex.Message}");
             }
         }
+        else
+        {
+            Console.WriteLine($"VideoDecoderManager: No decoder for {streamType} from user {userId}, frame dropped");
+        }
     }
 
     /// <summary>
