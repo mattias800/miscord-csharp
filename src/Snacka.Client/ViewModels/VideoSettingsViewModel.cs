@@ -1,11 +1,9 @@
 using System.Collections.ObjectModel;
 using System.Windows.Input;
-using Avalonia;
-using Avalonia.Media.Imaging;
-using Avalonia.Platform;
 using Avalonia.Threading;
 using ReactiveUI;
 using Snacka.Client.Services;
+using Snacka.Client.Services.GpuVideo;
 
 namespace Snacka.Client.ViewModels;
 
@@ -38,13 +36,23 @@ public class VideoSettingsViewModel : ViewModelBase
     private int _frameWidth;
     private int _frameHeight;
     private string _cameraStatus = "Not testing";
-    private WriteableBitmap? _previewBitmap;
-    private WriteableBitmap? _encodedPreviewBitmap;
 
     // Quality settings
     private string _selectedResolution;
     private int _selectedFramerate;
     private int _selectedBitrate;
+
+    /// <summary>
+    /// Fired when a raw NV12 frame is received (for GPU rendering).
+    /// Parameters: width, height, nv12Data
+    /// </summary>
+    public event Action<int, int, byte[]>? OnRawNv12Frame;
+
+    /// <summary>
+    /// Fired when an encoded NV12 frame is received (for GPU rendering).
+    /// Parameters: width, height, nv12Data
+    /// </summary>
+    public event Action<int, int, byte[]>? OnEncodedNv12Frame;
 
     public VideoSettingsViewModel(ISettingsStore settingsStore, IVideoDeviceService videoDeviceService)
     {
@@ -84,11 +92,11 @@ public class VideoSettingsViewModel : ViewModelBase
         _selectedFramerate = _settingsStore.Settings.CameraFramerate;
         _selectedBitrate = _settingsStore.Settings.CameraBitrateMbps;
 
-        // Wire up camera test service events
-        _cameraTestService.OnRawFrameReceived += (width, height, rgbData) =>
-            Dispatcher.UIThread.Post(() => OnRawFrameReceived(rgbData, width, height));
-        _cameraTestService.OnEncodedFrameReceived += (width, height, rgbData) =>
-            Dispatcher.UIThread.Post(() => OnEncodedFrameReceived(rgbData, width, height));
+        // Wire up camera test service events (NV12 for GPU rendering)
+        _cameraTestService.OnRawNv12FrameReceived += (width, height, nv12Data) =>
+            Dispatcher.UIThread.Post(() => HandleRawNv12Frame(width, height, nv12Data));
+        _cameraTestService.OnEncodedNv12FrameReceived += (width, height, nv12Data) =>
+            Dispatcher.UIThread.Post(() => HandleEncodedNv12Frame(width, height, nv12Data));
         _cameraTestService.OnError += error =>
             Dispatcher.UIThread.Post(() => CameraStatus = $"Error: {error}");
 
@@ -207,17 +215,10 @@ public class VideoSettingsViewModel : ViewModelBase
 
     public string Resolution => _frameWidth > 0 ? $"{_frameWidth}x{_frameHeight}" : "—";
 
-    public WriteableBitmap? PreviewBitmap
-    {
-        get => _previewBitmap;
-        set => this.RaiseAndSetIfChanged(ref _previewBitmap, value);
-    }
-
-    public WriteableBitmap? EncodedPreviewBitmap
-    {
-        get => _encodedPreviewBitmap;
-        set => this.RaiseAndSetIfChanged(ref _encodedPreviewBitmap, value);
-    }
+    /// <summary>
+    /// Gets whether GPU video rendering is available on this system.
+    /// </summary>
+    public bool IsGpuAvailable => GpuVideoRendererFactory.IsAvailable();
 
     public bool IsLoadingDevices
     {
@@ -266,8 +267,6 @@ public class VideoSettingsViewModel : ViewModelBase
             _frameWidth = 0;
             _frameHeight = 0;
             CameraStatus = "Not testing";
-            PreviewBitmap = null;
-            EncodedPreviewBitmap = null;
             this.RaisePropertyChanged(nameof(Resolution));
         }
         else
@@ -301,8 +300,6 @@ public class VideoSettingsViewModel : ViewModelBase
         EncodedFrameCount = 0;
         _frameWidth = 0;
         _frameHeight = 0;
-        PreviewBitmap = null;
-        EncodedPreviewBitmap = null;
         CameraStatus = "Restarting...";
         this.RaisePropertyChanged(nameof(Resolution));
 
@@ -320,7 +317,7 @@ public class VideoSettingsViewModel : ViewModelBase
         }
     }
 
-    private void OnRawFrameReceived(byte[] frameData, int width, int height)
+    private void HandleRawNv12Frame(int width, int height, byte[] nv12Data)
     {
         RawFrameCount++;
 
@@ -331,51 +328,16 @@ public class VideoSettingsViewModel : ViewModelBase
             this.RaisePropertyChanged(nameof(Resolution));
         }
 
-        // Create bitmap from RGB24 data
-        PreviewBitmap = CreateBitmapFromRgb(frameData, width, height);
+        // Fire event for View to render (GPU will handle YUV→RGB conversion)
+        OnRawNv12Frame?.Invoke(width, height, nv12Data);
     }
 
-    private void OnEncodedFrameReceived(byte[] frameData, int width, int height)
+    private void HandleEncodedNv12Frame(int width, int height, byte[] nv12Data)
     {
         EncodedFrameCount++;
 
-        // Create bitmap from RGB24 data
-        EncodedPreviewBitmap = CreateBitmapFromRgb(frameData, width, height);
-    }
-
-    private static WriteableBitmap CreateBitmapFromRgb(byte[] rgbData, int width, int height)
-    {
-        if (rgbData.Length != width * height * 3)
-        {
-            Console.WriteLine($"VideoSettings: Invalid RGB data length {rgbData.Length}, expected {width * height * 3}");
-            return null!;
-        }
-
-        var bitmap = new WriteableBitmap(
-            new PixelSize(width, height),
-            new Vector(96, 96),
-            Avalonia.Platform.PixelFormat.Bgra8888,
-            AlphaFormat.Opaque);
-
-        using (var lockedBitmap = bitmap.Lock())
-        {
-            var destPtr = lockedBitmap.Address;
-            var rgbIndex = 0;
-            var bgraData = new byte[width * height * 4];
-
-            for (int i = 0; i < width * height; i++)
-            {
-                bgraData[i * 4 + 0] = rgbData[rgbIndex + 2]; // B
-                bgraData[i * 4 + 1] = rgbData[rgbIndex + 1]; // G
-                bgraData[i * 4 + 2] = rgbData[rgbIndex + 0]; // R
-                bgraData[i * 4 + 3] = 255;                   // A
-                rgbIndex += 3;
-            }
-
-            System.Runtime.InteropServices.Marshal.Copy(bgraData, 0, destPtr, bgraData.Length);
-        }
-
-        return bitmap;
+        // Fire event for View to render (GPU will handle YUV→RGB conversion)
+        OnEncodedNv12Frame?.Invoke(width, height, nv12Data);
     }
 
     private async Task StopCameraTestAsync()
@@ -386,8 +348,6 @@ public class VideoSettingsViewModel : ViewModelBase
         EncodedFrameCount = 0;
         _frameWidth = 0;
         _frameHeight = 0;
-        PreviewBitmap = null;
-        EncodedPreviewBitmap = null;
         CameraStatus = "Not testing";
         this.RaisePropertyChanged(nameof(Resolution));
     }

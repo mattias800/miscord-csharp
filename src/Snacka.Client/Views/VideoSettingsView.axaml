@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Snacka.Client.ViewModels"
              xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:controls="using:Snacka.Client.Controls"
              x:Class="Snacka.Client.Views.VideoSettingsView"
              x:DataType="vm:VideoSettingsViewModel">
 
@@ -133,7 +134,7 @@
                         </Button>
                     </Panel>
 
-                    <!-- Dual Camera Preview -->
+                    <!-- Dual Camera Preview (GPU-accelerated with software fallback) -->
                     <Grid ColumnDefinitions="*,20,*" IsVisible="{Binding IsTestingCamera}">
                         <!-- Raw Preview -->
                         <StackPanel Grid.Column="0" Spacing="8">
@@ -144,11 +145,20 @@
                             <Border Background="{StaticResource BackgroundBrush}"
                                     CornerRadius="10"
                                     Padding="4"
-                                    HorizontalAlignment="Left">
-                                <Image Source="{Binding PreviewBitmap}"
-                                       Width="280"
-                                       Height="210"
-                                       Stretch="Uniform"/>
+                                    HorizontalAlignment="Left"
+                                    ClipToBounds="True">
+                                <Panel Width="280" Height="210">
+                                    <!-- GPU renderer (primary) -->
+                                    <controls:GpuVideoView x:Name="RawPreviewView"
+                                                           Width="280"
+                                                           Height="210"/>
+                                    <!-- Software fallback -->
+                                    <Image x:Name="RawPreviewFallback"
+                                           Width="280"
+                                           Height="210"
+                                           Stretch="Uniform"
+                                           IsVisible="False"/>
+                                </Panel>
                             </Border>
                             <TextBlock FontSize="11" Foreground="{StaticResource Foreground3Brush}">
                                 <Run Text="Frames: "/>
@@ -165,11 +175,20 @@
                             <Border Background="{StaticResource BackgroundBrush}"
                                     CornerRadius="10"
                                     Padding="4"
-                                    HorizontalAlignment="Left">
-                                <Image Source="{Binding EncodedPreviewBitmap}"
-                                       Width="280"
-                                       Height="210"
-                                       Stretch="Uniform"/>
+                                    HorizontalAlignment="Left"
+                                    ClipToBounds="True">
+                                <Panel Width="280" Height="210">
+                                    <!-- GPU renderer (primary) -->
+                                    <controls:GpuVideoView x:Name="EncodedPreviewView"
+                                                           Width="280"
+                                                           Height="210"/>
+                                    <!-- Software fallback -->
+                                    <Image x:Name="EncodedPreviewFallback"
+                                           Width="280"
+                                           Height="210"
+                                           Stretch="Uniform"
+                                           IsVisible="False"/>
+                                </Panel>
                             </Border>
                             <TextBlock FontSize="11" Foreground="{StaticResource Foreground3Brush}">
                                 <Run Text="Frames: "/>

@@ -21,16 +21,16 @@ public class CameraTestService : IDisposable
     private int _encodedFrameCount;
 
     /// <summary>
-    /// Fired when a raw preview frame is received (NV12 converted to RGB24).
-    /// Parameters: width, height, rgbData
+    /// Fired when a raw preview frame is received (NV12 format for GPU rendering).
+    /// Parameters: width, height, nv12Data
     /// </summary>
-    public event Action<int, int, byte[]>? OnRawFrameReceived;
+    public event Action<int, int, byte[]>? OnRawNv12FrameReceived;
 
     /// <summary>
-    /// Fired when a decoded H.264 frame is received (RGB24).
-    /// Parameters: width, height, rgbData
+    /// Fired when a decoded H.264 frame is received (NV12 format for GPU rendering).
+    /// Parameters: width, height, nv12Data
     /// </summary>
-    public event Action<int, int, byte[]>? OnEncodedFrameReceived;
+    public event Action<int, int, byte[]>? OnEncodedNv12FrameReceived;
 
     /// <summary>
     /// Fired when an error occurs during capture/decode.
@@ -87,8 +87,8 @@ public class CameraTestService : IDisposable
 
         try
         {
-            // Start H.264 decoder first
-            _h264Decoder = new FfmpegProcessDecoder(width, height);
+            // Start H.264 decoder first (with NV12 output for GPU rendering)
+            _h264Decoder = new FfmpegProcessDecoder(width, height, outputFormat: DecoderOutputFormat.Nv12);
             _h264Decoder.OnDecodedFrame += OnH264FrameDecoded;
             _h264Decoder.Start();
 
@@ -137,15 +137,13 @@ public class CameraTestService : IDisposable
             {
                 _rawFrameCount++;
 
-                // Convert NV12 to RGB24
-                var rgbData = ConvertNv12ToRgb24(packet.PixelData, packet.Width, packet.Height);
-
                 if (_rawFrameCount <= 5 || _rawFrameCount % 100 == 0)
                 {
                     Console.WriteLine($"CameraTestService: Raw preview frame {_rawFrameCount}, {packet.Width}x{packet.Height}");
                 }
 
-                OnRawFrameReceived?.Invoke(packet.Width, packet.Height, rgbData);
+                // Fire NV12 event directly (no CPU conversion - GPU will handle YUV→RGB)
+                OnRawNv12FrameReceived?.Invoke(packet.Width, packet.Height, packet.PixelData);
             };
 
             parser.OnLogMessage += message =>
@@ -212,7 +210,7 @@ public class CameraTestService : IDisposable
         }
     }
 
-    private void OnH264FrameDecoded(int width, int height, byte[] rgbData)
+    private void OnH264FrameDecoded(int width, int height, byte[] nv12Data)
     {
         _encodedFrameCount++;
 
@@ -221,46 +219,8 @@ public class CameraTestService : IDisposable
             Console.WriteLine($"CameraTestService: Decoded H.264 frame {_encodedFrameCount}, {width}x{height}");
         }
 
-        OnEncodedFrameReceived?.Invoke(width, height, rgbData);
-    }
-
-    /// <summary>
-    /// Converts NV12 pixel data to RGB24.
-    /// NV12 format: Y plane followed by interleaved UV plane (4:2:0 subsampling)
-    /// </summary>
-    private static byte[] ConvertNv12ToRgb24(byte[] nv12Data, int width, int height)
-    {
-        var rgbData = new byte[width * height * 3];
-        var yPlaneSize = width * height;
-
-        for (int j = 0; j < height; j++)
-        {
-            for (int i = 0; i < width; i++)
-            {
-                var yIndex = j * width + i;
-                var uvIndex = yPlaneSize + (j / 2) * width + (i / 2) * 2;
-
-                var y = nv12Data[yIndex];
-                var u = nv12Data[uvIndex];
-                var v = nv12Data[uvIndex + 1];
-
-                // YUV to RGB conversion (BT.601)
-                var c = y - 16;
-                var d = u - 128;
-                var e = v - 128;
-
-                var r = (298 * c + 409 * e + 128) >> 8;
-                var g = (298 * c - 100 * d - 208 * e + 128) >> 8;
-                var b = (298 * c + 516 * d + 128) >> 8;
-
-                var rgbIndex = (j * width + i) * 3;
-                rgbData[rgbIndex + 0] = (byte)Math.Clamp(r, 0, 255);
-                rgbData[rgbIndex + 1] = (byte)Math.Clamp(g, 0, 255);
-                rgbData[rgbIndex + 2] = (byte)Math.Clamp(b, 0, 255);
-            }
-        }
-
-        return rgbData;
+        // Fire NV12 event directly (GPU will handle YUV→RGB)
+        OnEncodedNv12FrameReceived?.Invoke(width, height, nv12Data);
     }
 
     /// <summary>
