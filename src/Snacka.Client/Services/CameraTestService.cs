@@ -173,28 +173,39 @@ public class CameraTestService : IDisposable
         try
         {
             var stdout = _captureProcess.StandardOutput.BaseStream;
-            var buffer = new byte[64 * 1024];
-            long totalBytes = 0;
+            var readBuffer = new byte[64 * 1024];
+            long totalBytesIn = 0;
+            long totalBytesOut = 0;
+
+            // Buffer for accumulating AVCC data and converting to Annex B
+            var avccBuffer = new MemoryStream();
 
             while (!token.IsCancellationRequested)
             {
-                var bytesRead = await stdout.ReadAsync(buffer, 0, buffer.Length, token);
+                var bytesRead = await stdout.ReadAsync(readBuffer, 0, readBuffer.Length, token);
                 if (bytesRead == 0)
                 {
                     Console.WriteLine("CameraTestService: H.264 stream ended");
                     break;
                 }
 
-                totalBytes += bytesRead;
-                if (totalBytes <= 10000 || totalBytes % 100000 < bytesRead)
-                {
-                    Console.WriteLine($"CameraTestService: Piped {bytesRead} H.264 bytes to decoder (total: {totalBytes})");
-                }
+                totalBytesIn += bytesRead;
 
-                // Copy data and send to decoder
-                var frameData = new byte[bytesRead];
-                Buffer.BlockCopy(buffer, 0, frameData, 0, bytesRead);
-                _h264Decoder.DecodeFrame(frameData);
+                // Accumulate data
+                avccBuffer.Write(readBuffer, 0, bytesRead);
+
+                // Convert AVCC to Annex B and send complete NAL units to decoder
+                var annexBData = ConvertAvccToAnnexB(avccBuffer);
+                if (annexBData.Length > 0)
+                {
+                    totalBytesOut += annexBData.Length;
+                    if (totalBytesOut <= 10000 || totalBytesOut % 100000 < annexBData.Length)
+                    {
+                        Console.WriteLine($"CameraTestService: Converted {bytesRead} AVCC bytes to {annexBData.Length} Annex B bytes (total in: {totalBytesIn}, out: {totalBytesOut})");
+                    }
+
+                    _h264Decoder.DecodeFrame(annexBData);
+                }
             }
         }
         catch (OperationCanceledException)
@@ -208,6 +219,69 @@ public class CameraTestService : IDisposable
                 Console.WriteLine($"CameraTestService: H.264 pipe error - {ex.Message}");
             }
         }
+    }
+
+    /// <summary>
+    /// Converts H.264 data from AVCC format (4-byte length prefix) to Annex B format (start codes).
+    /// Native capture tools output AVCC, but FFmpeg expects Annex B.
+    /// </summary>
+    private static byte[] ConvertAvccToAnnexB(MemoryStream avccBuffer)
+    {
+        var avccData = avccBuffer.ToArray();
+        var annexBStream = new MemoryStream();
+
+        // Annex B start code (4 bytes)
+        var startCode = new byte[] { 0x00, 0x00, 0x00, 0x01 };
+
+        int offset = 0;
+        int lastProcessedOffset = 0;
+
+        while (offset + 4 <= avccData.Length)
+        {
+            // Read 4-byte big-endian NAL unit length
+            int nalLength = (avccData[offset] << 24) |
+                           (avccData[offset + 1] << 16) |
+                           (avccData[offset + 2] << 8) |
+                           avccData[offset + 3];
+
+            // Sanity check: NAL length should be reasonable (< 10MB)
+            if (nalLength <= 0 || nalLength > 10 * 1024 * 1024)
+            {
+                // Invalid length - might be corrupted data or we're not at a NAL boundary
+                // Skip this byte and try again
+                offset++;
+                continue;
+            }
+
+            // Check if we have the complete NAL unit
+            if (offset + 4 + nalLength > avccData.Length)
+            {
+                // Incomplete NAL unit - wait for more data
+                break;
+            }
+
+            // Write Annex B start code
+            annexBStream.Write(startCode, 0, startCode.Length);
+
+            // Write NAL unit data (skip the 4-byte length prefix)
+            annexBStream.Write(avccData, offset + 4, nalLength);
+
+            offset += 4 + nalLength;
+            lastProcessedOffset = offset;
+        }
+
+        // Keep unprocessed bytes in the buffer for next iteration
+        if (lastProcessedOffset > 0)
+        {
+            var remaining = avccData.Length - lastProcessedOffset;
+            avccBuffer.SetLength(0);
+            if (remaining > 0)
+            {
+                avccBuffer.Write(avccData, lastProcessedOffset, remaining);
+            }
+        }
+
+        return annexBStream.ToArray();
     }
 
     private void OnH264FrameDecoded(int width, int height, byte[] nv12Data)
