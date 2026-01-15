@@ -390,6 +390,9 @@ public class MainWindowViewModel : ViewModelBase
             return;
         }
 
+        // Store server info for use in OnAuthSuccess
+        _currentServerInfo = serverInfoResult.Data;
+
         // Try to get profile to verify token is still valid
         var profileResult = await _apiClient.GetProfileAsync();
         if (profileResult.Success && profileResult.Data is not null)
@@ -433,7 +436,6 @@ public class MainWindowViewModel : ViewModelBase
             {
                 // Token refresh failed, go to login
                 CurrentServer = server;
-                _currentServerInfo = serverInfoResult.Data;
                 CurrentView = CreateLoginViewModel(serverInfoResult.Data.AllowRegistration);
             }
         }
@@ -441,7 +443,6 @@ public class MainWindowViewModel : ViewModelBase
         {
             // No refresh token, go to login
             CurrentServer = server;
-            _currentServerInfo = serverInfoResult.Data;
             CurrentView = CreateLoginViewModel(serverInfoResult.Data.AllowRegistration);
         }
     }

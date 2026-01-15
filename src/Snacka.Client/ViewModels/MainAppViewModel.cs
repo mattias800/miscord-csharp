@@ -741,17 +741,30 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
         _signalR.CommunityMemberAdded += e => Dispatcher.UIThread.Post(async () =>
         {
+            Console.WriteLine($"CommunityMemberAdded event received: communityId={e.CommunityId}, userId={e.UserId}");
+            Console.WriteLine($"SelectedCommunity: {SelectedCommunity?.Id} ({SelectedCommunity?.Name})");
+
             // If this is for the currently selected community, reload members
             if (SelectedCommunity is not null && e.CommunityId == SelectedCommunity.Id)
             {
+                Console.WriteLine("Reloading members list...");
                 var result = await _apiClient.GetMembersAsync(SelectedCommunity.Id);
                 if (result.Success && result.Data is not null)
                 {
+                    Console.WriteLine($"Loaded {result.Data.Count()} members");
                     Members.Clear();
                     foreach (var member in result.Data)
                         Members.Add(member);
                     this.RaisePropertyChanged(nameof(SortedMembers));
                 }
+                else
+                {
+                    Console.WriteLine($"Failed to load members: {result.Error}");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Community doesn't match selected community, skipping reload");
             }
         });
 

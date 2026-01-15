@@ -19,13 +19,16 @@ public class InvitesController : ControllerBase
 {
     private readonly ICommunityInviteService _inviteService;
     private readonly IHubContext<SnackaHub> _hubContext;
+    private readonly ILogger<InvitesController> _logger;
 
     public InvitesController(
         ICommunityInviteService inviteService,
-        IHubContext<SnackaHub> hubContext)
+        IHubContext<SnackaHub> hubContext,
+        ILogger<InvitesController> logger)
     {
         _inviteService = inviteService;
         _hubContext = hubContext;
+        _logger = logger;
     }
 
     /// <summary>
@@ -57,6 +60,8 @@ public class InvitesController : ControllerBase
             var invite = await _inviteService.AcceptInviteAsync(inviteId, userId.Value, cancellationToken);
 
             // Notify the community about the new member
+            _logger.LogInformation("Broadcasting CommunityMemberAdded to group community:{CommunityId} for user {UserId}",
+                invite.CommunityId, userId.Value);
             await _hubContext.Clients.Group($"community:{invite.CommunityId}")
                 .SendAsync("CommunityMemberAdded", invite.CommunityId, userId.Value, cancellationToken);
 
