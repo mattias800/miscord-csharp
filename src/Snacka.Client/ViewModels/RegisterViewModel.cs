@@ -27,7 +27,7 @@ public class RegisterViewModel : ViewModelBase
 
         if (!string.IsNullOrEmpty(initialInviteCode))
         {
-            _inviteCode = initialInviteCode;
+            InviteCode = initialInviteCode;
         }
 
         var canRegister = this.WhenAnyValue(x => x.IsLoading, isLoading => !isLoading);
