@@ -68,6 +68,10 @@ public class CameraTestService : IDisposable
         // The GPU renderer's aspect ratio correction will handle any mismatch
         var width = CalculateWidthFor16x9(height);
 
+        // Adjust preview FPS based on resolution to reduce data throughput
+        // Higher resolutions = more data per frame, so use lower preview FPS
+        var previewFps = GetPreviewFpsForResolution(height);
+
         // Get native capture tool path
         var capturePath = _captureLocator.GetNativeCameraCapturePath();
         if (capturePath == null)
@@ -77,9 +81,10 @@ public class CameraTestService : IDisposable
         }
 
         // Build arguments with preview enabled
-        var args = _captureLocator.GetNativeCameraCaptureArgs(cameraId, width, height, fps, bitrateMbps, outputPreview: true, previewFps: 15);
+        var args = _captureLocator.GetNativeCameraCaptureArgs(cameraId, width, height, fps, bitrateMbps, outputPreview: true, previewFps: previewFps);
 
-        Console.WriteLine($"CameraTestService: Starting capture: {capturePath} {args}");
+        Console.WriteLine($"CameraTestService: Starting capture at {width}x{height}@{fps}fps, preview at {previewFps}fps");
+        Console.WriteLine($"CameraTestService: Command: {capturePath} {args}");
 
         try
         {
@@ -357,6 +362,21 @@ public class CameraTestService : IDisposable
         // Round to nearest even number for video encoding compatibility
         var width = (int)Math.Round(height * 16.0 / 9.0);
         return width % 2 == 0 ? width : width + 1;
+    }
+
+    /// <summary>
+    /// Gets appropriate preview FPS for a given resolution.
+    /// Higher resolutions use lower preview FPS to reduce data throughput and GC pressure.
+    /// NV12 data sizes: 360p ~350KB, 720p ~1.4MB, 1080p ~3.1MB per frame.
+    /// </summary>
+    private static int GetPreviewFpsForResolution(int height)
+    {
+        return height switch
+        {
+            >= 1080 => 5,   // 1080p: ~15MB/s at 5fps (was ~45MB/s at 15fps)
+            >= 720 => 10,   // 720p: ~14MB/s at 10fps
+            _ => 15         // 360p and below: ~5MB/s at 15fps
+        };
     }
 
     public void Dispose()
