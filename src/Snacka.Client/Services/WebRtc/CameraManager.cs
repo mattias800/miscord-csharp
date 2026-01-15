@@ -29,11 +29,44 @@ public class CameraManager : IAsyncDisposable
     private bool _isCameraOn;
     private int _sentCameraFrameCount;
 
-    // Video capture settings
-    private const int VideoWidth = 640;
-    private const int VideoHeight = 480;
-    private const int VideoFps = 15;
-    private const int VideoBitrateMbps = 2;
+    // Default video capture settings (used if settings not available)
+    private const int DefaultVideoWidth = 640;
+    private const int DefaultVideoHeight = 480;
+    private const int DefaultVideoFps = 15;
+    private const int DefaultVideoBitrateMbps = 2;
+
+    /// <summary>
+    /// Gets video settings from user preferences or uses defaults.
+    /// </summary>
+    private (int width, int height, int fps, int bitrateMbps) GetVideoSettings()
+    {
+        if (_settingsStore == null)
+        {
+            return (DefaultVideoWidth, DefaultVideoHeight, DefaultVideoFps, DefaultVideoBitrateMbps);
+        }
+
+        var settings = _settingsStore.Settings;
+
+        // Parse resolution string (e.g., "640x480")
+        var width = DefaultVideoWidth;
+        var height = DefaultVideoHeight;
+        if (!string.IsNullOrEmpty(settings.CameraResolution))
+        {
+            var parts = settings.CameraResolution.Split('x');
+            if (parts.Length == 2 &&
+                int.TryParse(parts[0], out var parsedWidth) &&
+                int.TryParse(parts[1], out var parsedHeight))
+            {
+                width = parsedWidth;
+                height = parsedHeight;
+            }
+        }
+
+        var fps = settings.CameraFramerate > 0 ? settings.CameraFramerate : DefaultVideoFps;
+        var bitrate = settings.CameraBitrateMbps > 0 ? settings.CameraBitrateMbps : DefaultVideoBitrateMbps;
+
+        return (width, height, fps, bitrate);
+    }
 
     /// <summary>
     /// Gets whether the camera is currently active.
@@ -120,9 +153,10 @@ public class CameraManager : IAsyncDisposable
             throw new InvalidOperationException("Native camera capture path not found");
         }
 
-        var args = _captureLocator.GetNativeCameraCaptureArgs(devicePath, VideoWidth, VideoHeight, VideoFps, VideoBitrateMbps);
+        var (width, height, fps, bitrateMbps) = GetVideoSettings();
+        var args = _captureLocator.GetNativeCameraCaptureArgs(devicePath, width, height, fps, bitrateMbps);
 
-        Console.WriteLine($"CameraManager: Starting native camera capture: {nativeCapturePath} {args}");
+        Console.WriteLine($"CameraManager: Starting native camera capture ({width}x{height}@{fps}fps, {bitrateMbps}Mbps): {nativeCapturePath} {args}");
 
         _cameraProcess = new Process
         {
@@ -177,7 +211,7 @@ public class CameraManager : IAsyncDisposable
         });
 
         // Start H.264 capture loop
-        _videoCaptureTask = Task.Run(() => CameraH264Loop(_videoCts.Token, VideoFps));
+        _videoCaptureTask = Task.Run(() => CameraH264Loop(_videoCts.Token, fps));
 
         Console.WriteLine("CameraManager: Native camera capture started (direct H.264 + preview)");
         await Task.CompletedTask;
@@ -194,6 +228,8 @@ public class CameraManager : IAsyncDisposable
             deviceIndex = parsed;
         }
 
+        var (videoWidth, videoHeight, videoFps, _) = GetVideoSettings();
+
         // Use AVFoundation on macOS, V4L2 on Linux for correct device mapping
         var backend = VideoCapture.API.Any;
         if (OperatingSystem.IsMacOS())
@@ -205,7 +241,7 @@ public class CameraManager : IAsyncDisposable
             backend = VideoCapture.API.V4L2;
         }
 
-        Console.WriteLine($"CameraManager: Starting OpenCV video capture on device {deviceIndex} with backend {backend}");
+        Console.WriteLine($"CameraManager: Starting OpenCV video capture on device {deviceIndex} with backend {backend} ({videoWidth}x{videoHeight}@{videoFps}fps)");
         _videoCapture = new VideoCapture(deviceIndex, backend);
 
         if (!_videoCapture.IsOpened)
@@ -214,9 +250,9 @@ public class CameraManager : IAsyncDisposable
         }
 
         // Set capture properties
-        _videoCapture.Set(CapProp.FrameWidth, VideoWidth);
-        _videoCapture.Set(CapProp.FrameHeight, VideoHeight);
-        _videoCapture.Set(CapProp.Fps, VideoFps);
+        _videoCapture.Set(CapProp.FrameWidth, videoWidth);
+        _videoCapture.Set(CapProp.FrameHeight, videoHeight);
+        _videoCapture.Set(CapProp.Fps, videoFps);
 
         var actualWidth = (int)_videoCapture.Get(CapProp.FrameWidth);
         var actualHeight = (int)_videoCapture.Get(CapProp.FrameHeight);
@@ -224,14 +260,14 @@ public class CameraManager : IAsyncDisposable
         Console.WriteLine($"CameraManager: Video capture opened - {actualWidth}x{actualHeight}");
 
         // Create FFmpeg process encoder for H264 (hardware accelerated on most platforms)
-        _processEncoder = new FfmpegProcessEncoder(actualWidth, actualHeight, VideoFps, VideoCodecsEnum.H264);
+        _processEncoder = new FfmpegProcessEncoder(actualWidth, actualHeight, videoFps, VideoCodecsEnum.H264);
         _processEncoder.OnEncodedFrame += OnEncoderFrameEncoded;
         _processEncoder.Start();
         Console.WriteLine("CameraManager: Video encoder created for H264");
 
         // Start capture loop
         _videoCts = new CancellationTokenSource();
-        _videoCaptureTask = Task.Run(() => CaptureLoop(actualWidth, actualHeight, _videoCts.Token));
+        _videoCaptureTask = Task.Run(() => CaptureLoop(actualWidth, actualHeight, videoFps, _videoCts.Token));
 
         Console.WriteLine("CameraManager: OpenCV video capture started");
         await Task.CompletedTask;
@@ -324,13 +360,13 @@ public class CameraManager : IAsyncDisposable
         OnFrameEncoded?.Invoke(durationRtpUnits, encodedSample);
     }
 
-    private void CaptureLoop(int width, int height, CancellationToken token)
+    private void CaptureLoop(int width, int height, int fps, CancellationToken token)
     {
         using var frame = new Mat();
-        var frameIntervalMs = 1000 / VideoFps;
+        var frameIntervalMs = 1000 / fps;
         var frameCount = 0;
 
-        Console.WriteLine($"CameraManager: Video capture loop starting - target {width}x{height} @ {VideoFps}fps");
+        Console.WriteLine($"CameraManager: Video capture loop starting - target {width}x{height} @ {fps}fps");
 
         while (!token.IsCancellationRequested && _videoCapture != null)
         {

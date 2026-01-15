@@ -6,7 +6,7 @@
              x:DataType="vm:VideoSettingsViewModel">
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Spacing="28" MaxWidth="600">
+        <StackPanel Spacing="28" MaxWidth="700">
             <!-- Header -->
             <TextBlock Text="Video"
                        FontSize="24"
@@ -19,16 +19,93 @@
                            FontSize="11"
                            FontWeight="SemiBold"
                            Foreground="{StaticResource Foreground3Brush}"/>
-                <ComboBox ItemsSource="{Binding VideoDevices}"
-                          SelectedValue="{Binding SelectedVideoDevice}"
-                          SelectedValueBinding="{Binding Value}"
-                          DisplayMemberBinding="{Binding DisplayName}"
-                          Background="{StaticResource Content1Brush}"
-                          Foreground="{StaticResource ForegroundBrush}"
-                          MinWidth="320"
-                          Padding="14,10"
-                          CornerRadius="10"/>
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <ComboBox ItemsSource="{Binding VideoDevices}"
+                              SelectedValue="{Binding SelectedVideoDevice}"
+                              SelectedValueBinding="{Binding Value}"
+                              DisplayMemberBinding="{Binding DisplayName}"
+                              Background="{StaticResource Content1Brush}"
+                              Foreground="{StaticResource ForegroundBrush}"
+                              MinWidth="320"
+                              Padding="14,10"
+                              CornerRadius="10"/>
+                    <Button Command="{Binding RefreshDevicesCommand}"
+                            Classes="btn-icon"
+                            Padding="10"
+                            ToolTip.Tip="Refresh camera devices">
+                        <ui:SymbolIcon Symbol="Sync" Foreground="{StaticResource Foreground2Brush}" FontSize="16"/>
+                    </Button>
+                </StackPanel>
             </StackPanel>
+
+            <!-- Quality Settings Section -->
+            <Border Background="{StaticResource Content1Brush}" CornerRadius="16" Padding="24">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="QUALITY"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource Foreground3Brush}"/>
+
+                    <!-- Resolution -->
+                    <Grid ColumnDefinitions="120,*">
+                        <TextBlock Text="Resolution"
+                                   FontSize="13"
+                                   Foreground="{StaticResource Foreground2Brush}"
+                                   VerticalAlignment="Center"/>
+                        <ComboBox Grid.Column="1"
+                                  ItemsSource="{Binding ResolutionOptions}"
+                                  SelectedValue="{Binding SelectedResolution}"
+                                  SelectedValueBinding="{Binding Value}"
+                                  DisplayMemberBinding="{Binding DisplayName}"
+                                  Background="{StaticResource BackgroundBrush}"
+                                  Foreground="{StaticResource ForegroundBrush}"
+                                  MinWidth="180"
+                                  Padding="12,8"
+                                  CornerRadius="8"/>
+                    </Grid>
+
+                    <!-- Framerate -->
+                    <Grid ColumnDefinitions="120,*">
+                        <TextBlock Text="Framerate"
+                                   FontSize="13"
+                                   Foreground="{StaticResource Foreground2Brush}"
+                                   VerticalAlignment="Center"/>
+                        <ComboBox Grid.Column="1"
+                                  ItemsSource="{Binding FramerateOptions}"
+                                  SelectedValue="{Binding SelectedFramerate}"
+                                  SelectedValueBinding="{Binding Value}"
+                                  DisplayMemberBinding="{Binding DisplayName}"
+                                  Background="{StaticResource BackgroundBrush}"
+                                  Foreground="{StaticResource ForegroundBrush}"
+                                  MinWidth="180"
+                                  Padding="12,8"
+                                  CornerRadius="8"/>
+                    </Grid>
+
+                    <!-- Bitrate -->
+                    <Grid ColumnDefinitions="120,*">
+                        <TextBlock Text="Bitrate"
+                                   FontSize="13"
+                                   Foreground="{StaticResource Foreground2Brush}"
+                                   VerticalAlignment="Center"/>
+                        <ComboBox Grid.Column="1"
+                                  ItemsSource="{Binding BitrateOptions}"
+                                  SelectedValue="{Binding SelectedBitrate}"
+                                  SelectedValueBinding="{Binding Value}"
+                                  DisplayMemberBinding="{Binding DisplayName}"
+                                  Background="{StaticResource BackgroundBrush}"
+                                  Foreground="{StaticResource ForegroundBrush}"
+                                  MinWidth="180"
+                                  Padding="12,8"
+                                  CornerRadius="8"/>
+                    </Grid>
+
+                    <TextBlock Text="Higher bitrate improves quality but uses more bandwidth."
+                               FontSize="11"
+                               Foreground="{StaticResource Foreground3Brush}"
+                               Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
 
             <!-- Camera Test Section -->
             <Border Background="{StaticResource Content1Brush}" CornerRadius="16" Padding="24">
@@ -38,48 +115,72 @@
                                FontWeight="SemiBold"
                                Foreground="{StaticResource Foreground3Brush}"/>
 
-                    <!-- Test Button and Status -->
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <Panel MinWidth="140">
-                            <Button Command="{Binding TestCameraCommand}"
-                                    Classes="btn-primary"
-                                    HorizontalAlignment="Stretch"
-                                    HorizontalContentAlignment="Center"
-                                    IsVisible="{Binding !IsTestingCamera}">
-                                <TextBlock Text="Test Camera" FontWeight="SemiBold"/>
-                            </Button>
-                            <Button Command="{Binding TestCameraCommand}"
-                                    Classes="btn-danger"
-                                    HorizontalAlignment="Stretch"
-                                    HorizontalContentAlignment="Center"
-                                    IsVisible="{Binding IsTestingCamera}">
-                                <TextBlock Text="Stop Test" FontWeight="SemiBold" Foreground="White"/>
-                            </Button>
-                        </Panel>
-
-                        <Button Command="{Binding RefreshDevicesCommand}"
-                                Classes="btn-icon"
-                                Padding="10"
-                                ToolTip.Tip="Refresh camera devices">
-                            <ui:SymbolIcon Symbol="Sync" Foreground="{StaticResource Foreground2Brush}" FontSize="16"/>
+                    <!-- Test Button -->
+                    <Panel MinWidth="140" HorizontalAlignment="Left">
+                        <Button Command="{Binding TestCameraCommand}"
+                                Classes="btn-primary"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                IsVisible="{Binding !IsTestingCamera}">
+                            <TextBlock Text="Test Camera" FontWeight="SemiBold"/>
                         </Button>
-                    </StackPanel>
+                        <Button Command="{Binding TestCameraCommand}"
+                                Classes="btn-danger"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                IsVisible="{Binding IsTestingCamera}">
+                            <TextBlock Text="Stop Test" FontWeight="SemiBold" Foreground="White"/>
+                        </Button>
+                    </Panel>
 
-                    <!-- Camera Preview -->
-                    <Border Background="{StaticResource BackgroundBrush}"
-                            CornerRadius="10"
-                            Padding="4"
-                            IsVisible="{Binding IsTestingCamera}"
-                            HorizontalAlignment="Left">
-                        <Image Source="{Binding PreviewBitmap}"
-                               Width="320"
-                               Height="240"
-                               Stretch="Uniform"/>
-                    </Border>
+                    <!-- Dual Camera Preview -->
+                    <Grid ColumnDefinitions="*,20,*" IsVisible="{Binding IsTestingCamera}">
+                        <!-- Raw Preview -->
+                        <StackPanel Grid.Column="0" Spacing="8">
+                            <TextBlock Text="Raw Capture"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource Foreground2Brush}"/>
+                            <Border Background="{StaticResource BackgroundBrush}"
+                                    CornerRadius="10"
+                                    Padding="4"
+                                    HorizontalAlignment="Left">
+                                <Image Source="{Binding PreviewBitmap}"
+                                       Width="280"
+                                       Height="210"
+                                       Stretch="Uniform"/>
+                            </Border>
+                            <TextBlock FontSize="11" Foreground="{StaticResource Foreground3Brush}">
+                                <Run Text="Frames: "/>
+                                <Run Text="{Binding RawFrameCount}"/>
+                            </TextBlock>
+                        </StackPanel>
+
+                        <!-- Encoded Preview -->
+                        <StackPanel Grid.Column="2" Spacing="8">
+                            <TextBlock Text="Encoded (what others see)"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource Foreground2Brush}"/>
+                            <Border Background="{StaticResource BackgroundBrush}"
+                                    CornerRadius="10"
+                                    Padding="4"
+                                    HorizontalAlignment="Left">
+                                <Image Source="{Binding EncodedPreviewBitmap}"
+                                       Width="280"
+                                       Height="210"
+                                       Stretch="Uniform"/>
+                            </Border>
+                            <TextBlock FontSize="11" Foreground="{StaticResource Foreground3Brush}">
+                                <Run Text="Frames: "/>
+                                <Run Text="{Binding EncodedFrameCount}"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Grid>
 
                     <!-- Camera Status -->
-                    <StackPanel Spacing="10" IsVisible="{Binding IsTestingCamera}">
-                        <Grid ColumnDefinitions="Auto,*,Auto">
+                    <StackPanel Spacing="8" IsVisible="{Binding IsTestingCamera}">
+                        <Grid ColumnDefinitions="Auto,*">
                             <TextBlock Text="Status:"
                                        FontSize="12"
                                        Foreground="{StaticResource Foreground3Brush}"/>
@@ -89,7 +190,7 @@
                                        Foreground="{StaticResource SuccessBrush}"
                                        Margin="8,0,0,0"/>
                         </Grid>
-                        <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Grid ColumnDefinitions="Auto,*">
                             <TextBlock Text="Resolution:"
                                        FontSize="12"
                                        Foreground="{StaticResource Foreground3Brush}"/>
@@ -99,20 +200,10 @@
                                        Foreground="{StaticResource ForegroundBrush}"
                                        Margin="8,0,0,0"/>
                         </Grid>
-                        <Grid ColumnDefinitions="Auto,*,Auto">
-                            <TextBlock Text="Frames received:"
-                                       FontSize="12"
-                                       Foreground="{StaticResource Foreground3Brush}"/>
-                            <TextBlock Grid.Column="1"
-                                       Text="{Binding FrameCount}"
-                                       FontSize="12"
-                                       Foreground="{StaticResource ForegroundBrush}"
-                                       Margin="8,0,0,0"/>
-                        </Grid>
                     </StackPanel>
 
                     <!-- Instructions when not testing -->
-                    <TextBlock Text="Click 'Test Camera' to verify your camera is working. You'll see status information and frame count."
+                    <TextBlock Text="Click 'Test Camera' to see a preview of your camera. The left preview shows raw capture, the right shows the encoded stream that others will see."
                                FontSize="12"
                                Foreground="{StaticResource Foreground3Brush}"
                                TextWrapping="Wrap"
@@ -121,7 +212,7 @@
             </Border>
 
             <!-- Info Text -->
-            <TextBlock Text="Changes are saved automatically when you select a new device."
+            <TextBlock Text="Changes are saved automatically when you select a new option."
                        FontSize="12"
                        Foreground="{StaticResource Foreground3Brush}"
                        Margin="0,8,0,0"/>

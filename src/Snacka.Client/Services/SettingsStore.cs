@@ -31,6 +31,11 @@ public class UserSettings
     // Video settings
     public string? VideoDevice { get; set; }  // null = default/first camera
 
+    // Camera quality settings
+    public string CameraResolution { get; set; } = "640x480";  // "640x480", "1280x720", "1920x1080"
+    public int CameraFramerate { get; set; } = 15;              // 15, 30
+    public int CameraBitrateMbps { get; set; } = 2;             // 1, 2, 4
+
     // Per-user volume settings (key: UserId as string, value: volume 0.0-3.0)
     public Dictionary<string, float> UserVolumes { get; set; } = new();
 
@@ -77,6 +82,9 @@ public class SettingsStore : ISettingsStore
                 Console.WriteLine($"  AudioInputDevice: {_settings.AudioInputDevice ?? "(default)"}");
                 Console.WriteLine($"  AudioOutputDevice: {_settings.AudioOutputDevice ?? "(default)"}");
                 Console.WriteLine($"  VideoDevice: {_settings.VideoDevice ?? "(default)"}");
+                Console.WriteLine($"  CameraResolution: {_settings.CameraResolution}");
+                Console.WriteLine($"  CameraFramerate: {_settings.CameraFramerate}");
+                Console.WriteLine($"  CameraBitrateMbps: {_settings.CameraBitrateMbps}");
             }
             else
             {
