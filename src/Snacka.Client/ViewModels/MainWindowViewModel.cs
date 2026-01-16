@@ -348,22 +348,13 @@ public class MainWindowViewModel : ViewModelBase
         var capabilityService = Program.CapabilityService;
         if (capabilityService == null) return;
 
-        if (!capabilityService.IsFullHardwareAccelerationAvailable && capabilityService.Warnings.Count > 0)
+        // Only show warning if native capture is not available
+        // When native capture works, encoding is handled efficiently by the native tool
+        // Hardware decoder missing is a minor issue (only affects viewing others' streams)
+        if (!capabilityService.IsNativeCaptureAvailable)
         {
-            // Build a concise warning message
-            var missingParts = new List<string>();
-            if (!capabilityService.IsNativeCaptureAvailable)
-                missingParts.Add("native capture");
-            if (!capabilityService.IsHardwareEncoderAvailable)
-                missingParts.Add("hardware encoder");
-            if (!capabilityService.IsHardwareDecoderAvailable)
-                missingParts.Add("hardware decoder");
-
-            if (missingParts.Count > 0)
-            {
-                HardwareWarningMessage = $"Performance warning: {string.Join(", ", missingParts)} unavailable. Video features may use more CPU.";
-                ShowHardwareWarningBanner = true;
-            }
+            HardwareWarningMessage = "Screen sharing unavailable: native capture tool not found. Install ffmpeg as fallback.";
+            ShowHardwareWarningBanner = true;
         }
     }
 

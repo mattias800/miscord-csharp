@@ -112,20 +112,52 @@ public sealed class SystemCapabilityService : ISystemCapabilityService
     {
         Console.WriteLine("Checking hardware video encoders...");
 
+        // If native capture is available, encoding is handled by the native tool
+        // (Media Foundation on Windows, VideoToolbox on macOS, VAAPI on Linux)
+        // We don't need to check ffmpeg encoders in that case
+        if (IsNativeCaptureAvailable)
+        {
+            if (OperatingSystem.IsMacOS())
+            {
+                IsHardwareEncoderAvailable = true;
+                HardwareEncoderName = "VideoToolbox (via native capture)";
+                Console.WriteLine("  [OK] Hardware encoder: VideoToolbox (via SnackaCaptureVideoToolbox)");
+            }
+            else if (OperatingSystem.IsWindows())
+            {
+                // SnackaCaptureWindows uses Media Foundation which auto-selects best encoder
+                IsHardwareEncoderAvailable = true;
+                HardwareEncoderName = "Media Foundation (via native capture)";
+                Console.WriteLine("  [OK] Hardware encoder: Media Foundation (via SnackaCaptureWindows)");
+                Console.WriteLine("       Media Foundation will use NVENC/AMF/QuickSync if available");
+            }
+            else if (OperatingSystem.IsLinux())
+            {
+                IsHardwareEncoderAvailable = true;
+                HardwareEncoderName = "VAAPI (via native capture)";
+                Console.WriteLine("  [OK] Hardware encoder: VAAPI (via SnackaCaptureLinux)");
+            }
+            Console.WriteLine("");
+            return;
+        }
+
+        // Native capture not available - check ffmpeg hardware encoders for fallback path
+        Console.WriteLine("  Native capture unavailable, checking ffmpeg hardware encoders...");
+
         if (OperatingSystem.IsMacOS())
         {
-            // VideoToolbox is always available on macOS
+            // VideoToolbox is always available on macOS via ffmpeg
             IsHardwareEncoderAvailable = true;
-            HardwareEncoderName = "VideoToolbox";
-            Console.WriteLine("  [OK] Hardware encoder: VideoToolbox (Apple Silicon/Intel)");
+            HardwareEncoderName = "VideoToolbox (ffmpeg)";
+            Console.WriteLine("  [OK] Hardware encoder: VideoToolbox (via ffmpeg)");
         }
         else if (OperatingSystem.IsWindows())
         {
-            CheckWindowsHardwareEncoders();
+            CheckWindowsFfmpegEncoders();
         }
         else if (OperatingSystem.IsLinux())
         {
-            CheckLinuxHardwareEncoders();
+            CheckLinuxFfmpegEncoders();
         }
         else
         {
@@ -142,9 +174,9 @@ public sealed class SystemCapabilityService : ISystemCapabilityService
         Console.WriteLine("");
     }
 
-    private void CheckWindowsHardwareEncoders()
+    private void CheckWindowsFfmpegEncoders()
     {
-        // Check in order of preference: NVENC, AMF, QuickSync
+        // Check ffmpeg hardware encoders in order of preference: NVENC, AMF, QuickSync
         var encoders = new[]
         {
             ("h264_nvenc", "NVENC", "NVIDIA GPU"),
@@ -154,33 +186,33 @@ public sealed class SystemCapabilityService : ISystemCapabilityService
 
         foreach (var (encoder, name, description) in encoders)
         {
-            Console.WriteLine($"  Checking {name} ({description})...");
+            Console.WriteLine($"  Checking ffmpeg {name} ({description})...");
             if (IsEncoderAvailable(encoder))
             {
                 IsHardwareEncoderAvailable = true;
-                HardwareEncoderName = name;
-                Console.WriteLine($"  [OK] Hardware encoder: {name} ({description})");
+                HardwareEncoderName = $"{name} (ffmpeg)";
+                Console.WriteLine($"  [OK] Hardware encoder: {name} via ffmpeg ({description})");
                 return;
             }
             else
             {
-                Console.WriteLine($"       {name} not available");
+                Console.WriteLine($"       {name} not available in ffmpeg");
             }
         }
     }
 
-    private void CheckLinuxHardwareEncoders()
+    private void CheckLinuxFfmpegEncoders()
     {
-        Console.WriteLine("  Checking VAAPI...");
+        Console.WriteLine("  Checking ffmpeg VAAPI...");
         if (IsEncoderAvailable("h264_vaapi"))
         {
             IsHardwareEncoderAvailable = true;
-            HardwareEncoderName = "VAAPI";
-            Console.WriteLine("  [OK] Hardware encoder: VAAPI (Intel/AMD GPU)");
+            HardwareEncoderName = "VAAPI (ffmpeg)";
+            Console.WriteLine("  [OK] Hardware encoder: VAAPI via ffmpeg (Intel/AMD GPU)");
         }
         else
         {
-            Console.WriteLine("       VAAPI not available");
+            Console.WriteLine("       VAAPI not available in ffmpeg");
         }
     }
 
