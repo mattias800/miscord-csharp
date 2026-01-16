@@ -105,10 +105,25 @@ public class UpdateService : IUpdateService
                 }
             }
 
-            // Fallback to assembly version
+            // Fallback to informational version (set by MinVer)
             var assembly = Assembly.GetExecutingAssembly();
-            var version = assembly.GetName().Version;
-            return version ?? new Version(0, 1, 0);
+            var infoVersionAttr = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
+            if (infoVersionAttr != null)
+            {
+                var infoVersion = infoVersionAttr.InformationalVersion;
+                // Strip build metadata and prerelease info to get base version
+                var plusIndex = infoVersion.IndexOf('+');
+                if (plusIndex >= 0) infoVersion = infoVersion.Substring(0, plusIndex);
+                var dashIndex = infoVersion.IndexOf('-');
+                if (dashIndex >= 0) infoVersion = infoVersion.Substring(0, dashIndex);
+
+                if (Version.TryParse(infoVersion, out var parsedVersion))
+                {
+                    return parsedVersion;
+                }
+            }
+
+            return new Version(0, 1, 0);
         }
     }
 

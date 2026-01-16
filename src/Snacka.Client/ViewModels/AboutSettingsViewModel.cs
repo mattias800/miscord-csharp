@@ -16,10 +16,18 @@ public class AboutSettingsViewModel : ViewModelBase
     public AboutSettingsViewModel()
     {
         var assembly = Assembly.GetExecutingAssembly();
-        var version = assembly.GetName().Version ?? new Version(0, 1, 0);
 
-        Version = $"{version.Major}.{version.Minor}.{version.Build}";
-        FullVersion = version.ToString();
+        // Get version from AssemblyInformationalVersionAttribute (set by MinVer)
+        var infoVersionAttr = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
+        var infoVersion = infoVersionAttr?.InformationalVersion ?? "0.1.0";
+
+        // The informational version may include build metadata (e.g., "0.3.4+abc123")
+        // Strip the build metadata for display, keep prerelease info (e.g., "0.3.5-alpha.1")
+        var plusIndex = infoVersion.IndexOf('+');
+        var cleanVersion = plusIndex >= 0 ? infoVersion.Substring(0, plusIndex) : infoVersion;
+
+        Version = cleanVersion;
+        FullVersion = infoVersion;
         DotNetVersion = RuntimeInformation.FrameworkDescription;
         OperatingSystem = RuntimeInformation.OSDescription;
         Architecture = RuntimeInformation.OSArchitecture.ToString();
