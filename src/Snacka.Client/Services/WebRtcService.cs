@@ -224,7 +224,7 @@ public class WebRtcService : IWebRtcService
     /// </summary>
     public bool IsHardwareDecodingAvailable => _videoDecoderManager.IsHardwareDecodingAvailable;
 
-    public WebRtcService(ISignalRService signalR, ISettingsStore? settingsStore = null)
+    public WebRtcService(ISignalRService signalR, ISettingsStore? settingsStore = null, IApiClient? apiClient = null)
     {
         _signalR = signalR;
         _settingsStore = settingsStore;
@@ -242,8 +242,8 @@ public class WebRtcService : IWebRtcService
         // Initialize screen share manager
         _screenShareManager = new ScreenShareManager();
 
-        // Initialize SFU connection manager
-        _sfuConnectionManager = new SfuConnectionManager(signalR);
+        // Initialize SFU connection manager (apiClient needed for ICE server fetching)
+        _sfuConnectionManager = new SfuConnectionManager(signalR, apiClient!);
 
         // Wire up speaking state changes from input manager
         _audioInputManager.SpeakingChanged += speaking => SpeakingChanged?.Invoke(speaking);

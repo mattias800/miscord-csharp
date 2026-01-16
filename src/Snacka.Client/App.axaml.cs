@@ -33,7 +33,7 @@ public partial class App : Application
             var controllerService = new ControllerService();
             var controllerStreamingService = new ControllerStreamingService(signalR, controllerService, settingsStore);
             var controllerHostService = new ControllerHostService(signalR);
-            var webRtc = new WebRtcService(signalR, settingsStore);
+            var webRtc = new WebRtcService(signalR, settingsStore, apiClient);
 
             // Check for dev mode auto-login
             DevLoginConfig? devConfig = null;

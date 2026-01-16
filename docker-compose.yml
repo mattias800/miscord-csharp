@@ -37,6 +37,12 @@ services:
       - Logging__LogLevel__Microsoft.AspNetCore=Warning
       - Logging__LogLevel__Microsoft.EntityFrameworkCore=Warning
       - Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command=Warning
+      # TURN Server Configuration
+      - Turn__Enabled=${TURN_ENABLED:-false}
+      - Turn__Host=${TURN_HOST:-}
+      - Turn__Secret=${TURN_SECRET:-}
+      - Turn__Port=3478
+      - Turn__TlsPort=5349
     volumes:
       # Persist uploaded files (attachments, avatars)
       - snacka-uploads:/app/uploads
@@ -67,6 +73,24 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  # TURN server for WebRTC NAT traversal (optional but recommended)
+  # Required for users behind restrictive firewalls/VPNs
+  coturn:
+    image: coturn/coturn:4.6-alpine
+    container_name: snacka-coturn
+    network_mode: host  # Required for TURN to work properly with media ports
+    volumes:
+      - ./turnserver.conf:/etc/coturn/turnserver.conf:ro
+      # Uncomment for TLS support:
+      # - ./certs:/etc/coturn/certs:ro
+    environment:
+      - TURN_SECRET=${TURN_SECRET:-}
+      - TURN_REALM=${TURN_HOST:-localhost}
+      - EXTERNAL_IP=${TURN_EXTERNAL_IP:-}
+    restart: unless-stopped
+    profiles:
+      - turn  # Only starts when: docker compose --profile turn up
 
 volumes:
   snacka-uploads:

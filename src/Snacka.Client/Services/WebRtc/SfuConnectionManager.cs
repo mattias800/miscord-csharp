@@ -11,9 +11,11 @@ namespace Snacka.Client.Services.WebRtc;
 /// and RTP packet sending/receiving.
 /// Extracted from WebRtcService for single responsibility.
 /// </summary>
-public class SfuConnectionManager : IAsyncDisposable
+public class SfuConnectionManager(ISignalRService signalR, IApiClient apiClient) : IAsyncDisposable
 {
-    private readonly ISignalRService _signalR;
+    // ICE servers cache
+    private List<RTCIceServer>? _cachedIceServers;
+    private DateTime _iceServersCacheExpiry = DateTime.MinValue;
 
     // Server connection
     private RTCPeerConnection? _serverConnection;
@@ -88,11 +90,6 @@ public class SfuConnectionManager : IAsyncDisposable
     /// </summary>
     public event Action<List<VideoFormat>>? VideoFormatsNegotiated;
 
-    public SfuConnectionManager(ISignalRService signalR)
-    {
-        _signalR = signalR;
-    }
-
     /// <summary>
     /// Checks if there's a pending SFU offer for the given channel.
     /// </summary>
@@ -129,6 +126,71 @@ public class SfuConnectionManager : IAsyncDisposable
     }
 
     /// <summary>
+    /// Gets ICE servers from the API with caching.
+    /// Falls back to public STUN servers if the API call fails.
+    /// </summary>
+    private async Task<List<RTCIceServer>> GetIceServersAsync()
+    {
+        // Return cached servers if still valid
+        if (_cachedIceServers != null && DateTime.UtcNow < _iceServersCacheExpiry)
+        {
+            Console.WriteLine("SfuConnectionManager: Using cached ICE servers");
+            return _cachedIceServers;
+        }
+
+        try
+        {
+            var result = await apiClient.GetIceServersAsync();
+            if (result.Success && result.Data != null)
+            {
+                var iceServers = new List<RTCIceServer>();
+
+                foreach (var server in result.Data.IceServers)
+                {
+                    var rtcServer = new RTCIceServer
+                    {
+                        urls = string.Join(",", server.Urls)
+                    };
+
+                    if (!string.IsNullOrEmpty(server.Username))
+                    {
+                        rtcServer.username = server.Username;
+                    }
+
+                    if (!string.IsNullOrEmpty(server.Credential))
+                    {
+                        rtcServer.credential = server.Credential;
+                    }
+
+                    iceServers.Add(rtcServer);
+                }
+
+                // Cache with some buffer before TTL expires
+                var ttlSeconds = Math.Max(60, result.Data.TtlSeconds - 300); // Refresh 5 min before expiry
+                _cachedIceServers = iceServers;
+                _iceServersCacheExpiry = DateTime.UtcNow.AddSeconds(ttlSeconds);
+
+                var turnCount = iceServers.Count(s => s.urls.Contains("turn:"));
+                Console.WriteLine($"SfuConnectionManager: Fetched ICE servers from API ({iceServers.Count} servers, {turnCount} TURN)");
+
+                return iceServers;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"SfuConnectionManager: Failed to fetch ICE servers from API: {ex.Message}");
+        }
+
+        // Fallback to public STUN servers
+        Console.WriteLine("SfuConnectionManager: Using fallback STUN servers");
+        return new List<RTCIceServer>
+        {
+            new RTCIceServer { urls = "stun:stun.l.google.com:19302" },
+            new RTCIceServer { urls = "stun:stun1.l.google.com:19302" }
+        };
+    }
+
+    /// <summary>
     /// Processes an SFU offer - creates connection and sends answer.
     /// </summary>
     public async Task ProcessSfuOfferAsync(Guid channelId, string sdp, IAudioSource? audioSource)
@@ -157,13 +219,12 @@ public class SfuConnectionManager : IAsyncDisposable
             _serverConnection = null;
         }
 
+        // Get ICE servers (with caching)
+        var iceServers = await GetIceServersAsync();
+
         var config = new RTCConfiguration
         {
-            iceServers = new List<RTCIceServer>
-            {
-                new RTCIceServer { urls = "stun:stun.l.google.com:19302" },
-                new RTCIceServer { urls = "stun:stun1.l.google.com:19302" }
-            }
+            iceServers = iceServers
         };
 
         _serverConnection = new RTCPeerConnection(config);
@@ -247,7 +308,7 @@ public class SfuConnectionManager : IAsyncDisposable
         {
             if (candidate?.candidate != null)
             {
-                await _signalR.SendSfuIceCandidateAsync(
+                await signalR.SendSfuIceCandidateAsync(
                     channelId,
                     candidate.candidate,
                     candidate.sdpMid,
@@ -331,7 +392,7 @@ public class SfuConnectionManager : IAsyncDisposable
         }
 
         Console.WriteLine($"SfuConnectionManager: Sending answer to server");
-        await _signalR.SendSfuAnswerAsync(channelId, answer.sdp);
+        await signalR.SendSfuAnswerAsync(channelId, answer.sdp);
     }
 
     /// <summary>

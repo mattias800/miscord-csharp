@@ -201,6 +201,10 @@ else
 // Add SFU service (Singleton to maintain WebRTC connections across requests)
 builder.Services.AddSingleton<ISfuService, SfuService>();
 
+// Add TURN service for WebRTC NAT traversal
+builder.Services.Configure<TurnSettings>(builder.Configuration.GetSection(TurnSettings.SectionName));
+builder.Services.AddSingleton<ITurnService, TurnService>();
+
 // Add file storage service
 builder.Services.Configure<FileStorageSettings>(
     builder.Configuration.GetSection(FileStorageSettings.SectionName));

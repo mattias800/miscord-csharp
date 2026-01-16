@@ -101,7 +101,27 @@ public interface IApiClient
     Task<ApiResult<List<CommunityInviteResponse>>> GetMyPendingInvitesAsync();
     Task<ApiResult<CommunityInviteResponse>> AcceptInviteAsync(Guid inviteId);
     Task<ApiResult<CommunityInviteResponse>> DeclineInviteAsync(Guid inviteId);
+
+    // WebRTC
+    Task<ApiResult<IceServersResponse>> GetIceServersAsync();
 }
+
+/// <summary>
+/// ICE server configuration for WebRTC.
+/// </summary>
+public record IceServerConfig(
+    string[] Urls,
+    string? Username = null,
+    string? Credential = null
+);
+
+/// <summary>
+/// Response containing ICE server configurations.
+/// </summary>
+public record IceServersResponse(
+    List<IceServerConfig> IceServers,
+    int TtlSeconds
+);
 
 public record ApiResult<T>
 {

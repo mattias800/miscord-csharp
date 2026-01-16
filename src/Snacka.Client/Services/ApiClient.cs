@@ -829,6 +829,12 @@ public class ApiClient : IApiClient
         }
     }
 
+    // WebRTC methods
+    public async Task<ApiResult<IceServersResponse>> GetIceServersAsync()
+    {
+        return await GetAsync<IceServersResponse>("/api/webrtc/ice-servers");
+    }
+
     private static string TryParseError(string content, System.Net.HttpStatusCode statusCode)
     {
         try
