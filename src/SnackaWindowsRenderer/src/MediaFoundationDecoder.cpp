@@ -140,13 +140,8 @@ bool MediaFoundationDecoder::Initialize(int width, int height,
         return false;
     }
 
-    // Create renderer
-    m_renderer = std::make_unique<D3D11Renderer>(m_device, m_context);
-    if (!m_renderer->Initialize(width, height)) {
-        std::cerr << "MediaFoundationDecoder: Failed to initialize renderer" << std::endl;
-        Cleanup();
-        return false;
-    }
+    // Note: Renderer is created later via CreateRendererWithParent() when the UI is ready
+    // This avoids creating a popup window that would need cross-thread cleanup
 
     // Start streaming
     hr = m_decoder->ProcessMessage(MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, 0);
@@ -510,8 +505,12 @@ void MediaFoundationDecoder::RenderFrame(IMFSample* sample) {
     renderCount++;
 
     if (!m_renderer) {
-        std::cerr << "MediaFoundationDecoder::RenderFrame: no renderer!" << std::endl;
-        std::cerr.flush();
+        // Renderer not yet created - silently skip until CreateRendererWithParent is called
+        static int skippedCount = 0;
+        skippedCount++;
+        if (skippedCount <= 3) {
+            std::cout << "MediaFoundationDecoder::RenderFrame: waiting for renderer (skipped " << skippedCount << ")" << std::endl;
+        }
         return;
     }
 

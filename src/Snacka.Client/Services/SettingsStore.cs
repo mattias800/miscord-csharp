@@ -48,6 +48,13 @@ public class UserSettings
 
     // Controller settings
     public bool ControllerRumbleEnabled { get; set; } = true;
+
+    // Window position and size (null = use default/center)
+    public int? WindowX { get; set; }
+    public int? WindowY { get; set; }
+    public int? WindowWidth { get; set; }
+    public int? WindowHeight { get; set; }
+    public bool WindowMaximized { get; set; } = false;
 }
 
 public class SettingsStore : ISettingsStore

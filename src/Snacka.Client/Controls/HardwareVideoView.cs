@@ -35,10 +35,10 @@ public class HardwareVideoViewHost : ContentControl
 
             Console.WriteLine($"HardwareVideoViewHost: Decoder changed from {(oldDecoder != null ? "decoder" : "null")} to {(decoder != null ? "decoder" : "null")}");
 
-            if (decoder != null && decoder.NativeViewHandle != nint.Zero)
+            if (decoder != null)
             {
-                Console.WriteLine($"HardwareVideoViewHost: Creating new HardwareVideoView, handle=0x{decoder.NativeViewHandle:X}");
-                // Create new HardwareVideoView with the decoder
+                // Create HardwareVideoView - renderer will be created lazily in CreateNativeControlCore
+                Console.WriteLine($"HardwareVideoViewHost: Creating new HardwareVideoView");
                 _currentView = new HardwareVideoView();
                 _currentView.SetDecoder(decoder);
                 Content = _currentView;
@@ -46,7 +46,7 @@ public class HardwareVideoViewHost : ContentControl
             }
             else
             {
-                Console.WriteLine("HardwareVideoViewHost: Clearing content (no decoder or invalid handle)");
+                Console.WriteLine("HardwareVideoViewHost: Clearing content (no decoder)");
                 // No decoder - clear content
                 _currentView = null;
                 Content = null;
@@ -127,30 +127,24 @@ public class HardwareVideoView : NativeControlHost
 
     protected override IPlatformHandle CreateNativeControlCore(IPlatformHandle parent)
     {
-        Console.WriteLine($"HardwareVideoView.CreateNativeControlCore: decoder={(_decoder != null ? "set" : "null")}, handle={(_decoder?.NativeViewHandle ?? 0):X}");
+        Console.WriteLine($"HardwareVideoView.CreateNativeControlCore: decoder={(_decoder != null ? "set" : "null")}");
 
-        if (_decoder != null && _decoder.NativeViewHandle != nint.Zero)
+        if (_decoder != null)
         {
-            // Update display size to match control bounds
-            var bounds = Bounds;
-            if (bounds.Width > 0 && bounds.Height > 0)
-            {
-                _decoder.SetDisplaySize((int)bounds.Width, (int)bounds.Height);
-            }
-
-            var handle = _decoder.NativeViewHandle;
-            Console.WriteLine($"HardwareVideoView.CreateNativeControlCore: Returning handle 0x{handle:X}");
-
             // Return the native view handle with platform-specific descriptor
             if (OperatingSystem.IsMacOS())
             {
-                return new PlatformHandle(handle, "NSView");
+                var handle = _decoder.NativeViewHandle;
+                if (handle != nint.Zero)
+                {
+                    return new PlatformHandle(handle, "NSView");
+                }
             }
             else if (OperatingSystem.IsWindows())
             {
                 try
                 {
-                    // Create a child window directly with the parent (avoids reparenting issues)
+                    // Create a child window directly with the parent (renderer created lazily)
                     if (_decoder is MediaFoundationDecoder mfDecoder)
                     {
                         Console.WriteLine($"HardwareVideoView: Creating child window with parent 0x{parent.Handle:X}");
@@ -163,6 +157,13 @@ public class HardwareVideoView : NativeControlHost
                             var newHandle = mfDecoder.NativeViewHandle;
                             Console.WriteLine($"HardwareVideoView: New child window handle = 0x{newHandle:X}");
 
+                            // Update display size to match control bounds
+                            var bounds = Bounds;
+                            if (bounds.Width > 0 && bounds.Height > 0)
+                            {
+                                _decoder.SetDisplaySize((int)bounds.Width, (int)bounds.Height);
+                            }
+
                             if (newHandle != nint.Zero)
                             {
                                 return new PlatformHandle(newHandle, "HWND");
@@ -170,19 +171,20 @@ public class HardwareVideoView : NativeControlHost
                         }
                     }
 
-                    // Fallback: use original handle if CreateRendererWithParent failed
-                    Console.WriteLine($"HardwareVideoView: Falling back to original handle 0x{handle:X}");
+                    Console.WriteLine("HardwareVideoView: CreateRendererWithParent failed");
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"HardwareVideoView: Exception: {ex.Message}");
                 }
-
-                return new PlatformHandle(handle, "HWND");
             }
             else if (OperatingSystem.IsLinux())
             {
-                return new PlatformHandle(handle, "XID");
+                var handle = _decoder.NativeViewHandle;
+                if (handle != nint.Zero)
+                {
+                    return new PlatformHandle(handle, "XID");
+                }
             }
         }
 

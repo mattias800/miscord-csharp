@@ -61,6 +61,12 @@ public partial class App : Application
                 window.Title = Program.DevWindowTitle;
             }
 
+            // Restore window position and size from settings
+            WindowPositionHelper.RestoreWindowPosition(window, settingsStore);
+
+            // Save window position and size when app exits
+            desktop.ShutdownRequested += (_, _) => WindowPositionHelper.SaveWindowPosition(window, settingsStore);
+
             desktop.MainWindow = window;
         }
 
@@ -69,3 +75,50 @@ public partial class App : Application
 }
 
 public record DevLoginConfig(string ServerUrl, string Email, string Password);
+
+public static class WindowPositionHelper
+{
+    public static void RestoreWindowPosition(MainWindow window, ISettingsStore settingsStore)
+    {
+        var settings = settingsStore.Settings;
+
+        // Restore size if saved
+        if (settings.WindowWidth.HasValue && settings.WindowHeight.HasValue &&
+            settings.WindowWidth.Value > 100 && settings.WindowHeight.Value > 100)
+        {
+            window.Width = settings.WindowWidth.Value;
+            window.Height = settings.WindowHeight.Value;
+        }
+
+        // Restore position if saved
+        if (settings.WindowX.HasValue && settings.WindowY.HasValue)
+        {
+            window.Position = new Avalonia.PixelPoint(settings.WindowX.Value, settings.WindowY.Value);
+        }
+
+        // Restore maximized state
+        if (settings.WindowMaximized)
+        {
+            window.WindowState = Avalonia.Controls.WindowState.Maximized;
+        }
+    }
+
+    public static void SaveWindowPosition(MainWindow window, ISettingsStore settingsStore)
+    {
+        var settings = settingsStore.Settings;
+
+        // Save maximized state
+        settings.WindowMaximized = window.WindowState == Avalonia.Controls.WindowState.Maximized;
+
+        // Only save position/size if not maximized (so we restore to the right size when un-maximizing)
+        if (window.WindowState != Avalonia.Controls.WindowState.Maximized)
+        {
+            settings.WindowX = window.Position.X;
+            settings.WindowY = window.Position.Y;
+            settings.WindowWidth = (int)window.Width;
+            settings.WindowHeight = (int)window.Height;
+        }
+
+        settingsStore.Save();
+    }
+}
