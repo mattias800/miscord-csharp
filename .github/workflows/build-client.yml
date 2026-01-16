@@ -10,6 +10,8 @@ on:
       - 'src/SnackaCaptureVideoToolbox/**'
       - 'src/SnackaCaptureWindows/**'
       - 'src/SnackaMetalRenderer/**'
+      - 'src/SnackaWindowsRenderer/**'
+      - 'src/SnackaLinuxRenderer/**'
       - 'installers/**'
       - '.github/workflows/build-client.yml'
     tags:
@@ -22,6 +24,8 @@ on:
       - 'src/Snacka.WebRTC/**'
       - 'src/SnackaCaptureVideoToolbox/**'
       - 'src/SnackaMetalRenderer/**'
+      - 'src/SnackaWindowsRenderer/**'
+      - 'src/SnackaLinuxRenderer/**'
       - 'installers/**'
       - '.github/workflows/build-client.yml'
   workflow_dispatch:
@@ -159,6 +163,12 @@ jobs:
           cmake -B build -G "Visual Studio 17 2022" -A x64
           cmake --build build --config Release
 
+      - name: Build SnackaWindowsRenderer
+        run: |
+          cd src/SnackaWindowsRenderer
+          cmake -B build -G "Visual Studio 17 2022" -A x64
+          cmake --build build --config Release
+
       - name: Publish Snacka.Client
         run: |
           dotnet publish src/Snacka.Client -c Release -r win-x64 `
@@ -171,6 +181,13 @@ jobs:
           Copy-Item "src/SnackaCaptureWindows/build/bin/Release/SnackaCaptureWindows.exe" "publish/" -ErrorAction SilentlyContinue
           if (-not (Test-Path "publish/SnackaCaptureWindows.exe")) {
             Copy-Item "src/SnackaCaptureWindows/build/bin/SnackaCaptureWindows.exe" "publish/" -ErrorAction SilentlyContinue
+          }
+
+      - name: Copy SnackaWindowsRenderer
+        run: |
+          Copy-Item "src/SnackaWindowsRenderer/build/Release/SnackaWindowsRenderer.dll" "publish/" -ErrorAction SilentlyContinue
+          if (-not (Test-Path "publish/SnackaWindowsRenderer.dll")) {
+            Copy-Item "src/SnackaWindowsRenderer/build/bin/Release/SnackaWindowsRenderer.dll" "publish/" -ErrorAction SilentlyContinue
           }
 
       - name: Upload portable build
@@ -224,7 +241,22 @@ jobs:
             x11-xserver-utils \
             wmctrl \
             libfuse2 \
-            imagemagick
+            imagemagick \
+            libva-dev \
+            libva-drm2 \
+            libva-x11-2 \
+            libegl-dev \
+            libgl-dev \
+            libgles2-mesa-dev \
+            libx11-dev \
+            libxfixes-dev \
+            libdrm-dev
+
+      - name: Build SnackaLinuxRenderer
+        run: |
+          cd src/SnackaLinuxRenderer
+          cmake -B build
+          cmake --build build --config Release
 
       - name: Publish Snacka.Client
         run: |
@@ -232,6 +264,10 @@ jobs:
             --self-contained \
             -p:Version=${{ needs.version.outputs.version }} \
             -o publish
+
+      - name: Copy SnackaLinuxRenderer
+        run: |
+          cp src/SnackaLinuxRenderer/build/libSnackaLinuxRenderer.so publish/ 2>/dev/null || true
 
       - name: Upload portable build
         uses: actions/upload-artifact@v4
