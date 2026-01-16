@@ -134,7 +134,7 @@
                         </Button>
                     </Panel>
 
-                    <!-- Camera Preview (GPU-accelerated with software fallback) -->
+                    <!-- Camera Preview (Hardware-accelerated) -->
                     <StackPanel Spacing="8" IsVisible="{Binding IsTestingCamera}">
                         <TextBlock Text="Preview"
                                    FontSize="12"
@@ -146,16 +146,10 @@
                                 HorizontalAlignment="Left"
                                 ClipToBounds="True">
                             <Panel Width="320" Height="180">
-                                <!-- GPU renderer (primary) -->
-                                <controls:GpuVideoView x:Name="PreviewView"
-                                                       Width="320"
-                                                       Height="180"/>
-                                <!-- Software fallback -->
-                                <Image x:Name="PreviewFallback"
-                                       Width="320"
-                                       Height="180"
-                                       Stretch="Uniform"
-                                       IsVisible="False"/>
+                                <!-- Hardware video decoder view (same as voice channel preview) -->
+                                <controls:HardwareVideoViewHost Decoder="{Binding HardwareDecoder}"
+                                                                Width="320"
+                                                                Height="180"/>
                             </Panel>
                         </Border>
                         <TextBlock FontSize="11" Foreground="{StaticResource Foreground3Brush}">

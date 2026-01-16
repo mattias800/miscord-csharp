@@ -4,6 +4,7 @@ using Avalonia.Threading;
 using ReactiveUI;
 using Snacka.Client.Services;
 using Snacka.Client.Services.GpuVideo;
+using Snacka.Client.Services.HardwareVideo;
 
 namespace Snacka.Client.ViewModels;
 
@@ -35,6 +36,7 @@ public class VideoSettingsViewModel : ViewModelBase
     private int _frameWidth;
     private int _frameHeight;
     private string _cameraStatus = "Not testing";
+    private IHardwareVideoDecoder? _hardwareDecoder;
 
     // Quality settings
     private int _selectedHeight;
@@ -87,6 +89,8 @@ public class VideoSettingsViewModel : ViewModelBase
         _selectedBitrate = _settingsStore.Settings.CameraBitrateMbps;
 
         // Wire up camera test service events
+        _cameraTestService.OnHardwareDecoderReady += decoder =>
+            Dispatcher.UIThread.Post(() => HandleHardwareDecoderReady(decoder));
         _cameraTestService.OnPreviewFrameReceived += (width, height, nv12Data) =>
             Dispatcher.UIThread.Post(() => HandlePreviewFrame(width, height, nv12Data));
         _cameraTestService.OnError += error =>
@@ -209,6 +213,15 @@ public class VideoSettingsViewModel : ViewModelBase
     /// </summary>
     public bool IsGpuAvailable => GpuVideoRendererFactory.IsAvailable();
 
+    /// <summary>
+    /// Gets the hardware video decoder for camera preview (for embedding native view).
+    /// </summary>
+    public IHardwareVideoDecoder? HardwareDecoder
+    {
+        get => _hardwareDecoder;
+        private set => this.RaiseAndSetIfChanged(ref _hardwareDecoder, value);
+    }
+
     public bool IsLoadingDevices
     {
         get => _isLoadingDevices;
@@ -254,6 +267,7 @@ public class VideoSettingsViewModel : ViewModelBase
             FrameCount = 0;
             _frameWidth = 0;
             _frameHeight = 0;
+            HardwareDecoder = null;
             CameraStatus = "Not testing";
             this.RaisePropertyChanged(nameof(Resolution));
         }
@@ -286,6 +300,7 @@ public class VideoSettingsViewModel : ViewModelBase
         FrameCount = 0;
         _frameWidth = 0;
         _frameHeight = 0;
+        HardwareDecoder = null;
         CameraStatus = "Restarting...";
         this.RaisePropertyChanged(nameof(Resolution));
 
@@ -301,6 +316,13 @@ public class VideoSettingsViewModel : ViewModelBase
             IsTestingCamera = false;
             CameraStatus = $"Error: {ex.Message}";
         }
+    }
+
+    private void HandleHardwareDecoderReady(IHardwareVideoDecoder decoder)
+    {
+        HardwareDecoder = decoder;
+        CameraStatus = "Hardware preview active";
+        Console.WriteLine("VideoSettings: Hardware decoder ready for preview");
     }
 
     private void HandlePreviewFrame(int width, int height, byte[] nv12Data)

@@ -1,26 +1,39 @@
 using System.Diagnostics;
+using Snacka.Client.Services.HardwareVideo;
 using Snacka.Client.Services.WebRtc;
 
 namespace Snacka.Client.Services;
 
 /// <summary>
-/// Service for testing camera with dual preview (raw capture + H.264 encoded).
-/// Used in video settings to show users what their camera looks like and
-/// how the encoded stream differs from the raw capture.
+/// Service for testing camera with hardware-accelerated preview.
+/// Used in video settings to show users what their camera looks like.
+/// Uses the same hardware decoder pipeline as actual streaming for consistency.
 /// </summary>
 public class CameraTestService : IDisposable
 {
     private readonly NativeCaptureLocator _captureLocator;
     private Process? _captureProcess;
-    private FfmpegProcessDecoder? _h264Decoder;
+    private IHardwareVideoDecoder? _hardwareDecoder;
     private Task? _stderrParserTask;
+    private Task? _h264ReaderTask;
     private CancellationTokenSource? _cts;
     private bool _isRunning;
 
     private int _frameCount;
+    private int _previewWidth;
+    private int _previewHeight;
+    private byte[]? _sps;
+    private byte[]? _pps;
+
+    /// <summary>
+    /// Fired when the hardware decoder is ready for embedding.
+    /// The UI should embed the decoder's native view.
+    /// </summary>
+    public event Action<IHardwareVideoDecoder>? OnHardwareDecoderReady;
 
     /// <summary>
     /// Fired when a decoded H.264 frame is received (NV12 format for GPU rendering).
+    /// This is a fallback when hardware decoding is not available.
     /// Parameters: width, height, nv12Data
     /// </summary>
     public event Action<int, int, byte[]>? OnPreviewFrameReceived;
@@ -33,13 +46,18 @@ public class CameraTestService : IDisposable
     public bool IsRunning => _isRunning;
     public int FrameCount => _frameCount;
 
+    /// <summary>
+    /// Gets the hardware decoder if available (for embedding native view).
+    /// </summary>
+    public IHardwareVideoDecoder? HardwareDecoder => _hardwareDecoder;
+
     public CameraTestService()
     {
         _captureLocator = new NativeCaptureLocator();
     }
 
     /// <summary>
-    /// Starts camera test with dual preview output.
+    /// Starts camera test with hardware-accelerated preview.
     /// </summary>
     /// <param name="cameraId">Camera device ID or index</param>
     /// <param name="height">Video height (480, 720, 1080). Width calculated assuming 16:9 aspect ratio.</param>
@@ -53,11 +71,14 @@ public class CameraTestService : IDisposable
         }
 
         _frameCount = 0;
+        _sps = null;
+        _pps = null;
         _cts = new CancellationTokenSource();
 
         // Calculate width assuming 16:9 aspect ratio (most common for webcams)
-        // The GPU renderer's aspect ratio correction will handle any mismatch
         var width = CalculateWidthFor16x9(height);
+        _previewWidth = width;
+        _previewHeight = height;
 
         // Get native capture tool path
         var capturePath = _captureLocator.GetNativeCameraCapturePath();
@@ -67,7 +88,7 @@ public class CameraTestService : IDisposable
             return;
         }
 
-        // Build arguments (no preview - we decode H.264 for preview)
+        // Build arguments
         var args = _captureLocator.GetNativeCameraCaptureArgs(cameraId, width, height, fps, bitrateMbps);
 
         Console.WriteLine($"CameraTestService: Starting capture at {width}x{height}@{fps}fps");
@@ -75,11 +96,6 @@ public class CameraTestService : IDisposable
 
         try
         {
-            // Start H.264 decoder first (with NV12 output for GPU rendering)
-            _h264Decoder = new FfmpegProcessDecoder(width, height, outputFormat: DecoderOutputFormat.Nv12);
-            _h264Decoder.OnDecodedFrame += OnH264FrameDecoded;
-            _h264Decoder.Start();
-
             // Start native capture process
             var startInfo = new ProcessStartInfo
             {
@@ -100,8 +116,8 @@ public class CameraTestService : IDisposable
             var token = _cts.Token;
             _stderrParserTask = Task.Run(() => ParseStderrLoop(token), token);
 
-            // Start piping stdout (H.264) to decoder
-            _ = Task.Run(() => PipeH264ToDecoder(token), token);
+            // Start reading H.264 NAL units and feeding to hardware decoder
+            _h264ReaderTask = Task.Run(() => ReadH264AndDecode(token), token);
 
             Console.WriteLine($"CameraTestService: Capture started, pid={_captureProcess.Id}");
         }
@@ -141,45 +157,83 @@ public class CameraTestService : IDisposable
         }
     }
 
-    private async Task PipeH264ToDecoder(CancellationToken token)
+    /// <summary>
+    /// Reads H.264 NAL units from the capture process and decodes using hardware decoder.
+    /// This mirrors the approach used in CameraManager for consistent behavior.
+    /// </summary>
+    private void ReadH264AndDecode(CancellationToken token)
     {
-        if (_captureProcess == null || _h264Decoder == null) return;
+        if (_captureProcess == null) return;
+
+        var lengthBuffer = new byte[4];
 
         try
         {
-            var stdout = _captureProcess.StandardOutput.BaseStream;
-            var readBuffer = new byte[64 * 1024];
-            long totalBytesIn = 0;
-            long totalBytesOut = 0;
+            var stream = _captureProcess.StandardOutput.BaseStream;
 
-            // Buffer for accumulating AVCC data and converting to Annex B
-            var avccBuffer = new MemoryStream();
-
-            while (!token.IsCancellationRequested)
+            while (!token.IsCancellationRequested && _captureProcess != null && !_captureProcess.HasExited)
             {
-                var bytesRead = await stdout.ReadAsync(readBuffer, 0, readBuffer.Length, token);
-                if (bytesRead == 0)
+                // Read 4-byte NAL length prefix (big-endian AVCC format)
+                var bytesRead = 0;
+                while (bytesRead < 4 && !token.IsCancellationRequested)
                 {
-                    Console.WriteLine("CameraTestService: H.264 stream ended");
-                    break;
+                    var read = stream.Read(lengthBuffer, bytesRead, 4 - bytesRead);
+                    if (read == 0) break;
+                    bytesRead += read;
                 }
 
-                totalBytesIn += bytesRead;
+                if (bytesRead < 4) break;
 
-                // Accumulate data
-                avccBuffer.Write(readBuffer, 0, bytesRead);
+                // Parse NAL length (big-endian)
+                var nalLength = (lengthBuffer[0] << 24) | (lengthBuffer[1] << 16) |
+                               (lengthBuffer[2] << 8) | lengthBuffer[3];
 
-                // Convert AVCC to Annex B and send complete NAL units to decoder
-                var annexBData = ConvertAvccToAnnexB(avccBuffer);
-                if (annexBData.Length > 0)
+                if (nalLength <= 0 || nalLength > 10_000_000)
                 {
-                    totalBytesOut += annexBData.Length;
-                    if (totalBytesOut <= 10000 || totalBytesOut % 100000 < annexBData.Length)
-                    {
-                        Console.WriteLine($"CameraTestService: Converted {bytesRead} AVCC bytes to {annexBData.Length} Annex B bytes (total in: {totalBytesIn}, out: {totalBytesOut})");
-                    }
+                    Console.WriteLine($"CameraTestService: Invalid NAL length {nalLength}, skipping");
+                    continue;
+                }
 
-                    _h264Decoder.DecodeFrame(annexBData);
+                // Read NAL data
+                var nalData = new byte[nalLength];
+                bytesRead = 0;
+                while (bytesRead < nalLength && !token.IsCancellationRequested)
+                {
+                    var read = stream.Read(nalData, bytesRead, nalLength - bytesRead);
+                    if (read == 0) break;
+                    bytesRead += read;
+                }
+
+                if (bytesRead < nalLength) break;
+
+                // Parse NAL type
+                var nalType = nalData[0] & 0x1F;
+
+                // Store SPS/PPS for hardware decoder initialization
+                if (nalType == 7) // SPS
+                {
+                    _sps = nalData;
+                    Console.WriteLine($"CameraTestService: Stored SPS ({nalData.Length} bytes)");
+                    TryInitializeHardwareDecoder();
+                }
+                else if (nalType == 8) // PPS
+                {
+                    _pps = nalData;
+                    Console.WriteLine($"CameraTestService: Stored PPS ({nalData.Length} bytes)");
+                    TryInitializeHardwareDecoder();
+                }
+
+                // Feed VCL NAL units to hardware decoder
+                if (_hardwareDecoder != null && (nalType == 1 || nalType == 5))
+                {
+                    var isKeyframe = nalType == 5;
+                    _hardwareDecoder.DecodeAndRender(nalData, isKeyframe);
+                    _frameCount++;
+
+                    if (_frameCount <= 5 || _frameCount % 100 == 0)
+                    {
+                        Console.WriteLine($"CameraTestService: Decoded frame {_frameCount} (NAL type {nalType})");
+                    }
                 }
             }
         }
@@ -191,85 +245,54 @@ public class CameraTestService : IDisposable
         {
             if (!token.IsCancellationRequested)
             {
-                Console.WriteLine($"CameraTestService: H.264 pipe error - {ex.Message}");
+                Console.WriteLine($"CameraTestService: H.264 read error - {ex.Message}");
             }
         }
+
+        Console.WriteLine($"CameraTestService: H.264 reader ended after {_frameCount} frames");
     }
 
     /// <summary>
-    /// Converts H.264 data from AVCC format (4-byte length prefix) to Annex B format (start codes).
-    /// Native capture tools output AVCC, but FFmpeg expects Annex B.
+    /// Tries to initialize the hardware decoder when both SPS and PPS are available.
     /// </summary>
-    private static byte[] ConvertAvccToAnnexB(MemoryStream avccBuffer)
+    private void TryInitializeHardwareDecoder()
     {
-        var avccData = avccBuffer.ToArray();
-        var annexBStream = new MemoryStream();
+        if (_hardwareDecoder != null)
+            return;
 
-        // Annex B start code (4 bytes)
-        var startCode = new byte[] { 0x00, 0x00, 0x00, 0x01 };
+        if (_sps == null || _pps == null)
+            return;
 
-        int offset = 0;
-        int lastProcessedOffset = 0;
-
-        while (offset + 4 <= avccData.Length)
+        if (!HardwareVideoDecoderFactory.IsAvailable())
         {
-            // Read 4-byte big-endian NAL unit length
-            int nalLength = (avccData[offset] << 24) |
-                           (avccData[offset + 1] << 16) |
-                           (avccData[offset + 2] << 8) |
-                           avccData[offset + 3];
-
-            // Sanity check: NAL length should be reasonable (< 10MB)
-            if (nalLength <= 0 || nalLength > 10 * 1024 * 1024)
-            {
-                // Invalid length - might be corrupted data or we're not at a NAL boundary
-                // Skip this byte and try again
-                offset++;
-                continue;
-            }
-
-            // Check if we have the complete NAL unit
-            if (offset + 4 + nalLength > avccData.Length)
-            {
-                // Incomplete NAL unit - wait for more data
-                break;
-            }
-
-            // Write Annex B start code
-            annexBStream.Write(startCode, 0, startCode.Length);
-
-            // Write NAL unit data (skip the 4-byte length prefix)
-            annexBStream.Write(avccData, offset + 4, nalLength);
-
-            offset += 4 + nalLength;
-            lastProcessedOffset = offset;
+            Console.WriteLine("CameraTestService: Hardware decoding not available");
+            OnError?.Invoke("Hardware video decoding not available on this system");
+            return;
         }
 
-        // Keep unprocessed bytes in the buffer for next iteration
-        if (lastProcessedOffset > 0)
+        Console.WriteLine("CameraTestService: Creating hardware decoder...");
+        var decoder = HardwareVideoDecoderFactory.Create();
+        if (decoder == null)
         {
-            var remaining = avccData.Length - lastProcessedOffset;
-            avccBuffer.SetLength(0);
-            if (remaining > 0)
-            {
-                avccBuffer.Write(avccData, lastProcessedOffset, remaining);
-            }
+            Console.WriteLine("CameraTestService: Failed to create hardware decoder");
+            OnError?.Invoke("Failed to create hardware decoder");
+            return;
         }
 
-        return annexBStream.ToArray();
-    }
-
-    private void OnH264FrameDecoded(int width, int height, byte[] nv12Data)
-    {
-        _frameCount++;
-
-        if (_frameCount <= 5 || _frameCount % 100 == 0)
+        if (decoder.Initialize(_previewWidth, _previewHeight, _sps, _pps))
         {
-            Console.WriteLine($"CameraTestService: Decoded H.264 frame {_frameCount}, {width}x{height}");
-        }
+            _hardwareDecoder = decoder;
+            Console.WriteLine($"CameraTestService: Hardware decoder ready ({_previewWidth}x{_previewHeight})");
 
-        // Fire NV12 event directly (GPU will handle YUV→RGB)
-        OnPreviewFrameReceived?.Invoke(width, height, nv12Data);
+            // Notify UI that hardware decoder is ready for embedding
+            OnHardwareDecoderReady?.Invoke(decoder);
+        }
+        else
+        {
+            decoder.Dispose();
+            Console.WriteLine("CameraTestService: Failed to initialize hardware decoder");
+            OnError?.Invoke("Failed to initialize hardware decoder");
+        }
     }
 
     /// <summary>
@@ -294,11 +317,23 @@ public class CameraTestService : IDisposable
                 Console.WriteLine("CameraTestService: Parser task did not stop in time");
             }
             catch (OperationCanceledException) { }
+            _stderrParserTask = null;
         }
 
-        // Stop decoder
-        _h264Decoder?.Dispose();
-        _h264Decoder = null;
+        // Wait for H.264 reader task
+        if (_h264ReaderTask != null)
+        {
+            try
+            {
+                await _h264ReaderTask.WaitAsync(TimeSpan.FromSeconds(2));
+            }
+            catch (TimeoutException)
+            {
+                Console.WriteLine("CameraTestService: H.264 reader task did not stop in time");
+            }
+            catch (OperationCanceledException) { }
+            _h264ReaderTask = null;
+        }
 
         // Stop capture process
         if (_captureProcess != null)
@@ -319,6 +354,12 @@ public class CameraTestService : IDisposable
             _captureProcess.Dispose();
             _captureProcess = null;
         }
+
+        // Stop hardware decoder
+        _hardwareDecoder?.Dispose();
+        _hardwareDecoder = null;
+        _sps = null;
+        _pps = null;
 
         _cts?.Dispose();
         _cts = null;
