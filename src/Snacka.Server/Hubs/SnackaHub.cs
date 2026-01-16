@@ -1362,6 +1362,49 @@ public class SnackaHub : Hub
     }
 
     /// <summary>
+    /// Host sends rumble/vibration feedback to guest.
+    /// High-frequency method - minimal logging.
+    /// </summary>
+    public async Task SendControllerRumble(ControllerRumbleMessage rumble)
+    {
+        var userId = GetUserId();
+        if (userId is null) return;
+
+        // SECURITY: Verify sender is the host with an active session to this guest
+        bool hasAccess = false;
+        lock (Lock)
+        {
+            var key = (rumble.ChannelId, userId.Value);
+            if (ControllerSessions.TryGetValue(key, out var sessions))
+            {
+                hasAccess = sessions.Any(s => s.GuestUserId == rumble.GuestUserId && s.Slot == rumble.ControllerSlot);
+            }
+        }
+
+        if (!hasAccess)
+        {
+            return;
+        }
+
+        // Forward to guest
+        string? guestConnectionId;
+        lock (Lock)
+        {
+            UserConnections.TryGetValue(rumble.GuestUserId, out guestConnectionId);
+        }
+
+        if (guestConnectionId is not null)
+        {
+            await Clients.Client(guestConnectionId)
+                .SendAsync("ControllerRumbleReceived", new ControllerRumbleReceivedEvent(
+                    rumble.ChannelId,
+                    userId.Value,
+                    rumble
+                ));
+        }
+    }
+
+    /// <summary>
     /// Get active controller sessions for a host in a channel.
     /// </summary>
     public Task<List<(Guid GuestUserId, byte Slot)>> GetControllerSessions(Guid channelId)

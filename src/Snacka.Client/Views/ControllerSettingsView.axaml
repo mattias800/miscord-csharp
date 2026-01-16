@@ -127,6 +127,64 @@
                 </StackPanel>
             </Border>
 
+            <!-- Vibration / Rumble Settings -->
+            <Border Background="{StaticResource Content1Brush}" CornerRadius="16" Padding="24">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="VIBRATION"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource Foreground3Brush}"/>
+
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="4">
+                            <TextBlock Text="Enable Rumble Feedback"
+                                       FontSize="14"
+                                       Foreground="{StaticResource ForegroundBrush}"/>
+                            <TextBlock Text="When sharing your controller as a guest, receive vibration feedback from the host's game."
+                                       FontSize="12"
+                                       Foreground="{StaticResource Foreground3Brush}"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1"
+                                      IsChecked="{Binding RumbleEnabled}"
+                                      OnContent=""
+                                      OffContent=""
+                                      VerticalAlignment="Center"
+                                      Margin="16,0,0,0"/>
+                    </Grid>
+
+                    <Border Background="{StaticResource BackgroundBrush}"
+                            CornerRadius="10"
+                            Padding="16">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Rumble Availability"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource ForegroundBrush}"/>
+                            <TextBlock TextWrapping="Wrap"
+                                       FontSize="12"
+                                       Foreground="{StaticResource Foreground3Brush}">
+                                <Run Text="Rumble feedback requires:"/>
+                            </TextBlock>
+                            <TextBlock Text="• The host must be on Windows with ViGEmBus installed"
+                                       FontSize="12"
+                                       Foreground="{StaticResource Foreground3Brush}"
+                                       Margin="8,0,0,0"/>
+                            <TextBlock Text="• Your controller must support HID rumble (DualShock 4, Xbox One, etc.)"
+                                       FontSize="12"
+                                       Foreground="{StaticResource Foreground3Brush}"
+                                       Margin="8,0,0,0"
+                                       TextWrapping="Wrap"/>
+                            <TextBlock Text="Linux and macOS hosts do not currently support rumble feedback."
+                                       FontSize="11"
+                                       FontStyle="Italic"
+                                       Foreground="{StaticResource Foreground3Brush}"
+                                       Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+
             <!-- Input Visualization -->
             <Border Background="{StaticResource Content1Brush}"
                     CornerRadius="16"
@@ -359,6 +417,74 @@
                                Foreground="{StaticResource Foreground3Brush}"
                                FontSize="13"
                                HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Virtual Controller Requirements (for hosting) -->
+            <Border Background="{StaticResource Content1Brush}" CornerRadius="16" Padding="24">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="HOSTING REQUIREMENTS"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource Foreground3Brush}"/>
+                    <TextBlock Text="To receive controller input from guests (hosting), your system needs:"
+                               FontSize="12"
+                               Foreground="{StaticResource Foreground3Brush}"
+                               TextWrapping="Wrap"/>
+
+                    <!-- Windows -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Windows"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource ForegroundBrush}"/>
+                        <TextBlock Text="Install ViGEmBus driver for virtual Xbox 360 controller emulation:"
+                                   FontSize="12"
+                                   Foreground="{StaticResource Foreground3Brush}"
+                                   TextWrapping="Wrap"/>
+                        <TextBlock Text="https://github.com/nefarius/ViGEmBus/releases"
+                                   FontSize="12"
+                                   Foreground="{StaticResource Foreground2Brush}"
+                                   FontFamily="Consolas,Monaco,monospace"/>
+                    </StackPanel>
+
+                    <!-- Linux -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Linux"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource ForegroundBrush}"/>
+                        <TextBlock Text="Add your user to the 'input' group for uinput access:"
+                                   FontSize="12"
+                                   Foreground="{StaticResource Foreground3Brush}"
+                                   TextWrapping="Wrap"/>
+                        <TextBlock Text="sudo usermod -a -G input $USER"
+                                   FontSize="12"
+                                   Foreground="{StaticResource Foreground2Brush}"
+                                   FontFamily="Consolas,Monaco,monospace"/>
+                        <TextBlock Text="(Log out and back in after running this command)"
+                                   FontSize="11"
+                                   Foreground="{StaticResource Foreground3Brush}"
+                                   FontStyle="Italic"/>
+                    </StackPanel>
+
+                    <!-- macOS -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="macOS"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource ForegroundBrush}"/>
+                        <TextBlock Text="Virtual controller hosting is not currently supported on macOS. You can still share your controller as a guest."
+                                   FontSize="12"
+                                   Foreground="{StaticResource Foreground3Brush}"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <TextBlock Text="Sharing your controller to others (as a guest) works on all platforms without additional setup."
+                               FontSize="12"
+                               Foreground="{StaticResource Foreground3Brush}"
+                               TextWrapping="Wrap"
+                               Margin="0,8,0,0"/>
                 </StackPanel>
             </Border>
         </StackPanel>

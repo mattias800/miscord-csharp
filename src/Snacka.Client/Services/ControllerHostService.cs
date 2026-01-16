@@ -17,12 +17,33 @@ public record ControllerAccessRequest(
 /// <summary>
 /// Represents an active controller session with a guest.
 /// </summary>
-public record ActiveControllerSession(
-    Guid ChannelId,
-    Guid GuestUserId,
-    string GuestUsername,
-    byte ControllerSlot
-);
+public class ActiveControllerSession : ReactiveObject
+{
+    public Guid ChannelId { get; }
+    public Guid GuestUserId { get; }
+    public string GuestUsername { get; }
+    public byte ControllerSlot { get; }
+
+    private bool _isMuted;
+    public bool IsMuted
+    {
+        get => _isMuted;
+        set => this.RaiseAndSetIfChanged(ref _isMuted, value);
+    }
+
+    /// <summary>
+    /// Player number (1-indexed for display).
+    /// </summary>
+    public int PlayerNumber => ControllerSlot + 1;
+
+    public ActiveControllerSession(Guid channelId, Guid guestUserId, string guestUsername, byte controllerSlot)
+    {
+        ChannelId = channelId;
+        GuestUserId = guestUserId;
+        GuestUsername = guestUsername;
+        ControllerSlot = controllerSlot;
+    }
+}
 
 /// <summary>
 /// Manages hosting controller access from guests.
@@ -74,18 +95,36 @@ public interface IControllerHostService : IDisposable
     /// Fired when controller state is received from a guest.
     /// </summary>
     event Action<ControllerStateReceivedEvent>? ControllerStateReceived;
+
+    /// <summary>
+    /// Toggle mute state for a guest's controller input.
+    /// When muted, the guest's input is not fed to the virtual controller.
+    /// </summary>
+    void ToggleMuteSession(Guid guestUserId);
+
+    /// <summary>
+    /// Check if a guest's controller input is muted.
+    /// </summary>
+    bool IsSessionMuted(Guid guestUserId);
+
+    /// <summary>
+    /// Fired when the mute state of any session changes.
+    /// </summary>
+    event Action? MutedSessionsChanged;
 }
 
 public class ControllerHostService : ReactiveObject, IControllerHostService
 {
     private readonly ISignalRService _signalR;
     private readonly IVirtualControllerService _virtualController;
+    private readonly HashSet<Guid> _mutedGuests = new();
 
     public ObservableCollection<ControllerAccessRequest> PendingRequests { get; } = new();
     public ObservableCollection<ActiveControllerSession> ActiveSessions { get; } = new();
 
     public event Action<ControllerAccessRequest>? AccessRequestReceived;
     public event Action<ControllerStateReceivedEvent>? ControllerStateReceived;
+    public event Action? MutedSessionsChanged;
 
     public ControllerHostService(ISignalRService signalR)
     {
@@ -95,6 +134,10 @@ public class ControllerHostService : ReactiveObject, IControllerHostService
         if (_virtualController.IsSupported)
         {
             Console.WriteLine("ControllerHostService: Virtual controller support available");
+            if (_virtualController.IsRumbleSupported)
+            {
+                Console.WriteLine("ControllerHostService: Rumble feedback supported");
+            }
         }
         else
         {
@@ -105,6 +148,9 @@ public class ControllerHostService : ReactiveObject, IControllerHostService
         _signalR.ControllerAccessRequested += OnAccessRequested;
         _signalR.ControllerAccessStopped += OnAccessStopped;
         _signalR.ControllerStateReceived += OnControllerStateReceived;
+
+        // Subscribe to rumble feedback from virtual controller (Windows only)
+        _virtualController.RumbleReceived += OnRumbleReceived;
     }
 
     public async Task AcceptRequestAsync(Guid channelId, Guid guestUserId, byte controllerSlot)
@@ -214,6 +260,31 @@ public class ControllerHostService : ReactiveObject, IControllerHostService
         return null; // All slots taken
     }
 
+    public void ToggleMuteSession(Guid guestUserId)
+    {
+        var session = ActiveSessions.FirstOrDefault(s => s.GuestUserId == guestUserId);
+        if (session == null) return;
+
+        if (_mutedGuests.Contains(guestUserId))
+        {
+            _mutedGuests.Remove(guestUserId);
+            session.IsMuted = false;
+            Console.WriteLine($"ControllerHostService: Unmuted guest {guestUserId}");
+        }
+        else
+        {
+            _mutedGuests.Add(guestUserId);
+            session.IsMuted = true;
+            Console.WriteLine($"ControllerHostService: Muted guest {guestUserId}");
+        }
+        MutedSessionsChanged?.Invoke();
+    }
+
+    public bool IsSessionMuted(Guid guestUserId)
+    {
+        return _mutedGuests.Contains(guestUserId);
+    }
+
     private void OnAccessRequested(ControllerAccessRequestedEvent e)
     {
         Console.WriteLine($"ControllerHostService: Access request from {e.RequesterUsername} ({e.RequesterUserId})");
@@ -263,9 +334,11 @@ public class ControllerHostService : ReactiveObject, IControllerHostService
 
     private void OnControllerStateReceived(ControllerStateReceivedEvent e)
     {
-        // Feed to virtual controller if available
+        // Feed to virtual controller if available (unless muted)
         var state = e.State;
-        if (_virtualController.IsSupported && _virtualController.HasController(state.ControllerSlot))
+        var isMuted = _mutedGuests.Contains(e.GuestUserId);
+
+        if (!isMuted && _virtualController.IsSupported && _virtualController.HasController(state.ControllerSlot))
         {
             _virtualController.UpdateState(state.ControllerSlot, state);
         }
@@ -274,11 +347,40 @@ public class ControllerHostService : ReactiveObject, IControllerHostService
         ControllerStateReceived?.Invoke(e);
     }
 
+    private void OnRumbleReceived(VirtualControllerRumbleEventArgs e)
+    {
+        // Find the guest using this controller slot and send them the rumble
+        var session = ActiveSessions.FirstOrDefault(s => s.ControllerSlot == e.Slot);
+        if (session == null)
+        {
+            return;
+        }
+
+        // Don't send rumble to muted guests
+        if (_mutedGuests.Contains(session.GuestUserId))
+        {
+            return;
+        }
+
+        // Send rumble to guest via SignalR
+        var rumbleMessage = new ControllerRumbleMessage(
+            session.ChannelId,
+            session.GuestUserId,
+            e.Slot,
+            e.LargeMotor,
+            e.SmallMotor
+        );
+
+        // Fire and forget - rumble is time-sensitive
+        _ = _signalR.SendControllerRumbleAsync(rumbleMessage);
+    }
+
     public void Dispose()
     {
         _signalR.ControllerAccessRequested -= OnAccessRequested;
         _signalR.ControllerAccessStopped -= OnAccessStopped;
         _signalR.ControllerStateReceived -= OnControllerStateReceived;
+        _virtualController.RumbleReceived -= OnRumbleReceived;
         _virtualController.Dispose();
     }
 }

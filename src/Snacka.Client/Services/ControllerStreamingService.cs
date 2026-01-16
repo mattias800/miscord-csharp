@@ -56,6 +56,7 @@ public class ControllerStreamingService : ReactiveObject, IControllerStreamingSe
 {
     private readonly ISignalRService _signalR;
     private readonly IControllerService _controllerService;
+    private readonly ISettingsStore _settingsStore;
     private Timer? _streamingTimer;
     private bool _isStreaming;
     private Guid? _streamingChannelId;
@@ -65,15 +66,20 @@ public class ControllerStreamingService : ReactiveObject, IControllerStreamingSe
     // Streaming rate: 60Hz for responsive input
     private const int StreamingIntervalMs = 16; // ~60Hz
 
-    public ControllerStreamingService(ISignalRService signalR, IControllerService controllerService)
+    public ControllerStreamingService(ISignalRService signalR, IControllerService controllerService, ISettingsStore settingsStore)
     {
         _signalR = signalR;
         _controllerService = controllerService;
+        _settingsStore = settingsStore;
 
         // Subscribe to SignalR events
         _signalR.ControllerAccessAccepted += OnAccessAccepted;
         _signalR.ControllerAccessDeclined += OnAccessDeclined;
         _signalR.ControllerAccessStopped += OnAccessStopped;
+        _signalR.ControllerRumbleReceived += OnRumbleReceived;
+
+        // Subscribe to controller disconnect events
+        _controllerService.ControllerDisconnected += OnControllerDisconnected;
     }
 
     public bool IsStreaming
@@ -179,6 +185,41 @@ public class ControllerStreamingService : ReactiveObject, IControllerStreamingSe
 
         Console.WriteLine($"ControllerStreamingService: Session stopped ({e.Reason})");
         CleanupStreaming(e.Reason);
+    }
+
+    private void OnControllerDisconnected(ControllerDevice controller)
+    {
+        if (!IsStreaming)
+        {
+            return;
+        }
+
+        // Controller disconnected while streaming - log warning but keep session open
+        // The session will resume when the user reconnects and starts reading again
+        Console.WriteLine($"ControllerStreamingService: Controller '{controller.Name}' disconnected while streaming!");
+        Console.WriteLine("ControllerStreamingService: Session remains active - reconnect controller to resume.");
+
+        // Note: We don't stop streaming here. The streaming timer will keep running,
+        // but will send zeroed/default state until the controller is reconnected.
+        // This allows seamless reconnection without needing to re-request access.
+    }
+
+    private void OnRumbleReceived(ControllerRumbleReceivedEvent e)
+    {
+        // Only process if we're streaming and this rumble is for our slot
+        if (!IsStreaming || e.Rumble.ControllerSlot != AssignedSlot)
+        {
+            return;
+        }
+
+        // Check if rumble is enabled in settings
+        if (!_settingsStore.Settings.ControllerRumbleEnabled)
+        {
+            return;
+        }
+
+        // Forward rumble to physical controller
+        _controllerService.SetRumble(e.Rumble.LargeMotor, e.Rumble.SmallMotor);
     }
 
     private void StartStreamingTimer()
@@ -298,5 +339,7 @@ public class ControllerStreamingService : ReactiveObject, IControllerStreamingSe
         _signalR.ControllerAccessAccepted -= OnAccessAccepted;
         _signalR.ControllerAccessDeclined -= OnAccessDeclined;
         _signalR.ControllerAccessStopped -= OnAccessStopped;
+        _signalR.ControllerRumbleReceived -= OnRumbleReceived;
+        _controllerService.ControllerDisconnected -= OnControllerDisconnected;
     }
 }

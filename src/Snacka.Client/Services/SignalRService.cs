@@ -140,6 +140,7 @@ public interface ISignalRService : IAsyncDisposable
     Task DeclineControllerAccessAsync(Guid channelId, Guid guestUserId);
     Task StopControllerAccessAsync(Guid channelId, Guid otherUserId);
     Task SendControllerStateAsync(ControllerStateMessage state);
+    Task SendControllerRumbleAsync(ControllerRumbleMessage rumble);
 
     // Controller streaming events
     event Action<ControllerAccessRequestedEvent>? ControllerAccessRequested;
@@ -147,6 +148,7 @@ public interface ISignalRService : IAsyncDisposable
     event Action<ControllerAccessDeclinedEvent>? ControllerAccessDeclined;
     event Action<ControllerAccessStoppedEvent>? ControllerAccessStopped;
     event Action<ControllerStateReceivedEvent>? ControllerStateReceived;
+    event Action<ControllerRumbleReceivedEvent>? ControllerRumbleReceived;
 }
 
 // Typing indicator event DTOs
@@ -288,6 +290,7 @@ public class SignalRService : ISignalRService
     public event Action<ControllerAccessDeclinedEvent>? ControllerAccessDeclined;
     public event Action<ControllerAccessStoppedEvent>? ControllerAccessStopped;
     public event Action<ControllerStateReceivedEvent>? ControllerStateReceived;
+    public event Action<ControllerRumbleReceivedEvent>? ControllerRumbleReceived;
 
     private void OnRetryScheduled(TimeSpan delay)
     {
@@ -610,6 +613,13 @@ public class SignalRService : ISignalRService
         // No logging for high-frequency state updates
     }
 
+    public async Task SendControllerRumbleAsync(ControllerRumbleMessage rumble)
+    {
+        if (_hubConnection is null || !IsConnected) return;
+        await _hubConnection.InvokeAsync("SendControllerRumble", rumble);
+        // No logging for high-frequency rumble updates
+    }
+
     private void RegisterHandlers()
     {
         if (_hubConnection is null) return;
@@ -907,6 +917,14 @@ public class SignalRService : ISignalRService
                 $"LT:{state.LeftTrigger:000} RT:{state.RightTrigger:000} " +
                 $"Buttons:{buttons}");
             ControllerStateReceived?.Invoke(e);
+        });
+
+        _hubConnection.On<ControllerRumbleReceivedEvent>("ControllerRumbleReceived", e =>
+        {
+            // Rumble feedback from host - forward to physical controller
+            var rumble = e.Rumble;
+            Console.WriteLine($"Rumble received: Slot {rumble.ControllerSlot} Large:{rumble.LargeMotor} Small:{rumble.SmallMotor}");
+            ControllerRumbleReceived?.Invoke(e);
         });
 
         _hubConnection.Reconnecting += error =>

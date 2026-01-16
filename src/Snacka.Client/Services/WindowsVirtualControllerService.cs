@@ -18,6 +18,8 @@ public class WindowsVirtualControllerService : IVirtualControllerService
     private bool _isSupported;
     private string? _notSupportedReason;
 
+    public event Action<VirtualControllerRumbleEventArgs>? RumbleReceived;
+
     public WindowsVirtualControllerService()
     {
         try
@@ -37,6 +39,7 @@ public class WindowsVirtualControllerService : IVirtualControllerService
 
     public bool IsSupported => _isSupported;
     public string? NotSupportedReason => _notSupportedReason;
+    public bool IsRumbleSupported => _isSupported; // Rumble supported when ViGEm is available
     public int ActiveControllerCount => _controllers.Count(c => c != null);
 
     public bool CreateController(byte slot)
@@ -56,9 +59,22 @@ public class WindowsVirtualControllerService : IVirtualControllerService
         try
         {
             var controller = _client.CreateXbox360Controller();
+
+            // Subscribe to rumble/vibration feedback from games
+            var capturedSlot = slot; // Capture for closure
+            controller.FeedbackReceived += (sender, e) =>
+            {
+                // Forward rumble feedback to listeners (will be sent to guest)
+                RumbleReceived?.Invoke(new VirtualControllerRumbleEventArgs(
+                    capturedSlot,
+                    e.LargeMotor,
+                    e.SmallMotor
+                ));
+            };
+
             controller.Connect();
             _controllers[slot] = controller;
-            Console.WriteLine($"WindowsVirtualControllerService: Created Xbox 360 controller at slot {slot} (Player {slot + 1})");
+            Console.WriteLine($"WindowsVirtualControllerService: Created Xbox 360 controller at slot {slot} (Player {slot + 1}) with rumble support");
             return true;
         }
         catch (Exception ex)

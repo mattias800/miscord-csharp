@@ -45,7 +45,7 @@ public class SettingsViewModel : ViewModelBase
 
         if (_controllerService != null)
         {
-            ControllerSettingsViewModel = new ControllerSettingsViewModel(_controllerService);
+            ControllerSettingsViewModel = new ControllerSettingsViewModel(_controllerService, _settingsStore);
         }
 
         if (apiClient is not null && onAccountDeleted is not null)

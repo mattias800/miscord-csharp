@@ -17,11 +17,13 @@ public record ControllerDeviceItem(ControllerDevice? Device, string DisplayName,
 public class ControllerSettingsViewModel : ViewModelBase, IDisposable
 {
     private readonly IControllerService _controllerService;
+    private readonly ISettingsStore _settingsStore;
     private ControllerDeviceItem? _selectedControllerItem;
 
-    public ControllerSettingsViewModel(IControllerService controllerService)
+    public ControllerSettingsViewModel(IControllerService controllerService, ISettingsStore settingsStore)
     {
         _controllerService = controllerService;
+        _settingsStore = settingsStore;
 
         ControllerItems = new ObservableCollection<ControllerDeviceItem>();
         ControllerItems.Add(ControllerDeviceItem.None);
@@ -58,6 +60,20 @@ public class ControllerSettingsViewModel : ViewModelBase, IDisposable
     public ControllerState CurrentState => _controllerService.CurrentState;
 
     public bool IsReading => _controllerService.IsReading;
+
+    public bool RumbleEnabled
+    {
+        get => _settingsStore.Settings.ControllerRumbleEnabled;
+        set
+        {
+            if (_settingsStore.Settings.ControllerRumbleEnabled != value)
+            {
+                _settingsStore.Settings.ControllerRumbleEnabled = value;
+                _settingsStore.Save();
+                this.RaisePropertyChanged();
+            }
+        }
+    }
 
     // Expose individual axes for easier binding
     public float AxisX => _controllerService.CurrentState.Axes[0];

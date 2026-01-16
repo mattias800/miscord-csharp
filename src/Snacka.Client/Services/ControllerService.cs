@@ -76,6 +76,19 @@ public interface IControllerService : IDisposable
     void RefreshControllers();
     void StartReading();
     void StopReading();
+
+    /// <summary>
+    /// Sends rumble/vibration to the selected controller.
+    /// Note: Not all controllers support rumble via HID. Xbox 360 wired uses XInput instead.
+    /// </summary>
+    /// <param name="largeMotor">Large (low-frequency) motor strength 0-255</param>
+    /// <param name="smallMotor">Small (high-frequency) motor strength 0-255</param>
+    void SetRumble(byte largeMotor, byte smallMotor);
+
+    /// <summary>
+    /// Fired when the controller unexpectedly disconnects during reading.
+    /// </summary>
+    event Action<ControllerDevice>? ControllerDisconnected;
 }
 
 public class ControllerService : ReactiveObject, IControllerService
@@ -87,6 +100,8 @@ public class ControllerService : ReactiveObject, IControllerService
     private HidStream? _currentStream;
     private CancellationTokenSource? _readCts;
     private Task? _readTask;
+
+    public event Action<ControllerDevice>? ControllerDisconnected;
 
     // Common game controller usage pages
     private const int GenericDesktopPage = 0x01;
@@ -267,7 +282,9 @@ public class ControllerService : ReactiveObject, IControllerService
             return;
 
         var device = _selectedController.HidDevice;
+        var disconnectedController = _selectedController;
         var buffer = new byte[device.GetMaxInputReportLength()];
+        var disconnectedUnexpectedly = false;
 
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -287,10 +304,26 @@ public class ControllerService : ReactiveObject, IControllerService
             {
                 if (!cancellationToken.IsCancellationRequested)
                 {
-                    Console.WriteLine($"ControllerService: Read error: {ex.Message}");
+                    Console.WriteLine($"ControllerService: Read error (controller disconnected?): {ex.Message}");
+                    disconnectedUnexpectedly = true;
                 }
                 break;
             }
+        }
+
+        // Fire disconnected event if the loop ended unexpectedly (not due to cancellation)
+        if (disconnectedUnexpectedly)
+        {
+            // Clean up on UI thread and fire event
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                _currentStream?.Dispose();
+                _currentStream = null;
+                _currentState.Reset();
+                IsReading = false;
+                Console.WriteLine($"ControllerService: Controller disconnected: {disconnectedController.Name}");
+                ControllerDisconnected?.Invoke(disconnectedController);
+            });
         }
     }
 
@@ -337,6 +370,63 @@ public class ControllerService : ReactiveObject, IControllerService
                 _currentState.SetButton(i, (buttons1 & (1 << i)) != 0);
                 _currentState.SetButton(i + 8, (buttons2 & (1 << i)) != 0);
             }
+        }
+    }
+
+    public void SetRumble(byte largeMotor, byte smallMotor)
+    {
+        if (_selectedController?.HidDevice == null || _currentStream == null)
+        {
+            return;
+        }
+
+        try
+        {
+            // Try to send rumble output report
+            // Note: Format varies by controller. This tries common formats.
+            var device = _selectedController.HidDevice;
+            var vendorId = device.VendorID;
+            var productId = device.ProductID;
+
+            byte[]? rumbleReport = null;
+
+            // Sony DualShock 4 (USB) - VID: 054C, PID: 05C4 or 09CC
+            if (vendorId == 0x054C && (productId == 0x05C4 || productId == 0x09CC))
+            {
+                rumbleReport = new byte[32];
+                rumbleReport[0] = 0x05; // Report ID
+                rumbleReport[1] = 0xFF; // Enable flags
+                rumbleReport[4] = smallMotor; // Right motor (weak)
+                rumbleReport[5] = largeMotor; // Left motor (strong)
+            }
+            // Xbox One controllers (various PIDs) - VID: 045E
+            else if (vendorId == 0x045E)
+            {
+                rumbleReport = new byte[13];
+                rumbleReport[0] = 0x09; // Command
+                rumbleReport[1] = 0x00; // Sub-command
+                rumbleReport[2] = 0x00; // Packet number
+                rumbleReport[3] = 0x09; // Size
+                rumbleReport[4] = 0x00; // Mode
+                rumbleReport[5] = 0x0F; // Motor mask (all motors)
+                rumbleReport[6] = 0x00; // Left trigger motor
+                rumbleReport[7] = 0x00; // Right trigger motor
+                rumbleReport[8] = largeMotor; // Left motor
+                rumbleReport[9] = smallMotor; // Right motor
+                rumbleReport[10] = 0xFF; // Pulse length
+                rumbleReport[11] = 0x00; // Off time
+                rumbleReport[12] = 0xEB; // Terminator
+            }
+
+            if (rumbleReport != null)
+            {
+                _currentStream.Write(rumbleReport);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Silently fail - not all controllers support rumble via HID
+            Console.WriteLine($"ControllerService: Failed to send rumble: {ex.Message}");
         }
     }
 

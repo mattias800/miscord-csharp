@@ -101,3 +101,25 @@ public record ControllerStateReceivedEvent(
     string GuestUsername,
     ControllerStateMessage State
 );
+
+/// <summary>
+/// Rumble/vibration message sent from host to guest.
+/// When a game sends rumble to the virtual controller, the host
+/// relays it to the guest so their physical controller vibrates.
+/// </summary>
+public record ControllerRumbleMessage(
+    Guid ChannelId,
+    Guid GuestUserId,
+    byte ControllerSlot,    // Which player slot (0-3)
+    byte LargeMotor,        // Low-frequency strong motor (0-255)
+    byte SmallMotor         // High-frequency weak motor (0-255)
+);
+
+/// <summary>
+/// Event sent to guest when rumble feedback is received from host.
+/// </summary>
+public record ControllerRumbleReceivedEvent(
+    Guid ChannelId,
+    Guid HostUserId,
+    ControllerRumbleMessage Rumble
+);

@@ -367,14 +367,17 @@ Send over WebRTC DataChannel for lowest latency:
 - [ ] Document any driver installation requirements
 
 ### Phase 5: Polish
-- [ ] Support multiple remote controllers (up to 4 players)
-- [ ] Add vibration/rumble feedback (reverse direction)
+- [x] Support multiple remote controllers (up to 4 players) - Already works via slot assignment
+- [x] **Vibration/rumble feedback (Windows host only)**: Games on Windows host can send rumble to guest's physical controller.
+      - ViGEm captures `FeedbackReceived` events from games
+      - Rumble relayed via SignalR to guest
+      - Guest's controller receives HID output report (DS4/Xbox One supported)
+      - User can enable/disable in Controller Settings with info about Windows host requirement
 - [ ] Latency compensation and interpolation
-- [ ] Controller disconnect/reconnect handling
+- [x] Controller disconnect/reconnect handling - Session remains open, resumes on reconnect
 - [ ] Controller type auto-detection and mapping
-- [ ] **Mute/pause controller inputs**: Allow host to temporarily disable a guest's controller
-      inputs without ending the session (e.g., host needs to go AFK). UI location TBD -
-      possibly in voice channel participant list or a dedicated controller session panel.
+- [x] **Mute/pause controller inputs**: Host can mute/unmute guest input via session panel button.
+      When muted, guest's input is not fed to virtual controller. Session remains active.
 
 ---
 
@@ -519,4 +522,12 @@ public record ControllerInfo(
 ---
 
 **Last Updated:** 2026-01-16
-**Status:** ~85% - Phase 1 complete! Input capture, network transport, and virtual controller all working. Windows uses ViGEm, Linux uses uinput. Missing: controller session management panel (showing active sessions with stop/mute controls).
+**Status:** ~95% - Phase 1 complete + Phase 5 polish items! Features:
+- Input capture (HIDSharp), network transport (SignalR), virtual controller (ViGEm/uinput) all working
+- Controller session panel with mute/unmute and disconnect controls
+- Controller requirements info in settings panel
+- Controller disconnect/reconnect handling (session remains active)
+- Multiple controller slots (up to 4 players) supported
+- **Vibration/rumble feedback** (Windows host only) - relays game rumble to guest's physical controller
+
+Remaining: Latency compensation, controller type detection. Android/macOS host support deferred.

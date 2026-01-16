@@ -3,6 +3,15 @@ using Snacka.Shared.Models;
 namespace Snacka.Client.Services;
 
 /// <summary>
+/// Rumble feedback received from a game via the virtual controller.
+/// </summary>
+public record VirtualControllerRumbleEventArgs(
+    byte Slot,
+    byte LargeMotor,
+    byte SmallMotor
+);
+
+/// <summary>
 /// Service for creating and controlling virtual game controllers.
 /// Implemented per-platform: ViGEm on Windows, uinput on Linux.
 /// </summary>
@@ -17,6 +26,12 @@ public interface IVirtualControllerService : IDisposable
     /// Error message if not supported (e.g., driver not installed).
     /// </summary>
     string? NotSupportedReason { get; }
+
+    /// <summary>
+    /// Whether rumble feedback is supported on this platform.
+    /// Currently only Windows (ViGEm) supports rumble.
+    /// </summary>
+    bool IsRumbleSupported { get; }
 
     /// <summary>
     /// Creates a virtual Xbox 360 controller at the specified slot.
@@ -44,6 +59,12 @@ public interface IVirtualControllerService : IDisposable
     /// Gets the number of active virtual controllers.
     /// </summary>
     int ActiveControllerCount { get; }
+
+    /// <summary>
+    /// Fired when a game sends rumble/vibration feedback to the virtual controller.
+    /// Only fires on platforms that support rumble (Windows).
+    /// </summary>
+    event Action<VirtualControllerRumbleEventArgs>? RumbleReceived;
 }
 
 /// <summary>
@@ -53,7 +74,10 @@ public class NullVirtualControllerService : IVirtualControllerService
 {
     public bool IsSupported => false;
     public string? NotSupportedReason => "Virtual controller not supported on this platform";
+    public bool IsRumbleSupported => false;
     public int ActiveControllerCount => 0;
+
+    public event Action<VirtualControllerRumbleEventArgs>? RumbleReceived;
 
     public bool CreateController(byte slot) => false;
     public bool DestroyController(byte slot) => false;

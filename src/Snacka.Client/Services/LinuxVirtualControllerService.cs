@@ -131,6 +131,9 @@ public class LinuxVirtualControllerService : IVirtualControllerService
     private bool _isSupported;
     private string? _notSupportedReason;
 
+    // Rumble not yet implemented for Linux (requires FF_RUMBLE support)
+    public event Action<VirtualControllerRumbleEventArgs>? RumbleReceived;
+
     public LinuxVirtualControllerService()
     {
         // Check if uinput is available
@@ -159,6 +162,7 @@ public class LinuxVirtualControllerService : IVirtualControllerService
 
     public bool IsSupported => _isSupported;
     public string? NotSupportedReason => _notSupportedReason;
+    public bool IsRumbleSupported => false; // Not yet implemented for Linux
     public int ActiveControllerCount => _fds.Count(fd => fd >= 0);
 
     public bool CreateController(byte slot)

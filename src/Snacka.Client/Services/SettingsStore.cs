@@ -45,6 +45,9 @@ public class UserSettings
     // Panel widths (for sidebar resizing)
     public double ChannelListWidth { get; set; } = 260;
     public double MembersListWidth { get; set; } = 260;
+
+    // Controller settings
+    public bool ControllerRumbleEnabled { get; set; } = true;
 }
 
 public class SettingsStore : ISettingsStore

@@ -340,11 +340,21 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         AcceptControllerRequestCommand = ReactiveCommand.CreateFromTask<ControllerAccessRequest>(AcceptControllerRequestAsync);
         DeclineControllerRequestCommand = ReactiveCommand.CreateFromTask<ControllerAccessRequest>(DeclineControllerRequestAsync);
         StopControllerSessionCommand = ReactiveCommand.CreateFromTask<ActiveControllerSession>(StopControllerSessionAsync);
+        ToggleMuteControllerSessionCommand = ReactiveCommand.Create<ActiveControllerSession>(ToggleMuteControllerSession);
 
         // Subscribe to controller host service events for UI updates
         _controllerHostService.PendingRequests.CollectionChanged += (_, _) =>
         {
             Dispatcher.UIThread.Post(() => this.RaisePropertyChanged(nameof(HasPendingControllerRequests)));
+        };
+        _controllerHostService.ActiveSessions.CollectionChanged += (_, _) =>
+        {
+            Dispatcher.UIThread.Post(() => this.RaisePropertyChanged(nameof(HasActiveControllerSessions)));
+        };
+        _controllerHostService.MutedSessionsChanged += () =>
+        {
+            // Force UI update when mute state changes
+            Dispatcher.UIThread.Post(() => this.RaisePropertyChanged(nameof(ActiveControllerSessions)));
         };
 
         // Thread commands
@@ -1258,6 +1268,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         _controllerHostService.ActiveSessions;
 
     public bool HasPendingControllerRequests => PendingControllerRequests.Count > 0;
+    public bool HasActiveControllerSessions => ActiveControllerSessions.Count > 0;
 
     public byte SelectedControllerSlot
     {
@@ -2344,6 +2355,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<ControllerAccessRequest, Unit> AcceptControllerRequestCommand { get; }
     public ReactiveCommand<ControllerAccessRequest, Unit> DeclineControllerRequestCommand { get; }
     public ReactiveCommand<ActiveControllerSession, Unit> StopControllerSessionCommand { get; }
+    public ReactiveCommand<ActiveControllerSession, Unit> ToggleMuteControllerSessionCommand { get; }
 
     // Thread commands
     public ReactiveCommand<MessageResponse, Unit> OpenThreadCommand { get; }
@@ -3983,6 +3995,21 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         {
             Console.WriteLine($"Error stopping controller session: {ex.Message}");
         }
+    }
+
+    private void ToggleMuteControllerSession(ActiveControllerSession session)
+    {
+        _controllerHostService.ToggleMuteSession(session.GuestUserId);
+        var isMuted = _controllerHostService.IsSessionMuted(session.GuestUserId);
+        Console.WriteLine($"{(isMuted ? "Muted" : "Unmuted")} controller session with {session.GuestUsername}");
+    }
+
+    /// <summary>
+    /// Check if a controller session is muted.
+    /// </summary>
+    public bool IsControllerSessionMuted(Guid guestUserId)
+    {
+        return _controllerHostService.IsSessionMuted(guestUserId);
     }
 
     /// <summary>

@@ -31,7 +31,7 @@ public partial class App : Application
             var videoDeviceService = new VideoDeviceService();
             var screenCaptureService = new ScreenCaptureService();
             var controllerService = new ControllerService();
-            var controllerStreamingService = new ControllerStreamingService(signalR, controllerService);
+            var controllerStreamingService = new ControllerStreamingService(signalR, controllerService, settingsStore);
             var controllerHostService = new ControllerHostService(signalR);
             var webRtc = new WebRtcService(signalR, settingsStore);
 

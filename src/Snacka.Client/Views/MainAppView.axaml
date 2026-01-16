@@ -725,6 +725,90 @@
                 </StackPanel>
             </Border>
         </Border>
+
+        <!-- Active Controller Sessions Panel (below request panel when hosting) -->
+        <Border Grid.ColumnSpan="6"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Margin="16,100,16,16"
+                IsVisible="{Binding HasActiveControllerSessions}">
+            <Border Background="{StaticResource Content1Brush}"
+                    BorderBrush="{StaticResource SuccessBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="16"
+                    MinWidth="280"
+                    MaxWidth="360">
+                <StackPanel Spacing="12">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <ui:SymbolIcon Symbol="Games" FontSize="18" Foreground="{StaticResource SuccessBrush}"/>
+                        <TextBlock Text="Active Controllers"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource ForegroundBrush}"/>
+                    </StackPanel>
+
+                    <ItemsControl ItemsSource="{Binding ActiveControllerSessions}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{StaticResource BackgroundBrush}"
+                                        CornerRadius="8"
+                                        Padding="12"
+                                        Margin="0,4">
+                                    <Grid ColumnDefinitions="*,Auto,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock FontSize="13" Foreground="{StaticResource ForegroundBrush}" FontWeight="SemiBold"
+                                                           Text="{Binding GuestUsername}"/>
+                                                <!-- Muted indicator -->
+                                                <ui:SymbolIcon Symbol="SpeakerOff" FontSize="12"
+                                                               Foreground="{StaticResource WarningBrush}"
+                                                               IsVisible="{Binding IsMuted}"
+                                                               ToolTip.Tip="Controller input is muted"/>
+                                            </StackPanel>
+                                            <TextBlock FontSize="11" Foreground="{StaticResource Foreground3Brush}">
+                                                <Run Text="Player "/>
+                                                <Run Text="{Binding PlayerNumber}"/>
+                                            </TextBlock>
+                                        </StackPanel>
+
+                                        <!-- Mute/Unmute button -->
+                                        <Button Grid.Column="1"
+                                                Classes="btn-secondary"
+                                                Padding="10,6"
+                                                Margin="0,0,6,0"
+                                                VerticalAlignment="Center"
+                                                Command="{Binding $parent[UserControl].((vm:MainAppViewModel)DataContext).ToggleMuteControllerSessionCommand}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip.Tip="Toggle mute controller input">
+                                            <Panel>
+                                                <ui:SymbolIcon Symbol="Speaker2" FontSize="12"
+                                                               Foreground="{StaticResource ForegroundBrush}"
+                                                               IsVisible="{Binding !IsMuted}"/>
+                                                <ui:SymbolIcon Symbol="SpeakerOff" FontSize="12"
+                                                               Foreground="{StaticResource WarningBrush}"
+                                                               IsVisible="{Binding IsMuted}"/>
+                                            </Panel>
+                                        </Button>
+
+                                        <!-- Disconnect button -->
+                                        <Button Grid.Column="2"
+                                                Classes="btn-danger"
+                                                Padding="10,6"
+                                                VerticalAlignment="Center"
+                                                Command="{Binding $parent[UserControl].((vm:MainAppViewModel)DataContext).StopControllerSessionCommand}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip.Tip="Disconnect this controller">
+                                            <ui:SymbolIcon Symbol="Dismiss" FontSize="12" Foreground="White"/>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+        </Border>
         </Grid>
     </Grid>
 </UserControl>
