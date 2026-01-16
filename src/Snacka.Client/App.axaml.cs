@@ -31,6 +31,8 @@ public partial class App : Application
             var videoDeviceService = new VideoDeviceService();
             var screenCaptureService = new ScreenCaptureService();
             var controllerService = new ControllerService();
+            var controllerStreamingService = new ControllerStreamingService(signalR, controllerService);
+            var controllerHostService = new ControllerHostService(signalR);
             var webRtc = new WebRtcService(signalR, settingsStore);
 
             // Check for dev mode auto-login
@@ -46,7 +48,7 @@ public partial class App : Application
                 );
             }
 
-            var viewModel = new MainWindowViewModel(apiClient, connectionStore, signalR, webRtc, settingsStore, audioDeviceService, videoDeviceService, screenCaptureService, controllerService, devConfig: devConfig);
+            var viewModel = new MainWindowViewModel(apiClient, connectionStore, signalR, webRtc, settingsStore, audioDeviceService, videoDeviceService, screenCaptureService, controllerService, controllerStreamingService, controllerHostService, devConfig: devConfig);
 
             var window = new MainWindow
             {

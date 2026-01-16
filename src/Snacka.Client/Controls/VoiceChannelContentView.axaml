@@ -216,6 +216,14 @@
                                                     </MultiBinding>
                                                 </StackPanel.IsVisible>
 
+                                                <!-- Share Controller button -->
+                                                <Button Classes="btn-icon"
+                                                        Click="OnShareControllerClick"
+                                                        Tag="{Binding}"
+                                                        ToolTip.Tip="Share your controller input">
+                                                    <ui:SymbolIcon Symbol="Games" Foreground="White" FontSize="14"/>
+                                                </Button>
+
                                                 <!-- Fullscreen button -->
                                                 <Button Classes="btn-icon"
                                                         Click="OnFullscreenButtonClick"

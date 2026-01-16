@@ -59,6 +59,7 @@ public partial class VoiceChannelContentView : UserControl
     public event EventHandler<VideoStreamViewModel>? StopWatchingRequested;
     public event EventHandler<VideoStreamViewModel>? FullscreenRequested;
     public event EventHandler<VideoStreamViewModel>? VideoTileDoubleTapped;
+    public event EventHandler<VideoStreamViewModel>? ShareControllerRequested;
 
     private void OnWatchScreenShareClick(object? sender, RoutedEventArgs e)
     {
@@ -89,6 +90,14 @@ public partial class VoiceChannelContentView : UserControl
         if (sender is Border border && border.Tag is VideoStreamViewModel stream)
         {
             VideoTileDoubleTapped?.Invoke(this, stream);
+        }
+    }
+
+    private void OnShareControllerClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.Tag is VideoStreamViewModel stream)
+        {
+            ShareControllerRequested?.Invoke(this, stream);
         }
     }
 }

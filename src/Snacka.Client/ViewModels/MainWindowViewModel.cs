@@ -16,6 +16,8 @@ public class MainWindowViewModel : ViewModelBase
     private readonly Services.IVideoDeviceService _videoDeviceService;
     private readonly Services.IScreenCaptureService _screenCaptureService;
     private readonly Services.IControllerService _controllerService;
+    private readonly Services.IControllerStreamingService _controllerStreamingService;
+    private readonly Services.IControllerHostService _controllerHostService;
     private readonly Services.IUpdateService _updateService;
     private ViewModelBase _currentView;
     private AuthResponse? _currentUser;
@@ -30,7 +32,7 @@ public class MainWindowViewModel : ViewModelBase
     // File picker provider (set from View)
     public Func<Task<IStorageFile?>>? ImageFilePickerProvider { get; set; }
 
-    public MainWindowViewModel(IApiClient apiClient, IServerConnectionStore connectionStore, ISignalRService signalR, IWebRtcService webRtc, Services.ISettingsStore settingsStore, Services.IAudioDeviceService audioDeviceService, Services.IVideoDeviceService videoDeviceService, Services.IScreenCaptureService screenCaptureService, Services.IControllerService controllerService, Services.IUpdateService? updateService = null, DevLoginConfig? devConfig = null)
+    public MainWindowViewModel(IApiClient apiClient, IServerConnectionStore connectionStore, ISignalRService signalR, IWebRtcService webRtc, Services.ISettingsStore settingsStore, Services.IAudioDeviceService audioDeviceService, Services.IVideoDeviceService videoDeviceService, Services.IScreenCaptureService screenCaptureService, Services.IControllerService controllerService, Services.IControllerStreamingService controllerStreamingService, Services.IControllerHostService controllerHostService, Services.IUpdateService? updateService = null, DevLoginConfig? devConfig = null)
     {
         _apiClient = apiClient;
         _connectionStore = connectionStore;
@@ -41,6 +43,8 @@ public class MainWindowViewModel : ViewModelBase
         _videoDeviceService = videoDeviceService;
         _screenCaptureService = screenCaptureService;
         _controllerService = controllerService;
+        _controllerStreamingService = controllerStreamingService;
+        _controllerHostService = controllerHostService;
         _updateService = updateService ?? new Services.UpdateService();
 
         // Initialize update commands
@@ -492,7 +496,7 @@ public class MainWindowViewModel : ViewModelBase
             _connectionStore.Save(updatedServer);
         }
 
-        CurrentView = new MainAppViewModel(_apiClient, _signalR, _webRtc, _screenCaptureService, _settingsStore, _audioDeviceService, CurrentServer!.Url, auth, OnLogout, OnSwitchServer, OnOpenDirectMessages, OnOpenDirectMessagesWithUser, OnOpenSettings, gifsEnabled: _currentServerInfo?.GifsEnabled ?? false);
+        CurrentView = new MainAppViewModel(_apiClient, _signalR, _webRtc, _screenCaptureService, _settingsStore, _audioDeviceService, _controllerStreamingService, _controllerHostService, CurrentServer!.Url, auth, OnLogout, OnSwitchServer, OnOpenDirectMessages, OnOpenDirectMessagesWithUser, OnOpenSettings, gifsEnabled: _currentServerInfo?.GifsEnabled ?? false);
     }
 
     private void OnOpenDirectMessages()

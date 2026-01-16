@@ -646,6 +646,15 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         }
     }
 
+    // Called when Share Controller button is clicked in VoiceChannelContentView
+    private async void OnVoiceChannelShareController(object? sender, VideoStreamViewModel stream)
+    {
+        if (ViewModel != null)
+        {
+            await ViewModel.RequestControllerAccessAsync(stream);
+        }
+    }
+
     // Called when clicking the close button on fullscreen video overlay
     private void OnCloseFullscreenClick(object? sender, RoutedEventArgs e)
     {

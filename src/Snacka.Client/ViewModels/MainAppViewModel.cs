@@ -19,6 +19,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private readonly IScreenCaptureService _screenCaptureService;
     private readonly ISettingsStore _settingsStore;
     private readonly IAudioDeviceService _audioDeviceService;
+    private readonly IControllerStreamingService _controllerStreamingService;
+    private readonly IControllerHostService _controllerHostService;
     private readonly AuthResponse _auth;
     private readonly Action _onLogout;
     private readonly Action? _onSwitchServer;
@@ -153,13 +155,15 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private ConnectionState _connectionState = ConnectionState.Connected;
     private int _reconnectSecondsRemaining;
 
-    public MainAppViewModel(IApiClient apiClient, ISignalRService signalR, IWebRtcService webRtc, IScreenCaptureService screenCaptureService, ISettingsStore settingsStore, IAudioDeviceService audioDeviceService, string baseUrl, AuthResponse auth, Action onLogout, Action? onSwitchServer = null, Action? onOpenDMs = null, Action<Guid?, string?>? onOpenDMsWithUser = null, Action? onOpenSettings = null, bool gifsEnabled = false)
+    public MainAppViewModel(IApiClient apiClient, ISignalRService signalR, IWebRtcService webRtc, IScreenCaptureService screenCaptureService, ISettingsStore settingsStore, IAudioDeviceService audioDeviceService, IControllerStreamingService controllerStreamingService, IControllerHostService controllerHostService, string baseUrl, AuthResponse auth, Action onLogout, Action? onSwitchServer = null, Action? onOpenDMs = null, Action<Guid?, string?>? onOpenDMsWithUser = null, Action? onOpenSettings = null, bool gifsEnabled = false)
     {
         _apiClient = apiClient;
         _isGifsEnabled = gifsEnabled;
         _screenCaptureService = screenCaptureService;
         _settingsStore = settingsStore;
         _audioDeviceService = audioDeviceService;
+        _controllerStreamingService = controllerStreamingService;
+        _controllerHostService = controllerHostService;
         _signalR = signalR;
         _webRtc = webRtc;
         _baseUrl = baseUrl;
@@ -2080,6 +2084,34 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         IsVideoFullscreen = false;
         FullscreenStream = null;
         IsAnnotationEnabled = false; // Disable drawing when exiting fullscreen
+    }
+
+    /// <summary>
+    /// Request controller access from a user who is sharing their screen.
+    /// This initiates the controller streaming handshake.
+    /// </summary>
+    public async Task RequestControllerAccessAsync(VideoStreamViewModel stream)
+    {
+        if (_currentVoiceChannel == null)
+        {
+            Console.WriteLine("MainApp: Cannot request controller access - not in voice channel");
+            return;
+        }
+
+        if (stream.StreamType != VideoStreamType.ScreenShare)
+        {
+            Console.WriteLine("MainApp: Cannot request controller access - not a screen share stream");
+            return;
+        }
+
+        if (stream.UserId == _auth.UserId)
+        {
+            Console.WriteLine("MainApp: Cannot request controller access from yourself");
+            return;
+        }
+
+        Console.WriteLine($"MainApp: Requesting controller access from {stream.Username} ({stream.UserId})");
+        await _controllerStreamingService.RequestAccessAsync(_currentVoiceChannel.Id, stream.UserId);
     }
 
     private void OnNv12VideoFrameForFullscreen(Guid userId, VideoStreamType streamType, int width, int height, byte[] nv12Data)

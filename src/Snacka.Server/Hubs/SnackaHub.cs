@@ -1057,6 +1057,330 @@ public class SnackaHub : Hub
         }
     }
 
+    // ==================== Controller Streaming Methods ====================
+
+    // Track active controller sessions: (ChannelId, HostUserId) -> List of (GuestUserId, Slot)
+    private static readonly Dictionary<(Guid ChannelId, Guid HostUserId), List<(Guid GuestUserId, byte Slot)>> ControllerSessions = new();
+
+    // Track pending controller access requests: (ChannelId, HostUserId, GuestUserId) -> RequestTime
+    private static readonly Dictionary<(Guid, Guid, Guid), DateTime> PendingControllerRequests = new();
+
+    /// <summary>
+    /// Guest requests controller access from a host who is sharing their screen.
+    /// </summary>
+    public async Task RequestControllerAccess(Guid channelId, Guid hostUserId)
+    {
+        var userId = GetUserId();
+        if (userId is null) return;
+
+        // SECURITY: Verify requester is in the same voice channel
+        var userChannelId = await GetUserVoiceChannelAsync(userId.Value);
+        if (userChannelId != channelId)
+        {
+            _logger.LogWarning("User {UserId} attempted to request controller access in channel {ChannelId} without being in it",
+                userId.Value, channelId);
+            return;
+        }
+
+        // Get requester info
+        var requester = await _db.Users.FindAsync(userId.Value);
+        if (requester is null) return;
+
+        // Store pending request
+        lock (Lock)
+        {
+            var key = (channelId, hostUserId, userId.Value);
+            PendingControllerRequests[key] = DateTime.UtcNow;
+        }
+
+        // Send request to host
+        string? hostConnectionId;
+        lock (Lock)
+        {
+            UserConnections.TryGetValue(hostUserId, out hostConnectionId);
+        }
+
+        if (hostConnectionId is not null)
+        {
+            await Clients.Client(hostConnectionId)
+                .SendAsync("ControllerAccessRequested", new ControllerAccessRequestedEvent(
+                    channelId,
+                    userId.Value,
+                    requester.Username
+                ));
+
+            _logger.LogInformation("User {GuestId} ({GuestName}) requested controller access from {HostId} in channel {ChannelId}",
+                userId.Value, requester.Username, hostUserId, channelId);
+        }
+    }
+
+    /// <summary>
+    /// Host accepts a guest's controller access request.
+    /// </summary>
+    public async Task AcceptControllerAccess(Guid channelId, Guid guestUserId, byte controllerSlot)
+    {
+        var userId = GetUserId();
+        if (userId is null) return;
+
+        // SECURITY: Verify host is in the channel and is the one being asked
+        var userChannelId = await GetUserVoiceChannelAsync(userId.Value);
+        if (userChannelId != channelId)
+        {
+            _logger.LogWarning("User {UserId} attempted to accept controller access in channel {ChannelId} without being in it",
+                userId.Value, channelId);
+            return;
+        }
+
+        // Verify there was a pending request
+        bool hadPendingRequest;
+        lock (Lock)
+        {
+            var key = (channelId, userId.Value, guestUserId);
+            hadPendingRequest = PendingControllerRequests.Remove(key);
+        }
+
+        if (!hadPendingRequest)
+        {
+            _logger.LogWarning("No pending controller request from {GuestId} to {HostId} in channel {ChannelId}",
+                guestUserId, userId.Value, channelId);
+            return;
+        }
+
+        // Get host info
+        var host = await _db.Users.FindAsync(userId.Value);
+        if (host is null) return;
+
+        // Add to active sessions
+        lock (Lock)
+        {
+            var key = (channelId, userId.Value);
+            if (!ControllerSessions.TryGetValue(key, out var sessions))
+            {
+                sessions = new List<(Guid, byte)>();
+                ControllerSessions[key] = sessions;
+            }
+
+            // Remove any existing session for this guest
+            sessions.RemoveAll(s => s.GuestUserId == guestUserId);
+            sessions.Add((guestUserId, controllerSlot));
+        }
+
+        // Notify guest
+        string? guestConnectionId;
+        lock (Lock)
+        {
+            UserConnections.TryGetValue(guestUserId, out guestConnectionId);
+        }
+
+        if (guestConnectionId is not null)
+        {
+            await Clients.Client(guestConnectionId)
+                .SendAsync("ControllerAccessAccepted", new ControllerAccessAcceptedEvent(
+                    channelId,
+                    userId.Value,
+                    host.Username,
+                    controllerSlot
+                ));
+        }
+
+        _logger.LogInformation("Host {HostId} accepted controller access from {GuestId} as player {Slot} in channel {ChannelId}",
+            userId.Value, guestUserId, controllerSlot + 1, channelId);
+    }
+
+    /// <summary>
+    /// Host declines a guest's controller access request.
+    /// </summary>
+    public async Task DeclineControllerAccess(Guid channelId, Guid guestUserId)
+    {
+        var userId = GetUserId();
+        if (userId is null) return;
+
+        // Remove pending request
+        lock (Lock)
+        {
+            var key = (channelId, userId.Value, guestUserId);
+            PendingControllerRequests.Remove(key);
+        }
+
+        // Notify guest
+        string? guestConnectionId;
+        lock (Lock)
+        {
+            UserConnections.TryGetValue(guestUserId, out guestConnectionId);
+        }
+
+        if (guestConnectionId is not null)
+        {
+            await Clients.Client(guestConnectionId)
+                .SendAsync("ControllerAccessDeclined", new ControllerAccessDeclinedEvent(
+                    channelId,
+                    userId.Value
+                ));
+        }
+
+        _logger.LogInformation("Host {HostId} declined controller access from {GuestId} in channel {ChannelId}",
+            userId.Value, guestUserId, channelId);
+    }
+
+    /// <summary>
+    /// Either party stops the controller sharing session.
+    /// </summary>
+    public async Task StopControllerAccess(Guid channelId, Guid otherUserId)
+    {
+        var userId = GetUserId();
+        if (userId is null) return;
+
+        Guid hostUserId, guestUserId;
+        string reason;
+        bool wasRemoved = false;
+
+        // Determine if caller is host or guest
+        lock (Lock)
+        {
+            // Check if caller is host
+            var hostKey = (channelId, userId.Value);
+            if (ControllerSessions.TryGetValue(hostKey, out var sessions))
+            {
+                var removed = sessions.RemoveAll(s => s.GuestUserId == otherUserId);
+                if (removed > 0)
+                {
+                    wasRemoved = true;
+                    hostUserId = userId.Value;
+                    guestUserId = otherUserId;
+                    reason = "host_stopped";
+
+                    // Clean up empty session list
+                    if (sessions.Count == 0)
+                    {
+                        ControllerSessions.Remove(hostKey);
+                    }
+                }
+                else
+                {
+                    hostUserId = otherUserId;
+                    guestUserId = userId.Value;
+                    reason = "guest_stopped";
+                }
+            }
+            else
+            {
+                // Caller is guest, otherUserId is host
+                hostUserId = otherUserId;
+                guestUserId = userId.Value;
+                reason = "guest_stopped";
+
+                var guestHostKey = (channelId, otherUserId);
+                if (ControllerSessions.TryGetValue(guestHostKey, out var hostSessions))
+                {
+                    var removed = hostSessions.RemoveAll(s => s.GuestUserId == userId.Value);
+                    wasRemoved = removed > 0;
+
+                    if (hostSessions.Count == 0)
+                    {
+                        ControllerSessions.Remove(guestHostKey);
+                    }
+                }
+            }
+        }
+
+        if (!wasRemoved)
+        {
+            _logger.LogWarning("No active controller session to stop between {UserId} and {OtherId} in channel {ChannelId}",
+                userId.Value, otherUserId, channelId);
+            return;
+        }
+
+        // Notify both parties
+        var stoppedEvent = new ControllerAccessStoppedEvent(channelId, hostUserId, guestUserId, reason);
+
+        string? hostConnectionId, guestConnectionId;
+        lock (Lock)
+        {
+            UserConnections.TryGetValue(hostUserId, out hostConnectionId);
+            UserConnections.TryGetValue(guestUserId, out guestConnectionId);
+        }
+
+        if (hostConnectionId is not null)
+        {
+            await Clients.Client(hostConnectionId).SendAsync("ControllerAccessStopped", stoppedEvent);
+        }
+        if (guestConnectionId is not null)
+        {
+            await Clients.Client(guestConnectionId).SendAsync("ControllerAccessStopped", stoppedEvent);
+        }
+
+        _logger.LogInformation("Controller access stopped between host {HostId} and guest {GuestId} in channel {ChannelId} (reason: {Reason})",
+            hostUserId, guestUserId, channelId, reason);
+    }
+
+    /// <summary>
+    /// Guest sends controller state to host.
+    /// High-frequency method - minimal logging.
+    /// </summary>
+    public async Task SendControllerState(ControllerStateMessage state)
+    {
+        var userId = GetUserId();
+        if (userId is null) return;
+
+        // SECURITY: Verify sender has active session with this host
+        bool hasAccess = false;
+        lock (Lock)
+        {
+            var key = (state.ChannelId, state.HostUserId);
+            if (ControllerSessions.TryGetValue(key, out var sessions))
+            {
+                hasAccess = sessions.Any(s => s.GuestUserId == userId.Value);
+            }
+        }
+
+        if (!hasAccess)
+        {
+            // Don't log every rejected state - could be spam
+            return;
+        }
+
+        // Get sender info for the event
+        var sender = await _db.Users.FindAsync(userId.Value);
+
+        // Forward to host
+        string? hostConnectionId;
+        lock (Lock)
+        {
+            UserConnections.TryGetValue(state.HostUserId, out hostConnectionId);
+        }
+
+        if (hostConnectionId is not null)
+        {
+            await Clients.Client(hostConnectionId)
+                .SendAsync("ControllerStateReceived", new ControllerStateReceivedEvent(
+                    state.ChannelId,
+                    userId.Value,
+                    sender?.Username ?? "Unknown",
+                    state
+                ));
+        }
+    }
+
+    /// <summary>
+    /// Get active controller sessions for a host in a channel.
+    /// </summary>
+    public Task<List<(Guid GuestUserId, byte Slot)>> GetControllerSessions(Guid channelId)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Task.FromResult(new List<(Guid, byte)>());
+
+        lock (Lock)
+        {
+            var key = (channelId, userId.Value);
+            if (ControllerSessions.TryGetValue(key, out var sessions))
+            {
+                return Task.FromResult(sessions.ToList());
+            }
+        }
+
+        return Task.FromResult(new List<(Guid, byte)>());
+    }
+
     private Guid? GetUserId()
     {
         var userIdClaim = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;

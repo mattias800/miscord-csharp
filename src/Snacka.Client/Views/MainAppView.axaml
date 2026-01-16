@@ -185,7 +185,8 @@
                                               WatchScreenShareRequested="OnVoiceChannelWatchScreenShare"
                                               StopWatchingRequested="OnVoiceChannelStopWatching"
                                               FullscreenRequested="OnVoiceChannelFullscreen"
-                                              VideoTileDoubleTapped="OnVoiceChannelVideoTileDoubleTapped"/>
+                                              VideoTileDoubleTapped="OnVoiceChannelVideoTileDoubleTapped"
+                                              ShareControllerRequested="OnVoiceChannelShareController"/>
 
             <!-- Chat Area (shown when not viewing DM or voice channel) -->
             <controls:ChatAreaView x:Name="ChatArea"
@@ -353,7 +354,8 @@
                                                       WatchScreenShareRequested="OnVoiceChannelWatchScreenShare"
                                                       StopWatchingRequested="OnVoiceChannelStopWatching"
                                                       FullscreenRequested="OnVoiceChannelFullscreen"
-                                                      VideoTileDoubleTapped="OnVoiceChannelVideoTileDoubleTapped"/>
+                                                      VideoTileDoubleTapped="OnVoiceChannelVideoTileDoubleTapped"
+                                                      ShareControllerRequested="OnVoiceChannelShareController"/>
                 </Grid>
             </Border>
         </Border>

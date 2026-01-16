@@ -133,6 +133,20 @@ public interface ISignalRService : IAsyncDisposable
 
     // Admin user management events
     event Action<AdminUserResponse>? UserRegistered;
+
+    // Controller streaming methods
+    Task RequestControllerAccessAsync(Guid channelId, Guid hostUserId);
+    Task AcceptControllerAccessAsync(Guid channelId, Guid guestUserId, byte controllerSlot);
+    Task DeclineControllerAccessAsync(Guid channelId, Guid guestUserId);
+    Task StopControllerAccessAsync(Guid channelId, Guid otherUserId);
+    Task SendControllerStateAsync(ControllerStateMessage state);
+
+    // Controller streaming events
+    event Action<ControllerAccessRequestedEvent>? ControllerAccessRequested;
+    event Action<ControllerAccessAcceptedEvent>? ControllerAccessAccepted;
+    event Action<ControllerAccessDeclinedEvent>? ControllerAccessDeclined;
+    event Action<ControllerAccessStoppedEvent>? ControllerAccessStopped;
+    event Action<ControllerStateReceivedEvent>? ControllerStateReceived;
 }
 
 // Typing indicator event DTOs
@@ -267,6 +281,13 @@ public class SignalRService : ISignalRService
 
     // Admin user management events
     public event Action<AdminUserResponse>? UserRegistered;
+
+    // Controller streaming events
+    public event Action<ControllerAccessRequestedEvent>? ControllerAccessRequested;
+    public event Action<ControllerAccessAcceptedEvent>? ControllerAccessAccepted;
+    public event Action<ControllerAccessDeclinedEvent>? ControllerAccessDeclined;
+    public event Action<ControllerAccessStoppedEvent>? ControllerAccessStopped;
+    public event Action<ControllerStateReceivedEvent>? ControllerStateReceived;
 
     private void OnRetryScheduled(TimeSpan delay)
     {
@@ -553,6 +574,42 @@ public class SignalRService : ISignalRService
         await _hubConnection.InvokeAsync("SendDMTyping", recipientUserId);
     }
 
+    // Controller streaming methods
+    public async Task RequestControllerAccessAsync(Guid channelId, Guid hostUserId)
+    {
+        if (_hubConnection is null || !IsConnected) return;
+        await _hubConnection.InvokeAsync("RequestControllerAccess", channelId, hostUserId);
+        Console.WriteLine($"SignalR: Requested controller access from {hostUserId} in channel {channelId}");
+    }
+
+    public async Task AcceptControllerAccessAsync(Guid channelId, Guid guestUserId, byte controllerSlot)
+    {
+        if (_hubConnection is null || !IsConnected) return;
+        await _hubConnection.InvokeAsync("AcceptControllerAccess", channelId, guestUserId, controllerSlot);
+        Console.WriteLine($"SignalR: Accepted controller access from {guestUserId} as player {controllerSlot + 1} in channel {channelId}");
+    }
+
+    public async Task DeclineControllerAccessAsync(Guid channelId, Guid guestUserId)
+    {
+        if (_hubConnection is null || !IsConnected) return;
+        await _hubConnection.InvokeAsync("DeclineControllerAccess", channelId, guestUserId);
+        Console.WriteLine($"SignalR: Declined controller access from {guestUserId} in channel {channelId}");
+    }
+
+    public async Task StopControllerAccessAsync(Guid channelId, Guid otherUserId)
+    {
+        if (_hubConnection is null || !IsConnected) return;
+        await _hubConnection.InvokeAsync("StopControllerAccess", channelId, otherUserId);
+        Console.WriteLine($"SignalR: Stopped controller access with {otherUserId} in channel {channelId}");
+    }
+
+    public async Task SendControllerStateAsync(ControllerStateMessage state)
+    {
+        if (_hubConnection is null || !IsConnected) return;
+        await _hubConnection.InvokeAsync("SendControllerState", state);
+        // No logging for high-frequency state updates
+    }
+
     private void RegisterHandlers()
     {
         if (_hubConnection is null) return;
@@ -812,6 +869,44 @@ public class SignalRService : ISignalRService
         {
             Console.WriteLine($"SignalR: UserRegistered - {e.Username}");
             UserRegistered?.Invoke(e);
+        });
+
+        // Controller streaming events
+        _hubConnection.On<ControllerAccessRequestedEvent>("ControllerAccessRequested", e =>
+        {
+            Console.WriteLine($"SignalR: ControllerAccessRequested - {e.RequesterUsername} wants controller access in channel {e.ChannelId}");
+            ControllerAccessRequested?.Invoke(e);
+        });
+
+        _hubConnection.On<ControllerAccessAcceptedEvent>("ControllerAccessAccepted", e =>
+        {
+            Console.WriteLine($"SignalR: ControllerAccessAccepted - {e.HostUsername} accepted as player {e.ControllerSlot + 1} in channel {e.ChannelId}");
+            ControllerAccessAccepted?.Invoke(e);
+        });
+
+        _hubConnection.On<ControllerAccessDeclinedEvent>("ControllerAccessDeclined", e =>
+        {
+            Console.WriteLine($"SignalR: ControllerAccessDeclined - host {e.HostUserId} declined in channel {e.ChannelId}");
+            ControllerAccessDeclined?.Invoke(e);
+        });
+
+        _hubConnection.On<ControllerAccessStoppedEvent>("ControllerAccessStopped", e =>
+        {
+            Console.WriteLine($"SignalR: ControllerAccessStopped - session ended between host {e.HostUserId} and guest {e.GuestUserId} ({e.Reason})");
+            ControllerAccessStopped?.Invoke(e);
+        });
+
+        _hubConnection.On<ControllerStateReceivedEvent>("ControllerStateReceived", e =>
+        {
+            // Log controller state for debugging/phase 1
+            var state = e.State;
+            var buttons = (ControllerButtons)state.Buttons;
+            Console.WriteLine($"Controller [{e.GuestUsername}] Slot {state.ControllerSlot}: " +
+                $"LStick({state.LeftStickX:+00000;-00000},{state.LeftStickY:+00000;-00000}) " +
+                $"RStick({state.RightStickX:+00000;-00000},{state.RightStickY:+00000;-00000}) " +
+                $"LT:{state.LeftTrigger:000} RT:{state.RightTrigger:000} " +
+                $"Buttons:{buttons}");
+            ControllerStateReceived?.Invoke(e);
         });
 
         _hubConnection.Reconnecting += error =>
