@@ -121,8 +121,8 @@ public class LogService : ILogService
         _logDirectory = Path.Combine(_logDirectory, "logs");
         Directory.CreateDirectory(_logDirectory);
 
-        // Use date-based log file, rotate daily
-        var dateStr = DateTime.Now.ToString("yyyy-MM-dd");
+        // Use timestamp-based log file, one per session
+        var dateStr = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
         _logFilePath = Path.Combine(_logDirectory, $"snacka-{dateStr}.log");
 
         // Clean up old log files (keep last 7 days)
