@@ -178,16 +178,21 @@ jobs:
 
       - name: Copy SnackaCaptureWindows
         run: |
-          Copy-Item "src/SnackaCaptureWindows/build/bin/Release/SnackaCaptureWindows.exe" "publish/" -ErrorAction SilentlyContinue
+          # CMakeLists.txt sets output to build/bin/ for all configs
+          Copy-Item "src/SnackaCaptureWindows/build/bin/SnackaCaptureWindows.exe" "publish/" -ErrorAction SilentlyContinue
           if (-not (Test-Path "publish/SnackaCaptureWindows.exe")) {
-            Copy-Item "src/SnackaCaptureWindows/build/bin/SnackaCaptureWindows.exe" "publish/" -ErrorAction SilentlyContinue
+            Copy-Item "src/SnackaCaptureWindows/build/bin/Release/SnackaCaptureWindows.exe" "publish/" -ErrorAction SilentlyContinue
           }
 
       - name: Copy SnackaWindowsRenderer
         run: |
-          Copy-Item "src/SnackaWindowsRenderer/build/Release/SnackaWindowsRenderer.dll" "publish/" -ErrorAction SilentlyContinue
+          # CMakeLists.txt sets output to build/bin/ for all configs
+          Copy-Item "src/SnackaWindowsRenderer/build/bin/SnackaWindowsRenderer.dll" "publish/" -ErrorAction SilentlyContinue
           if (-not (Test-Path "publish/SnackaWindowsRenderer.dll")) {
             Copy-Item "src/SnackaWindowsRenderer/build/bin/Release/SnackaWindowsRenderer.dll" "publish/" -ErrorAction SilentlyContinue
+          }
+          if (-not (Test-Path "publish/SnackaWindowsRenderer.dll")) {
+            Copy-Item "src/SnackaWindowsRenderer/build/Release/SnackaWindowsRenderer.dll" "publish/" -ErrorAction SilentlyContinue
           }
 
       - name: Upload portable build
