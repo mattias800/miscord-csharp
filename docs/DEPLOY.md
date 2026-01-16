@@ -1,223 +1,71 @@
 # Deployment Guide
 
-This guide covers how to deploy Snacka server and client applications.
+This guide covers how to deploy Snacka server for production use.
 
-## Prerequisites
+For development setup, see [DEVELOPMENT.md](../DEVELOPMENT.md).
 
-### All Platforms
-- .NET 9 SDK or later
-- Git
+## Quick Start with Docker
 
-### Client Dependencies
+The easiest way to deploy Snacka is using Docker Compose.
 
-The client requires the following native libraries for media playback and capture:
-
-#### macOS
-```bash
-# Install FFmpeg, SDL2, and VLC via Homebrew
-brew install ffmpeg sdl2
-brew install --cask vlc
-```
-
-#### Windows
-- FFmpeg: Download from https://ffmpeg.org/download.html and add to PATH
-- SDL2: Usually bundled or download from https://www.libsdl.org/
-- VLC: Download and install from https://www.videolan.org/vlc/
-
-#### Linux (Ubuntu/Debian)
-```bash
-sudo apt update
-sudo apt install ffmpeg libsdl2-dev vlc libvlc-dev
-```
-
-**Note:** VLC is required for inline audio playback of audio file attachments. The client uses LibVLCSharp which leverages the system-installed VLC for codec support.
-
-### LibVLC Audio Playback (macOS arm64)
-
-The `VideoLAN.LibVLC.Mac` NuGet package only provides x86_64 libraries. On Apple Silicon Macs (M1/M2/M3), you must use the system-installed VLC.app which is arm64 native.
-
-**Important:** The `VLC_PLUGIN_PATH` environment variable must be set **before** the .NET process starts. Setting it via `Environment.SetEnvironmentVariable()` after startup doesn't work because the dynamic linker has already processed the libraries.
-
-#### Running the Client with Audio Support
+### 1. Clone and Configure
 
 ```bash
-# Option 1: Use the wrapper script (recommended)
-./run-client.sh
+git clone https://github.com/mattias800/snacka.git
+cd snacka
 
-# Option 2: Use dev-start.sh (sets VLC env vars automatically)
-./dev-start.sh
-
-# Option 3: Set environment variables manually
-VLC_PLUGIN_PATH=/Applications/VLC.app/Contents/MacOS/plugins \
-DYLD_LIBRARY_PATH=/Applications/VLC.app/Contents/MacOS/lib \
-dotnet run --project src/Snacka.Client/Snacka.Client.csproj
+# Copy the example environment file
+cp .env.example .env
 ```
 
-#### Testing Audio Playback
+### 2. Edit Configuration
 
-Place an MP3 file in `~/Downloads` and run:
-```bash
-./run-client.sh --audio-test
-```
-
-#### Production Distribution
-
-For distributed applications, the launcher (shell script, .app bundle, or installer) must set `VLC_PLUGIN_PATH` before starting the .NET runtime:
-
-**macOS (.app bundle Info.plist or launcher script):**
-```bash
-export VLC_PLUGIN_PATH="/Applications/VLC.app/Contents/MacOS/plugins"
-export DYLD_LIBRARY_PATH="/Applications/VLC.app/Contents/MacOS/lib"
-```
-
-**Windows (batch file or installer):**
-```batch
-set VLC_PLUGIN_PATH=%ProgramFiles%\VideoLAN\VLC\plugins
-```
-
-**Linux:**
-VLC plugins are typically in standard system locations (`/usr/lib/vlc/plugins`) and are found automatically.
-
-## Development Setup
-
-### Quick Start
-
-The easiest way to run Snacka for development is using the provided script:
+Edit `.env` and set the required values:
 
 ```bash
-./dev-start.sh
+# REQUIRED: Change these!
+JWT_SECRET_KEY=your-secure-random-string-at-least-32-characters
+POSTGRES_PASSWORD=your-secure-database-password
+ALLOWED_ORIGIN=https://your-domain.com
+
+# Server info
+SERVER_NAME=My Snacka Server
+SERVER_DESCRIPTION=A place to hang out
+
+# Optional: GIF picker (get free API key at https://developers.google.com/tenor)
+TENOR_API_KEY=your-tenor-api-key
 ```
 
-This will:
-1. Build both server and client
-2. Start the server on `http://localhost:5117`
-3. Start two client instances with test accounts (Alice and Bob)
-
-### Manual Development Setup
-
-#### 1. Start the Server
+### 3. Start the Server
 
 ```bash
-cd src/Snacka.Server
-dotnet run
+docker compose up -d
 ```
 
-The server starts on `http://localhost:5117` by default.
-
-#### 2. Start a Client
+### 4. Verify
 
 ```bash
-cd src/Snacka.Client
-dotnet run -- --server http://localhost:5117
+# Check status
+docker compose ps
+
+# View logs
+docker compose logs -f
+
+# Test health endpoint
+curl http://localhost:5117/api/health
 ```
 
-Optional client arguments:
-- `--server <url>` - Server URL (default: http://localhost:5117)
-- `--email <email>` - Auto-login with this email
-- `--password <password>` - Auto-login password
-- `--title <title>` - Window title
-- `--profile <name>` - Profile name for settings storage
+The server is now running on port 5117.
 
-## Production Deployment
+## Reverse Proxy Setup
 
-### Server Deployment
+For production, run behind a reverse proxy (nginx, Caddy, etc.) for SSL termination.
 
-#### 1. Configure Production Settings
+### NGINX Proxy Manager
 
-Create `appsettings.Production.json`:
+Works out of the box - create a proxy host pointing to `localhost:5117` and enable SSL.
 
-```json
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Warning",
-      "Microsoft.AspNetCore": "Warning"
-    }
-  },
-  "AllowedHosts": "*",
-  "UseSqlite": false,
-  "ConnectionStrings": {
-    "DefaultConnection": "Server=your-db-server;Database=Snacka;User Id=snacka;Password=your-password;"
-  },
-  "Jwt": {
-    "SecretKey": "YOUR-PRODUCTION-SECRET-KEY-AT-LEAST-32-CHARACTERS-LONG!",
-    "Issuer": "Snacka",
-    "Audience": "Snacka",
-    "AccessTokenExpirationMinutes": 60,
-    "RefreshTokenExpirationDays": 7
-  },
-  "ServerInfo": {
-    "Name": "Your Server Name",
-    "Description": "Your server description",
-    "AllowRegistration": true
-  },
-  "Tenor": {
-    "ApiKey": "YOUR_TENOR_API_KEY",
-    "ClientKey": "snacka"
-  }
-}
-```
-
-**Important Security Notes:**
-- Change the `Jwt:SecretKey` to a strong, unique secret (minimum 32 characters)
-- Use environment variables for sensitive values in production
-- Set `AllowRegistration` to `false` if you don't want open registration
-
-**Optional Features:**
-- **GIF Picker:** To enable the GIF search/picker feature, add a Tenor API key. Get a free key at https://developers.google.com/tenor/guides/quickstart
-
-#### 2. Build for Production
-
-```bash
-dotnet publish src/Snacka.Server/Snacka.Server.csproj \
-  -c Release \
-  -o ./publish/server
-```
-
-#### 3. Database Options
-
-**SQLite (Simple, Single Server)**
-```json
-{
-  "UseSqlite": true
-}
-```
-The database file `snacka.db` will be created in the working directory.
-
-**PostgreSQL (Recommended for Production)**
-```json
-{
-  "UseSqlite": false,
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Database=snacka;Username=snacka;Password=your-password"
-  }
-}
-```
-
-#### 4. Run the Server
-
-```bash
-cd ./publish/server
-dotnet Snacka.Server.dll
-```
-
-Or with environment-specific configuration:
-```bash
-ASPNETCORE_ENVIRONMENT=Production dotnet Snacka.Server.dll
-```
-
-#### 5. Reverse Proxy Setup (Recommended)
-
-For production, run behind a reverse proxy for SSL termination. The server is designed to work behind proxies and correctly handles:
-- `X-Forwarded-For` - Real client IP (for rate limiting and logging)
-- `X-Forwarded-Proto` - Original protocol (https)
-- WebSocket connections (for real-time messaging via SignalR)
-
-**NGINX Proxy Manager**
-
-NGINX Proxy Manager works out of the box - just create a proxy host pointing to `snacka-server:8080` (or `localhost:5117` if running outside Docker) and enable SSL. WebSocket support is enabled by default.
-
-**Manual NGINX Configuration**
+### Manual NGINX
 
 ```nginx
 server {
@@ -236,194 +84,123 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-
-        # WebSocket support for SignalR
-        proxy_read_timeout 86400;
+        proxy_read_timeout 86400;  # WebSocket timeout
     }
 }
 ```
 
-### Client Distribution
+### Caddy
 
-#### Build for All Platforms
-
-**macOS:**
-```bash
-dotnet publish src/Snacka.Client/Snacka.Client.csproj \
-  -c Release \
-  -r osx-x64 \
-  --self-contained true \
-  -o ./publish/client-macos-x64
-
-# For Apple Silicon
-dotnet publish src/Snacka.Client/Snacka.Client.csproj \
-  -c Release \
-  -r osx-arm64 \
-  --self-contained true \
-  -o ./publish/client-macos-arm64
+```
+snacka.example.com {
+    reverse_proxy localhost:5117
+}
 ```
 
-**Windows:**
-```bash
-dotnet publish src/Snacka.Client/Snacka.Client.csproj \
-  -c Release \
-  -r win-x64 \
-  --self-contained true \
-  -o ./publish/client-windows-x64
-```
+## TURN Server (Recommended)
 
-**Linux:**
-```bash
-dotnet publish src/Snacka.Client/Snacka.Client.csproj \
-  -c Release \
-  -r linux-x64 \
-  --self-contained true \
-  -o ./publish/client-linux-x64
-```
+A TURN server enables voice/video for users behind restrictive firewalls or VPNs. The docker-compose.yml includes coturn.
 
-### Docker Deployment (Server)
+### Enable TURN
 
-The easiest way to deploy Snacka is using Docker Compose with pre-built images.
-
-#### Quick Start with Docker Compose
-
-1. **Configure environment variables:**
-   ```bash
-   cp .env.example .env
-   ```
-
-2. **Edit `.env` and set the required values:**
-   - `JWT_SECRET_KEY` - A secure random string (min 32 characters)
-   - `POSTGRES_PASSWORD` - A strong database password
-   - `ALLOWED_ORIGIN` - Your domain (e.g., `https://snacka.example.com`)
-
-3. **Start the server:**
-   ```bash
-   docker compose up -d
-   ```
-
-4. **Check status:**
-   ```bash
-   docker compose ps
-   docker compose logs -f
-   ```
-
-5. **Stop the server:**
-   ```bash
-   docker compose down
-   ```
-
-Data is persisted in Docker volumes (`postgres-data` for database, `snacka-uploads` for files).
-
-#### Environment Variables (.env file)
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `JWT_SECRET_KEY` | JWT signing key (min 32 chars) | **Yes** |
-| `POSTGRES_PASSWORD` | PostgreSQL password | **Yes** |
-| `ALLOWED_ORIGIN` | CORS allowed origin (your domain) | **Yes** |
-| `SERVER_NAME` | Server display name | No (default: Snacka Server) |
-| `SERVER_DESCRIPTION` | Server description | No |
-| `ALLOW_REGISTRATION` | Allow new user signups | No (default: true) |
-| `TENOR_API_KEY` | Tenor GIF API key (optional) | No |
-
-#### Using Pre-built Images
-
-The docker-compose.yml is configured to use pre-built images from GitHub Container Registry:
+Add to your `.env`:
 
 ```bash
-# Pull latest image
-docker pull ghcr.io/mattias800/snacka:latest
-
-# Run with docker compose
-docker compose up -d
+TURN_ENABLED=true
+TURN_HOST=your-domain.com
+TURN_SECRET=your-secure-random-string-for-turn-auth
+TURN_EXTERNAL_IP=your.server.public.ip  # Required if behind NAT
 ```
 
-#### Building Locally
+### Firewall Ports
 
-If you prefer to build locally instead of using pre-built images, edit `docker-compose.yml`:
+Open these ports for TURN:
+
+| Port | Protocol | Purpose |
+|------|----------|---------|
+| 3478 | TCP/UDP | STUN/TURN |
+| 5349 | TCP/UDP | TURNS (TLS) |
+| 49152-49252 | UDP | Media relay |
+
+### TLS for TURN (Optional)
+
+For TURNS (TURN over TLS), uncomment the certificate lines in `turnserver.conf` and mount your certificates:
 
 ```yaml
-services:
-  snacka-server:
-    # Comment out the image line
-    # image: ghcr.io/mattias800/snacka:latest
-    # Uncomment the build section
-    build:
-      context: .
-      dockerfile: Dockerfile
-```
-
-Then build and run:
-
-```bash
-docker compose build
-docker compose up -d
-```
-
-#### Manual Docker Run
-
-For production deployments, use docker compose (shown above) which includes PostgreSQL.
-
-For quick testing with SQLite (not recommended for production):
-
-```bash
-docker run -d -p 5117:8080 \
-  --name snacka-server \
-  -e UseSqlite=true \
-  -e Jwt__SecretKey=your-secret-key-at-least-32-characters \
-  -v snacka-data:/app/data \
-  -v snacka-uploads:/app/uploads \
-  ghcr.io/mattias800/snacka:latest
+# In docker-compose.yml under coturn volumes:
+- ./certs:/etc/coturn/certs:ro
 ```
 
 ## Environment Variables
 
-The server supports configuration via environment variables:
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `JWT_SECRET_KEY` | **Yes** | JWT signing key (min 32 chars) |
+| `POSTGRES_PASSWORD` | **Yes** | PostgreSQL password |
+| `ALLOWED_ORIGIN` | **Yes** | Your domain (e.g., `https://snacka.example.com`) |
+| `SERVER_NAME` | No | Server display name |
+| `SERVER_DESCRIPTION` | No | Server description |
+| `ALLOW_REGISTRATION` | No | Allow signups (default: `true`) |
+| `GIF_PROVIDER` | No | `Tenor` or `Klipy` (default: `Tenor`) |
+| `TENOR_API_KEY` | No | Tenor GIF API key |
+| `KLIPY_API_KEY` | No | Klipy GIF API key |
+| `TURN_ENABLED` | No | Enable TURN server (default: `false`) |
+| `TURN_HOST` | No | TURN server hostname |
+| `TURN_SECRET` | No | TURN auth secret |
+| `TURN_EXTERNAL_IP` | No | Server's public IP (if behind NAT) |
 
-| Variable | Description |
-|----------|-------------|
-| `ASPNETCORE_ENVIRONMENT` | Environment name (Development/Production) |
-| `ASPNETCORE_URLS` | Server URLs (e.g., `http://0.0.0.0:5117`) |
-| `Jwt__SecretKey` | JWT signing key (min 32 characters) |
-| `ConnectionStrings__DefaultConnection` | PostgreSQL connection string |
-| `UseSqlite` | Use SQLite instead of PostgreSQL (dev only) |
-| `AllowedOrigins__0` | CORS allowed origin |
+## Database
 
-## Health Check
+The docker-compose.yml includes PostgreSQL. Data is persisted in the `postgres-data` volume.
 
-The server exposes a health check endpoint:
+## Updating
 
 ```bash
-curl http://localhost:5117/api/health
+# Pull latest image
+docker compose pull
+
+# Restart with new image
+docker compose up -d
 ```
+
+## Client Downloads
+
+Users connect using the Snacka desktop client:
+
+| Platform | Download |
+|----------|----------|
+| Windows | [Installer](https://github.com/mattias800/snacka/releases/latest) |
+| macOS | [DMG](https://github.com/mattias800/snacka/releases/latest) |
+| Linux | [AppImage](https://github.com/mattias800/snacka/releases/latest) |
+
+Share your server URL with users - they paste it in the client to connect.
 
 ## Troubleshooting
 
 ### Server won't start
-- Check that port 5117 is not in use
-- Verify database connection string
-- Check logs for specific error messages
+- Check logs: `docker compose logs snacka-server`
+- Verify `.env` file exists and has required values
+- Ensure port 5117 is not in use
 
-### Client can't connect
-- Verify server URL is correct
-- Check firewall settings
-- Ensure WebSocket connections are allowed through any proxy
+### Can't connect from client
+- Verify `ALLOWED_ORIGIN` matches your domain exactly
+- Check firewall allows port 5117
+- Ensure reverse proxy forwards WebSocket connections
 
-### Audio/Video issues
-- Verify FFmpeg is installed and in PATH
-- Check SDL2 installation
-- On macOS, ensure microphone/camera permissions are granted
+### Voice/video not working
+- Enable TURN server (see above)
+- Open firewall ports for TURN (3478, 5349, 49152-49252)
+- Set `TURN_EXTERNAL_IP` if server is behind NAT
 
 ### Database errors
-- For SQLite: ensure write permissions in the directory
-- For SQL Server: verify connection string and credentials
-- Run migrations if using a fresh database
+- Check PostgreSQL is healthy: `docker compose ps`
+- View database logs: `docker compose logs postgres`
 
-## Ports and Firewall
+## Ports Summary
 
-| Port | Protocol | Purpose |
-|------|----------|---------|
-| 5117 | TCP | HTTP API and SignalR |
-
-WebRTC media uses dynamic UDP ports. For production behind NAT, consider setting up a TURN server.
+| Port | Protocol | Purpose | Required |
+|------|----------|---------|----------|
+| 5117 | TCP | HTTP API & WebSocket | Yes |
+| 3478 | TCP/UDP | STUN/TURN | If TURN enabled |
+| 5349 | TCP/UDP | TURNS (TLS) | If TURN enabled |
+| 49152-49252 | UDP | Media relay | If TURN enabled |

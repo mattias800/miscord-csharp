@@ -6,6 +6,9 @@
 
 *Nu snackar vi!*
 
+[![Build Client](https://github.com/mattias800/snacka/actions/workflows/build-client.yml/badge.svg)](https://github.com/mattias800/snacka/actions/workflows/build-client.yml)
+[![Build Server](https://github.com/mattias800/snacka/actions/workflows/build-server.yml/badge.svg)](https://github.com/mattias800/snacka/actions/workflows/build-server.yml)
+
 A self-hosted communication platform where you own your data.
 
 ![Snacka Screenshot](docs/screenshots/main-app.png)
