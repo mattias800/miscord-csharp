@@ -134,9 +134,10 @@ public class VideoDeviceService : IVideoDeviceService
             var devices = new List<VideoDeviceInfo>();
             foreach (var camera in sourceList.Cameras)
             {
-                // Use index as path for selection, name for display
-                devices.Add(new VideoDeviceInfo(camera.Index.ToString(), camera.Name));
-                Console.WriteLine($"  - Camera {camera.Index}: {camera.Name}");
+                // Use unique ID as path for selection (stable across reboots), name for display
+                // The native capture tool accepts both unique ID and index, preferring unique ID
+                devices.Add(new VideoDeviceInfo(camera.Id, camera.Name));
+                Console.WriteLine($"  - Camera [{camera.Index}] {camera.Id}: {camera.Name}");
             }
 
             var platform = OperatingSystem.IsMacOS() ? "macOS" :
