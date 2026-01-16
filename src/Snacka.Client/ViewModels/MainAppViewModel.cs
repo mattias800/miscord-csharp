@@ -3384,18 +3384,21 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
         try
         {
-            await _webRtc.SetScreenSharingAsync(true, settings);
+            // Update local state BEFORE starting capture so the video stream exists
+            // when HardwarePreviewReady fires (otherwise the hardware decoder is dropped)
             IsScreenSharing = true;
             IsCameraOn = false;
             _currentScreenShareSettings = settings;
-
-            await _signalR.UpdateVoiceStateAsync(CurrentVoiceChannel.Id, new VoiceStateUpdate(IsScreenSharing: true, ScreenShareHasAudio: settings.IncludeAudio, IsCameraOn: false));
-
-            // Update our own state in the local view models
             var state = new VoiceStateUpdate(IsScreenSharing: true, ScreenShareHasAudio: settings.IncludeAudio, IsCameraOn: false);
             var voiceChannel = VoiceChannelViewModels.FirstOrDefault(v => v.Id == CurrentVoiceChannel.Id);
             voiceChannel?.UpdateParticipantState(_auth.UserId, state);
             _voiceChannelContent?.UpdateParticipantState(_auth.UserId, state);
+
+            // Now start the capture (hardware decoder will find the video stream)
+            await _webRtc.SetScreenSharingAsync(true, settings);
+
+            // Notify server
+            await _signalR.UpdateVoiceStateAsync(CurrentVoiceChannel.Id, state);
 
             // Show annotation overlay for monitor (display) sharing only
             if (settings.Source.Type == ScreenCaptureSourceType.Display)
