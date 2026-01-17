@@ -51,6 +51,7 @@ public record ActivityItem(
     Guid? ChannelId = null,
     string? ChannelName = null,
     Guid? MessageId = null,
+    Guid? InviteId = null,
     bool IsRead = false
 )
 {
@@ -97,6 +98,7 @@ public class ActivityFeedViewModel : ViewModelBase
     private readonly Guid _currentUserId;
     private readonly Func<Guid?> _getCurrentCommunityId;
     private readonly Func<bool> _canManageServer;
+    private readonly Func<Task> _onCommunitiesChanged;
 
     private ObservableCollection<ActivityItem> _activities = new();
     private bool _isLoading;
@@ -106,24 +108,33 @@ public class ActivityFeedViewModel : ViewModelBase
         IApiClient apiClient,
         Guid currentUserId,
         Func<Guid?> getCurrentCommunityId,
-        Func<bool> canManageServer)
+        Func<bool> canManageServer,
+        Func<Task> onCommunitiesChanged)
     {
         _signalR = signalR;
         _apiClient = apiClient;
         _currentUserId = currentUserId;
         _getCurrentCommunityId = getCurrentCommunityId;
         _canManageServer = canManageServer;
+        _onCommunitiesChanged = onCommunitiesChanged;
 
         // Commands
         MarkAllAsReadCommand = ReactiveCommand.Create(MarkAllAsRead);
         ClearAllCommand = ReactiveCommand.Create(ClearAll);
+        AcceptInviteCommand = ReactiveCommand.CreateFromTask<ActivityItem>(AcceptInviteAsync);
+        DeclineInviteCommand = ReactiveCommand.CreateFromTask<ActivityItem>(DeclineInviteAsync);
 
         SetupSignalRHandlers();
+
+        // Load pending invites on startup
+        _ = LoadPendingInvitesAsync();
     }
 
     // Commands
     public ReactiveCommand<Unit, Unit> MarkAllAsReadCommand { get; }
     public ReactiveCommand<Unit, Unit> ClearAllCommand { get; }
+    public ReactiveCommand<ActivityItem, Unit> AcceptInviteCommand { get; }
+    public ReactiveCommand<ActivityItem, Unit> DeclineInviteCommand { get; }
 
     public ObservableCollection<ActivityItem> Activities => _activities;
 
@@ -215,6 +226,123 @@ public class ActivityFeedViewModel : ViewModelBase
                 ));
             }
         });
+
+        // Community invite received
+        _signalR.CommunityInviteReceived += e => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            AddActivity(new ActivityItem(
+                Guid.NewGuid(),
+                ActivityType.CommunityInvite,
+                e.CreatedAt,
+                $"Invite to {e.CommunityName}",
+                $"From {e.InvitedByEffectiveDisplayName}",
+                UserId: e.InvitedById,
+                Username: e.InvitedByUsername,
+                CommunityId: e.CommunityId,
+                CommunityName: e.CommunityName,
+                InviteId: e.InviteId
+            ));
+        });
+    }
+
+    /// <summary>
+    /// Loads pending invites from the API and adds them to the activity feed.
+    /// </summary>
+    private async Task LoadPendingInvitesAsync()
+    {
+        try
+        {
+            var result = await _apiClient.GetMyPendingInvitesAsync();
+            if (result.Success && result.Data is not null)
+            {
+                foreach (var invite in result.Data)
+                {
+                    // Check if this invite is already in the feed
+                    if (!_activities.Any(a => a.InviteId == invite.Id))
+                    {
+                        AddActivity(new ActivityItem(
+                            Guid.NewGuid(),
+                            ActivityType.CommunityInvite,
+                            invite.CreatedAt,
+                            $"Invite to {invite.CommunityName}",
+                            $"From {invite.InvitedByEffectiveDisplayName}",
+                            UserId: invite.InvitedById,
+                            Username: invite.InvitedByUsername,
+                            CommunityId: invite.CommunityId,
+                            CommunityName: invite.CommunityName,
+                            InviteId: invite.Id
+                        ));
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading pending invites: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Accepts a community invite.
+    /// </summary>
+    private async Task AcceptInviteAsync(ActivityItem activity)
+    {
+        if (activity.InviteId is null) return;
+
+        try
+        {
+            var result = await _apiClient.AcceptInviteAsync(activity.InviteId.Value);
+            if (result.Success)
+            {
+                // Remove the invite from the activity feed
+                _activities.Remove(activity);
+                this.RaisePropertyChanged(nameof(UnreadCount));
+                this.RaisePropertyChanged(nameof(HasUnread));
+
+                // Notify to reload communities
+                await _onCommunitiesChanged();
+
+                Console.WriteLine($"Accepted invite to {activity.CommunityName}");
+            }
+            else
+            {
+                Console.WriteLine($"Failed to accept invite: {result.Error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error accepting invite: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Declines a community invite.
+    /// </summary>
+    private async Task DeclineInviteAsync(ActivityItem activity)
+    {
+        if (activity.InviteId is null) return;
+
+        try
+        {
+            var result = await _apiClient.DeclineInviteAsync(activity.InviteId.Value);
+            if (result.Success)
+            {
+                // Remove the invite from the activity feed
+                _activities.Remove(activity);
+                this.RaisePropertyChanged(nameof(UnreadCount));
+                this.RaisePropertyChanged(nameof(HasUnread));
+
+                Console.WriteLine($"Declined invite to {activity.CommunityName}");
+            }
+            else
+            {
+                Console.WriteLine($"Failed to decline invite: {result.Error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error declining invite: {ex.Message}");
+        }
     }
 
     private void AddActivity(ActivityItem activity)

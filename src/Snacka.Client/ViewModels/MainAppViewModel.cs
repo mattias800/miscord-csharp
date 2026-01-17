@@ -137,11 +137,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private string? _inviteStatusMessage;
     private bool _isInviteStatusError;
 
-    // Pending invites popup state
-    private bool _isPendingInvitesPopupOpen;
-    private bool _isLoadingPendingInvites;
-    private ObservableCollection<CommunityInviteResponse> _pendingInvites = new();
-
     // Recent DMs state (shown in channel list sidebar)
     private ObservableCollection<ConversationSummary> _recentDms = new();
     private bool _isRecentDmsExpanded = true;
@@ -282,7 +277,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             apiClient,
             auth.UserId,
             () => SelectedCommunity?.Id,
-            () => CanManageChannels);
+            () => CanManageChannels,
+            LoadCommunitiesAsync);
 
         // Commands
         LogoutCommand = ReactiveCommand.Create(_onLogout);
@@ -346,12 +342,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         OpenInviteUserPopupCommand = ReactiveCommand.Create(OpenInviteUserPopup);
         CloseInviteUserPopupCommand = ReactiveCommand.Create(CloseInviteUserPopup);
         InviteUserCommand = ReactiveCommand.CreateFromTask<UserSearchResult>(InviteUserAsync);
-
-        // Pending invites commands
-        OpenPendingInvitesPopupCommand = ReactiveCommand.CreateFromTask(OpenPendingInvitesPopupAsync);
-        ClosePendingInvitesPopupCommand = ReactiveCommand.Create(ClosePendingInvitesPopup);
-        AcceptInviteCommand = ReactiveCommand.CreateFromTask<CommunityInviteResponse>(AcceptInviteAsync);
-        DeclineInviteCommand = ReactiveCommand.CreateFromTask<CommunityInviteResponse>(DeclineInviteAsync);
 
         // Recent DMs commands (sidebar section)
         SelectRecentDmCommand = ReactiveCommand.Create<ConversationSummary>(SelectRecentDm);
@@ -452,9 +442,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         }
 
         await LoadCommunitiesAsync();
-
-        // Load pending invites for the badge count
-        await LoadPendingInvitesAsync();
 
         // Load recent DMs for the sidebar
         await LoadRecentDmsAsync();
@@ -835,14 +822,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                     this.RaisePropertyChanged(nameof(SortedMembers));
                 }
             }
-        });
-
-        // Community invite events
-        _signalR.CommunityInviteReceived += e => Dispatcher.UIThread.Post(async () =>
-        {
-            Console.WriteLine($"SignalR: Received invite to {e.CommunityName} from {e.InvitedByUsername}");
-            // Reload pending invites to include the new one
-            await LoadPendingInvitesAsync();
         });
 
         // Voice channel events - update VoiceChannelViewModels, VoiceParticipants, and VoiceChannelContent
@@ -1290,29 +1269,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         get => _isInviteStatusError;
         set => this.RaiseAndSetIfChanged(ref _isInviteStatusError, value);
     }
-
-    // Pending invites popup properties
-    public bool IsPendingInvitesPopupOpen
-    {
-        get => _isPendingInvitesPopupOpen;
-        set => this.RaiseAndSetIfChanged(ref _isPendingInvitesPopupOpen, value);
-    }
-
-    public bool IsLoadingPendingInvites
-    {
-        get => _isLoadingPendingInvites;
-        set => this.RaiseAndSetIfChanged(ref _isLoadingPendingInvites, value);
-    }
-
-    public ObservableCollection<CommunityInviteResponse> PendingInvites
-    {
-        get => _pendingInvites;
-        set => this.RaiseAndSetIfChanged(ref _pendingInvites, value);
-    }
-
-    public int PendingInviteCount => _pendingInvites.Count;
-    public bool HasPendingInvites => _pendingInvites.Count > 0;
-    public bool HasNoPendingInvites => _pendingInvites.Count == 0 && !_isLoadingPendingInvites;
 
     // Controller access request properties
     public ObservableCollection<ControllerAccessRequest> PendingControllerRequests =>
@@ -2438,12 +2394,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<Unit, Unit> OpenInviteUserPopupCommand { get; }
     public ReactiveCommand<Unit, Unit> CloseInviteUserPopupCommand { get; }
     public ReactiveCommand<UserSearchResult, Unit> InviteUserCommand { get; }
-
-    // Pending invites commands
-    public ReactiveCommand<Unit, Unit> OpenPendingInvitesPopupCommand { get; }
-    public ReactiveCommand<Unit, Unit> ClosePendingInvitesPopupCommand { get; }
-    public ReactiveCommand<CommunityInviteResponse, Unit> AcceptInviteCommand { get; }
-    public ReactiveCommand<CommunityInviteResponse, Unit> DeclineInviteCommand { get; }
 
     // Recent DMs sidebar commands
     public ReactiveCommand<ConversationSummary, Unit> SelectRecentDmCommand { get; }
@@ -3957,48 +3907,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         }
     }
 
-    // Pending invites methods
-    private async Task OpenPendingInvitesPopupAsync()
-    {
-        IsPendingInvitesPopupOpen = true;
-        await LoadPendingInvitesAsync();
-    }
-
-    private void ClosePendingInvitesPopup()
-    {
-        IsPendingInvitesPopupOpen = false;
-    }
-
-    private async Task LoadPendingInvitesAsync()
-    {
-        IsLoadingPendingInvites = true;
-        this.RaisePropertyChanged(nameof(HasNoPendingInvites));
-
-        try
-        {
-            var result = await _apiClient.GetMyPendingInvitesAsync();
-            if (result.Success && result.Data is not null)
-            {
-                PendingInvites.Clear();
-                foreach (var invite in result.Data)
-                    PendingInvites.Add(invite);
-
-                this.RaisePropertyChanged(nameof(PendingInviteCount));
-                this.RaisePropertyChanged(nameof(HasPendingInvites));
-                this.RaisePropertyChanged(nameof(HasNoPendingInvites));
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading pending invites: {ex.Message}");
-        }
-        finally
-        {
-            IsLoadingPendingInvites = false;
-            this.RaisePropertyChanged(nameof(HasNoPendingInvites));
-        }
-    }
-
     // Recent DMs Methods
     private async Task LoadRecentDmsAsync()
     {
@@ -4090,61 +3998,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private async Task AcceptInviteAsync(CommunityInviteResponse invite)
-    {
-        try
-        {
-            var result = await _apiClient.AcceptInviteAsync(invite.Id);
-            if (result.Success)
-            {
-                // Remove from pending list
-                PendingInvites.Remove(invite);
-                this.RaisePropertyChanged(nameof(PendingInviteCount));
-                this.RaisePropertyChanged(nameof(HasPendingInvites));
-                this.RaisePropertyChanged(nameof(HasNoPendingInvites));
-
-                // Reload communities to show the new one
-                await LoadCommunitiesAsync();
-
-                Console.WriteLine($"Accepted invite to {invite.CommunityName}");
-            }
-            else
-            {
-                Console.WriteLine($"Failed to accept invite: {result.Error}");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error accepting invite: {ex.Message}");
-        }
-    }
-
-    private async Task DeclineInviteAsync(CommunityInviteResponse invite)
-    {
-        try
-        {
-            var result = await _apiClient.DeclineInviteAsync(invite.Id);
-            if (result.Success)
-            {
-                // Remove from pending list
-                PendingInvites.Remove(invite);
-                this.RaisePropertyChanged(nameof(PendingInviteCount));
-                this.RaisePropertyChanged(nameof(HasPendingInvites));
-                this.RaisePropertyChanged(nameof(HasNoPendingInvites));
-
-                Console.WriteLine($"Declined invite to {invite.CommunityName}");
-            }
-            else
-            {
-                Console.WriteLine($"Failed to decline invite: {result.Error}");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error declining invite: {ex.Message}");
-        }
-    }
-
     // Controller access request methods
     private async Task AcceptControllerRequestAsync(ControllerAccessRequest request)
     {
@@ -4202,18 +4055,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public bool IsControllerSessionMuted(Guid guestUserId)
     {
         return _controllerHostService.IsSessionMuted(guestUserId);
-    }
-
-    /// <summary>
-    /// Handles receiving a new community invite via SignalR.
-    /// </summary>
-    public void HandleCommunityInviteReceived(CommunityInviteReceivedEvent e)
-    {
-        Dispatcher.UIThread.Post(async () =>
-        {
-            // Reload pending invites to include the new one
-            await LoadPendingInvitesAsync();
-        });
     }
 
     // Thread methods

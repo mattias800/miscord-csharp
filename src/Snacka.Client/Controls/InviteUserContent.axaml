@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:controls="using:Snacka.Client.Controls"
+             xmlns:conv="using:Snacka.Client.Converters"
              xmlns:ui="using:FluentAvalonia.UI.Controls"
              mc:Ignorable="d"
              x:Class="Snacka.Client.Controls.InviteUserContent"
@@ -194,7 +195,7 @@
                                                         <GradientStop Color="#7c3aed" Offset="1"/>
                                                     </LinearGradientBrush>
                                                 </Border.Background>
-                                                <TextBlock Text="{Binding Username, Converter={x:Static controls:FirstLetterConverter.Instance}}"
+                                                <TextBlock Text="{Binding Username, Converter={x:Static conv:FirstCharConverter.Instance}}"
                                                            Foreground="White"
                                                            FontSize="14"
                                                            FontWeight="Bold"

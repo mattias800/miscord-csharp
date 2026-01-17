@@ -64,10 +64,7 @@
                                     IsLoading="{Binding IsLoading}"
                                     SelectCommunityCommand="{Binding SelectCommunityCommand}"
                                     CreateCommunityCommand="{Binding CreateCommunityCommand}"
-                                    OpenDMsCommand="{Binding OpenDMsCommand}"
-                                    OpenPendingInvitesCommand="{Binding OpenPendingInvitesPopupCommand}"
-                                    PendingInviteCount="{Binding PendingInviteCount}"
-                                    HasPendingInvites="{Binding HasPendingInvites}"/>
+                                    OpenDMsCommand="{Binding OpenDMsCommand}"/>
 
         <!-- Channel List (Second Column) -->
         <Border Grid.Column="1" Background="{StaticResource Content1Brush}">
@@ -268,7 +265,7 @@
                       Cursor="SizeWestEast"
                       DragCompleted="OnRightSplitterDragCompleted"/>
 
-        <!-- Right Sidebar (Activity Feed + Members List) -->
+        <!-- Right Sidebar (Members List + Activity Feed) -->
         <Border Grid.Column="5" Background="{StaticResource Content1Brush}">
             <Grid x:Name="RightSidebarGrid">
                 <Grid.RowDefinitions>
@@ -277,8 +274,49 @@
                     <RowDefinition Height="*" MinHeight="60"/>
                 </Grid.RowDefinitions>
 
-                <!-- Activity Feed (top) -->
+                <!-- Members List (top) -->
                 <DockPanel Grid.Row="0">
+                    <!-- Members Header -->
+                    <Border DockPanel.Dock="Top"
+                            Padding="12,8"
+                            BorderThickness="0,0,0,1"
+                            BorderBrush="{StaticResource BackgroundBrush}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <ui:SymbolIcon Symbol="People"
+                                       Foreground="{StaticResource Foreground2Brush}"
+                                       FontSize="14"/>
+                            <TextBlock Text="MEMBERS"
+                                       Classes="text-caption"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Members Content -->
+                    <controls:MembersListView ViewModel="{Binding MembersList}"
+                                              MemberClicked="OnMemberClicked"/>
+                </DockPanel>
+
+                <!-- Splitter (4px hit area with 1px visible line) -->
+                <GridSplitter Grid.Row="1"
+                              Height="4"
+                              HorizontalAlignment="Stretch"
+                              Background="Transparent"
+                              ResizeDirection="Rows"
+                              Cursor="SizeNorthSouth"
+                              DragCompleted="OnActivitySplitterDragCompleted">
+                    <GridSplitter.Template>
+                        <ControlTemplate>
+                            <Border Background="Transparent" Height="4">
+                                <Border Background="{StaticResource BackgroundBrush}"
+                                        Height="1"
+                                        VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </GridSplitter.Template>
+                </GridSplitter>
+
+                <!-- Activity Feed (bottom) -->
+                <DockPanel Grid.Row="2">
                     <!-- Activity Header -->
                     <Border DockPanel.Dock="Top"
                             Padding="12,8"
@@ -334,37 +372,6 @@
 
                     <!-- Activity Content -->
                     <controls:ActivityFeedView DataContext="{Binding ActivityFeed}"/>
-                </DockPanel>
-
-                <!-- Splitter -->
-                <GridSplitter Grid.Row="1"
-                              Height="6"
-                              HorizontalAlignment="Stretch"
-                              Background="Transparent"
-                              ResizeDirection="Rows"
-                              Cursor="SizeNorthSouth"
-                              DragCompleted="OnActivitySplitterDragCompleted"/>
-
-                <!-- Members List (bottom) -->
-                <DockPanel Grid.Row="2">
-                    <!-- Members Header -->
-                    <Border DockPanel.Dock="Top"
-                            Padding="12,8"
-                            BorderThickness="0,0,0,1"
-                            BorderBrush="{StaticResource BackgroundBrush}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <ui:SymbolIcon Symbol="People"
-                                       Foreground="{StaticResource Foreground2Brush}"
-                                       FontSize="14"/>
-                            <TextBlock Text="MEMBERS"
-                                       Classes="text-caption"
-                                       VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Members Content -->
-                    <controls:MembersListView ViewModel="{Binding MembersList}"
-                                              MemberClicked="OnMemberClicked"/>
                 </DockPanel>
             </Grid>
         </Border>
@@ -745,20 +752,6 @@
                                         CloseCommand="{Binding CloseInviteUserPopupCommand}"
                                         InviteUserCommand="{Binding InviteUserCommand}"
                                         SearchRequested="OnInviteUserSearchRequested"/>
-        </Popup>
-
-        <!-- Pending Invites Popup -->
-        <Popup x:Name="PendingInvitesPopup"
-               IsOpen="{Binding IsPendingInvitesPopupOpen, Mode=TwoWay}"
-               IsLightDismissEnabled="True"
-               Placement="Center"
-               PlacementTarget="{Binding $parent[Grid]}">
-            <controls:PendingInvitesContent PendingInvites="{Binding PendingInvites}"
-                                            IsLoading="{Binding IsLoadingPendingInvites}"
-                                            HasNoPendingInvites="{Binding HasNoPendingInvites}"
-                                            CloseCommand="{Binding ClosePendingInvitesPopupCommand}"
-                                            AcceptInviteCommand="{Binding AcceptInviteCommand}"
-                                            DeclineInviteCommand="{Binding DeclineInviteCommand}"/>
         </Popup>
 
         <!-- Quick Switcher Popup (Cmd+K / Ctrl+K) -->
