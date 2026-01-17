@@ -46,6 +46,9 @@ public class UserSettings
     public double ChannelListWidth { get; set; } = 260;
     public double MembersListWidth { get; set; } = 260;
 
+    // Activity panel ratio (0.0 to 1.0, where 0.5 = 50% for activity, 50% for members)
+    public double ActivityPanelRatio { get; set; } = 0.5;
+
     // Controller settings
     public bool ControllerRumbleEnabled { get; set; } = true;
 

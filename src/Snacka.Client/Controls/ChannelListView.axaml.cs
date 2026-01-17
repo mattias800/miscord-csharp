@@ -515,18 +515,6 @@ public partial class ChannelListView : UserControl
         }
     }
 
-    private void OnChannelDoubleTapped(object? sender, TappedEventArgs e)
-    {
-        // Only allow editing if user can manage channels
-        if (!CanManageChannels) return;
-
-        if (sender is Button button && button.Tag is ChannelResponse channel)
-        {
-            StartEditChannelCommand?.Execute(channel);
-            e.Handled = true;
-        }
-    }
-
     // Context menu handlers
     private void OnTextChannelContextMenuOpened(object? sender, RoutedEventArgs e)
     {

@@ -41,7 +41,7 @@
                         VerticalAlignment="Bottom"
                         Margin="0,0,0,0"
                         IsVisible="{Binding IsMuted, RelativeSource={RelativeSource AncestorType=controls:UserPanelView}}">
-                    <ui:SymbolIcon Symbol="SpeakerMute" FontSize="8"
+                    <ui:SymbolIcon Symbol="Microphone" FontSize="8"
                                Foreground="White"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"/>
@@ -66,7 +66,7 @@
                             Background="{StaticResource DangerBrush}"
                             ToolTip.Tip="Unmute"
                             IsVisible="{Binding IsMuted, RelativeSource={RelativeSource AncestorType=controls:UserPanelView}}">
-                        <ui:SymbolIcon Symbol="Mute" Foreground="White" FontSize="14"/>
+                        <ui:SymbolIcon Symbol="Microphone" Foreground="White" FontSize="14"/>
                     </Button>
                     <Button Classes="btn-icon"
                             Command="{Binding ToggleMuteCommand, RelativeSource={RelativeSource AncestorType=controls:UserPanelView}}"

@@ -129,6 +129,15 @@
                                                   IsVoiceInDifferentCommunity="{Binding IsVoiceInDifferentCommunity}"
                                                   VoiceCommunityName="{Binding VoiceCommunityName}"/>
 
+                <!-- Recent DMs Section -->
+                <controls:RecentDmsView DockPanel.Dock="Top"
+                                        Margin="0,8,0,0"
+                                        RecentConversations="{Binding RecentDms}"
+                                        IsExpanded="{Binding IsRecentDmsExpanded, Mode=TwoWay}"
+                                        TotalUnreadCount="{Binding TotalDmUnreadCount}"
+                                        SelectConversationCommand="{Binding SelectRecentDmCommand}"
+                                        ViewAllCommand="{Binding OpenDMsCommand}"/>
+
                 <!-- Channel List -->
                 <controls:ChannelListView Margin="8,8,0,0"
                                           TextChannels="{Binding TextChannels}"
@@ -259,10 +268,106 @@
                       Cursor="SizeWestEast"
                       DragCompleted="OnRightSplitterDragCompleted"/>
 
-        <!-- Right Sidebar (Members List - always visible) -->
-        <controls:MembersListView Grid.Column="5"
-                                  ViewModel="{Binding MembersList}"
-                                  MemberClicked="OnMemberClicked"/>
+        <!-- Right Sidebar (Activity Feed + Members List) -->
+        <Border Grid.Column="5" Background="{StaticResource Content1Brush}">
+            <Grid x:Name="RightSidebarGrid">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" MinHeight="60"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*" MinHeight="60"/>
+                </Grid.RowDefinitions>
+
+                <!-- Activity Feed (top) -->
+                <DockPanel Grid.Row="0">
+                    <!-- Activity Header -->
+                    <Border DockPanel.Dock="Top"
+                            Padding="12,8"
+                            BorderThickness="0,0,0,1"
+                            BorderBrush="{StaticResource BackgroundBrush}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
+                                <ui:SymbolIcon Symbol="Alert"
+                                           Foreground="{StaticResource Foreground2Brush}"
+                                           FontSize="14"/>
+                                <TextBlock Text="ACTIVITY"
+                                           Classes="text-caption"
+                                           VerticalAlignment="Center"/>
+                                <!-- Unread badge -->
+                                <Border Background="{StaticResource DangerBrush}"
+                                        CornerRadius="8"
+                                        Padding="5,2"
+                                        VerticalAlignment="Center"
+                                        IsVisible="{Binding ActivityFeed.HasUnread}">
+                                    <TextBlock Text="{Binding ActivityFeed.UnreadCount}"
+                                               Foreground="White"
+                                               FontSize="10"
+                                               FontWeight="SemiBold"/>
+                                </Border>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                <!-- Mark all as read button -->
+                                <Button Classes="btn-icon"
+                                        Command="{Binding ActivityFeed.MarkAllAsReadCommand}"
+                                        ToolTip.Tip="Mark all as read"
+                                        Padding="4"
+                                        MinWidth="24"
+                                        MinHeight="24"
+                                        IsVisible="{Binding ActivityFeed.HasUnread}">
+                                    <ui:SymbolIcon Symbol="Checkmark"
+                                               Foreground="{StaticResource Foreground3Brush}"
+                                               FontSize="14"/>
+                                </Button>
+                                <!-- Clear all button -->
+                                <Button Classes="btn-icon"
+                                        Command="{Binding ActivityFeed.ClearAllCommand}"
+                                        ToolTip.Tip="Clear all"
+                                        Padding="4"
+                                        MinWidth="24"
+                                        MinHeight="24">
+                                    <ui:SymbolIcon Symbol="Delete"
+                                               Foreground="{StaticResource Foreground3Brush}"
+                                               FontSize="14"/>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Activity Content -->
+                    <controls:ActivityFeedView DataContext="{Binding ActivityFeed}"/>
+                </DockPanel>
+
+                <!-- Splitter -->
+                <GridSplitter Grid.Row="1"
+                              Height="6"
+                              HorizontalAlignment="Stretch"
+                              Background="Transparent"
+                              ResizeDirection="Rows"
+                              Cursor="SizeNorthSouth"
+                              DragCompleted="OnActivitySplitterDragCompleted"/>
+
+                <!-- Members List (bottom) -->
+                <DockPanel Grid.Row="2">
+                    <!-- Members Header -->
+                    <Border DockPanel.Dock="Top"
+                            Padding="12,8"
+                            BorderThickness="0,0,0,1"
+                            BorderBrush="{StaticResource BackgroundBrush}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <ui:SymbolIcon Symbol="People"
+                                       Foreground="{StaticResource Foreground2Brush}"
+                                       FontSize="14"/>
+                            <TextBlock Text="MEMBERS"
+                                       Classes="text-caption"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Members Content -->
+                    <controls:MembersListView ViewModel="{Binding MembersList}"
+                                              MemberClicked="OnMemberClicked"/>
+                </DockPanel>
+            </Grid>
+        </Border>
 
         <!-- Thread Panel Overlay (visible when thread IS open) -->
         <Border Grid.Column="3" Grid.ColumnSpan="3"

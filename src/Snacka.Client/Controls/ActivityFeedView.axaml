@@ -1,0 +1,101 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:Snacka.Client.ViewModels"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             mc:Ignorable="d"
+             x:Class="Snacka.Client.Controls.ActivityFeedView"
+             x:DataType="vm:ActivityFeedViewModel">
+
+    <UserControl.Styles>
+        <!-- Activity item styles -->
+        <Style Selector="Border.activity-item">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Border.activity-item:pointerover">
+            <Setter Property="Background" Value="#35373c"/>
+        </Style>
+        <Style Selector="Border.activity-item.unread">
+            <Setter Property="Background" Value="#2f3136"/>
+        </Style>
+    </UserControl.Styles>
+
+    <DockPanel>
+        <!-- Activity List -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <Panel>
+                <!-- Empty state -->
+                <StackPanel VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            Spacing="12"
+                            Margin="24"
+                            IsVisible="{Binding !Activities.Count}">
+                    <ui:SymbolIcon Symbol="Important"
+                               Foreground="{StaticResource Foreground3Brush}"
+                               FontSize="32"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="No activity yet"
+                               Classes="text-muted"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="Recent mentions, DMs, and updates will appear here"
+                               Classes="text-muted"
+                               FontSize="12"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Activities list -->
+                <ItemsControl ItemsSource="{Binding Activities}"
+                              IsVisible="{Binding Activities.Count}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ActivityItem">
+                            <Border Classes="activity-item"
+                                    Classes.unread="{Binding !IsRead}">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <!-- Icon -->
+                                    <Border Grid.Column="0"
+                                            Width="32"
+                                            Height="32"
+                                            CornerRadius="16"
+                                            Background="{StaticResource Content3Brush}"
+                                            Margin="0,0,12,0">
+                                        <ui:SymbolIcon Symbol="Important"
+                                                   Foreground="{StaticResource Foreground2Brush}"
+                                                   FontSize="14"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+
+                                    <!-- Content -->
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                        <TextBlock Text="{Binding Title}"
+                                                   Classes="text-body"
+                                                   FontWeight="Medium"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding Description}"
+                                                   Classes="text-muted"
+                                                   FontSize="12"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   MaxLines="1"/>
+                                    </StackPanel>
+
+                                    <!-- Time -->
+                                    <TextBlock Grid.Column="2"
+                                               Text="{Binding RelativeTime}"
+                                               Classes="text-muted"
+                                               FontSize="11"
+                                               VerticalAlignment="Top"
+                                               Margin="8,0,0,0"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Panel>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

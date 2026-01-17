@@ -12,25 +12,26 @@
              x:DataType="controls:MembersListView">
 
     <Border Background="{StaticResource Content1Brush}">
-        <DockPanel>
-            <TextBlock DockPanel.Dock="Top"
-                       Text="MEMBERS"
-                       Classes="text-caption"
-                       Margin="16,16,16,12"/>
-
-            <ScrollViewer>
-                <ItemsControl x:Name="MembersList"
-                              ItemsSource="{Binding ViewModel.SortedMembers, RelativeSource={RelativeSource AncestorType=controls:MembersListView}}"
-                              Margin="8,0">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="services:CommunityMemberResponse">
-                            <Panel>
-                                <!-- Current user (with context menu for nickname) -->
-                                <Border Padding="10,6"
+        <ScrollViewer Margin="0,8,0,0"
+                      HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl x:Name="MembersList"
+                          ItemsSource="{Binding ViewModel.SortedMembers, RelativeSource={RelativeSource AncestorType=controls:MembersListView}}"
+                          Margin="8,0"
+                          HorizontalAlignment="Stretch">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel HorizontalAlignment="Stretch"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="services:CommunityMemberResponse">
+                        <Panel HorizontalAlignment="Stretch">
+                            <!-- Current user (with context menu for nickname) -->
+                            <Border Classes="member-item"
+                                        Padding="10,6"
                                         Margin="0,2"
-                                        CornerRadius="10"
-                                        Background="Transparent"
                                         Cursor="Hand"
+                                        HorizontalAlignment="Stretch"
                                         Tag="{Binding}">
                                     <Border.IsVisible>
                                         <MultiBinding Converter="{x:Static conv:GuidEqualsConverter.Instance}">
@@ -94,6 +95,7 @@
                                         Padding="10,6"
                                         Margin="0,2"
                                         Cursor="Hand"
+                                        HorizontalAlignment="Stretch"
                                         PointerPressed="Member_PointerPressed"
                                         Tag="{Binding}">
                                     <Border.IsVisible>
@@ -184,7 +186,6 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-            </ScrollViewer>
-        </DockPanel>
+        </ScrollViewer>
     </Border>
 </UserControl>

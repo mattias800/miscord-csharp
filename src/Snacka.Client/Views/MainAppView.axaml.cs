@@ -60,6 +60,7 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
     }
 
     private Grid? _mainContentGrid;
+    private Grid? _rightSidebarGrid;
 
     private void LoadPanelWidths()
     {
@@ -77,6 +78,15 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         // Column 1 is the channel list, Column 5 is the members list
         _mainContentGrid.ColumnDefinitions[1].Width = new GridLength(settings.ChannelListWidth);
         _mainContentGrid.ColumnDefinitions[5].Width = new GridLength(settings.MembersListWidth);
+
+        // Load activity panel ratio
+        _rightSidebarGrid = this.FindControl<Grid>("RightSidebarGrid");
+        if (_rightSidebarGrid != null)
+        {
+            var ratio = Math.Max(0.1, Math.Min(0.9, settings.ActivityPanelRatio));
+            _rightSidebarGrid.RowDefinitions[0].Height = new GridLength(ratio, GridUnitType.Star);
+            _rightSidebarGrid.RowDefinitions[2].Height = new GridLength(1 - ratio, GridUnitType.Star);
+        }
     }
 
     private void OnLeftSplitterDragCompleted(object? sender, VectorEventArgs e)
@@ -95,6 +105,26 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         var width = _mainContentGrid.ColumnDefinitions[5].Width.Value;
         ViewModel.SettingsStore.Settings.MembersListWidth = width;
         ViewModel.SettingsStore.Save();
+    }
+
+    private void OnActivitySplitterDragCompleted(object? sender, VectorEventArgs e)
+    {
+        if (ViewModel?.SettingsStore == null || _rightSidebarGrid == null) return;
+
+        // Calculate the ratio from the current star values
+        var activityHeight = _rightSidebarGrid.RowDefinitions[0].Height;
+        var membersHeight = _rightSidebarGrid.RowDefinitions[2].Height;
+
+        if (activityHeight.IsStar && membersHeight.IsStar)
+        {
+            var total = activityHeight.Value + membersHeight.Value;
+            if (total > 0)
+            {
+                var ratio = activityHeight.Value / total;
+                ViewModel.SettingsStore.Settings.ActivityPanelRatio = ratio;
+                ViewModel.SettingsStore.Save();
+            }
+        }
     }
 
     private bool _gpuVideoInitialized;

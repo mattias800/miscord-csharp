@@ -170,7 +170,6 @@
                                     Padding="10,8"
                                     Margin="0,1"
                                     Cursor="Hand"
-                                    DoubleTapped="OnChannelDoubleTapped"
                                     Tag="{Binding}"
                                     PointerPressed="OnTextChannelPointerPressed"
                                     PointerMoved="OnTextChannelPointerMoved"
@@ -205,12 +204,11 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
                                         <TextBlock Text="#"
                                                    Foreground="{StaticResource Foreground3Brush}"
-                                                   FontSize="18"
+                                                   FontSize="14"
                                                    VerticalAlignment="Center"/>
                                         <TextBlock Text="{Binding Name}"
                                                    Classes="text-secondary"
@@ -230,19 +228,6 @@
                                                    FontSize="11"
                                                    FontWeight="SemiBold"/>
                                     </Border>
-                                    <Button Grid.Column="2"
-                                            Classes="btn-icon"
-                                            Command="{Binding StartEditChannelCommand, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}"
-                                            CommandParameter="{Binding}"
-                                            Padding="4"
-                                            MinWidth="24"
-                                            MinHeight="24"
-                                            ToolTip.Tip="Rename Channel"
-                                            IsVisible="{Binding CanManageChannels, RelativeSource={RelativeSource AncestorType=controls:ChannelListView}}">
-                                        <ui:SymbolIcon Symbol="Edit"
-                                                   Foreground="{StaticResource Foreground3Brush}"
-                                                   FontSize="11"/>
-                                    </Button>
                                 </Grid>
                             </Button>
                         </StackPanel>

@@ -1,0 +1,150 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="using:Snacka.Client.Controls"
+             xmlns:services="using:Snacka.Client.Services"
+             xmlns:conv="using:Snacka.Client.Converters"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             mc:Ignorable="d"
+             x:Class="Snacka.Client.Controls.RecentDmsView"
+             x:DataType="controls:RecentDmsView">
+
+    <UserControl.Styles>
+        <!-- DM item button styles -->
+        <Style Selector="Button.dm-item">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="Margin" Value="0,1"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        </Style>
+        <Style Selector="Button.dm-item:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#35373c"/>
+        </Style>
+        <Style Selector="Button.dm-item.selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="#404249"/>
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel>
+        <!-- Section Header -->
+        <Grid Margin="12,12,12,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Collapsible header -->
+            <Button Grid.Column="0"
+                    Command="{Binding ToggleExpandedCommand, RelativeSource={RelativeSource AncestorType=controls:RecentDmsView}}"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Padding="0"
+                    Cursor="Hand"
+                    HorizontalAlignment="Left">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <ui:SymbolIcon Symbol="{Binding IsExpanded, RelativeSource={RelativeSource AncestorType=controls:RecentDmsView}, Converter={x:Static conv:ExpandedToChevronConverter.Instance}}"
+                               Foreground="{StaticResource Foreground3Brush}"
+                               FontSize="10"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text="DIRECT MESSAGES"
+                               Classes="text-caption"
+                               VerticalAlignment="Center"/>
+                    <!-- Total unread badge -->
+                    <Border Background="{StaticResource DangerBrush}"
+                            CornerRadius="10"
+                            Padding="6,2"
+                            VerticalAlignment="Center"
+                            IsVisible="{Binding TotalUnreadCount, RelativeSource={RelativeSource AncestorType=controls:RecentDmsView}, Converter={x:Static conv:IntGreaterThanZeroConverter.Instance}}">
+                        <TextBlock Text="{Binding TotalUnreadCount, RelativeSource={RelativeSource AncestorType=controls:RecentDmsView}}"
+                                   Foreground="White"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"/>
+                    </Border>
+                </StackPanel>
+            </Button>
+
+            <!-- View All Button -->
+            <Button Grid.Column="1"
+                    Classes="btn-icon"
+                    Command="{Binding ViewAllCommand, RelativeSource={RelativeSource AncestorType=controls:RecentDmsView}}"
+                    ToolTip.Tip="View All DMs"
+                    Padding="4"
+                    MinWidth="24"
+                    MinHeight="24">
+                <ui:SymbolIcon Symbol="OpenFolder"
+                           Foreground="{StaticResource Foreground3Brush}"
+                           FontSize="14"/>
+            </Button>
+        </Grid>
+
+        <!-- DM List (visible when expanded) -->
+        <ItemsControl ItemsSource="{Binding RecentConversations, RelativeSource={RelativeSource AncestorType=controls:RecentDmsView}}"
+                      Margin="4,0"
+                      IsVisible="{Binding IsExpanded, RelativeSource={RelativeSource AncestorType=controls:RecentDmsView}}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="services:ConversationSummary">
+                    <Button Classes="dm-item"
+                            Classes.selected="{Binding IsSelected}"
+                            Command="{Binding SelectConversationCommand, RelativeSource={RelativeSource AncestorType=controls:RecentDmsView}}"
+                            CommandParameter="{Binding}"
+                            Cursor="Hand">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <!-- Online status + Avatar -->
+                            <Panel Grid.Column="0" Margin="0,0,10,0">
+                                <Ellipse Width="32" Height="32" Fill="{StaticResource Content3Brush}"/>
+                                <!-- Online indicator -->
+                                <Ellipse Width="10" Height="10"
+                                         Fill="{Binding IsOnline, Converter={x:Static conv:OnlineStatusColorConverter.Instance}}"
+                                         Stroke="{StaticResource Content1Brush}"
+                                         StrokeThickness="2"
+                                         HorizontalAlignment="Right"
+                                         VerticalAlignment="Bottom"
+                                         Margin="0,0,-2,-2"/>
+                            </Panel>
+
+                            <!-- Name and last message preview -->
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                <TextBlock Text="{Binding EffectiveDisplayName}"
+                                           Foreground="{Binding UnreadCount, Converter={x:Static conv:UnreadToForegroundConverter.Instance}}"
+                                           FontSize="14"
+                                           FontWeight="Medium"
+                                           TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding LastMessage.Content}"
+                                           Classes="text-muted"
+                                           FontSize="12"
+                                           TextTrimming="CharacterEllipsis"
+                                           MaxLines="1"
+                                           IsVisible="{Binding LastMessage, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                            </StackPanel>
+
+                            <!-- Unread badge -->
+                            <Border Grid.Column="2"
+                                    Background="{StaticResource DangerBrush}"
+                                    CornerRadius="10"
+                                    Padding="6,2"
+                                    VerticalAlignment="Center"
+                                    Margin="8,0,0,0"
+                                    IsVisible="{Binding UnreadCount, Converter={x:Static conv:IntGreaterThanZeroConverter.Instance}}">
+                                <TextBlock Text="{Binding UnreadCount}"
+                                           Foreground="White"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"/>
+                            </Border>
+                        </Grid>
+                    </Button>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Empty state -->
+        <TextBlock Text="No recent messages"
+                   Classes="text-muted"
+                   FontSize="12"
+                   Margin="16,8"
+                   IsVisible="{Binding !RecentConversations.Count, RelativeSource={RelativeSource AncestorType=controls:RecentDmsView}}"/>
+    </StackPanel>
+</UserControl>
