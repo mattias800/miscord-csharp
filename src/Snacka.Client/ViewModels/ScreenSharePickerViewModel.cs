@@ -16,6 +16,7 @@ public class ScreenSharePickerViewModel : ViewModelBase
     private ScreenCaptureSource? _selectedSource;
     private ScreenShareResolution _selectedResolution;
     private ScreenShareFramerate _selectedFramerate;
+    private ScreenShareQuality _selectedQuality;
     private bool _includeAudio;
 
     public ScreenSharePickerViewModel(IScreenCaptureService screenCaptureService, Action<ScreenShareSettings?> onComplete)
@@ -27,9 +28,10 @@ public class ScreenSharePickerViewModel : ViewModelBase
         Windows = new ObservableCollection<ScreenCaptureSource>();
         Applications = new ObservableCollection<ScreenCaptureSource>();
 
-        // Default to 1080p @ 30fps (good balance for most use cases)
+        // Default to 1080p @ 30fps @ Balanced quality (good balance for most use cases)
         _selectedResolution = ScreenShareResolution.HD1080;
         _selectedFramerate = ScreenShareFramerate.Fps30;
+        _selectedQuality = ScreenShareQuality.Balanced;
 
         ShareCommand = ReactiveCommand.Create(OnShare);
         CancelCommand = ReactiveCommand.Create(OnCancel);
@@ -43,9 +45,10 @@ public class ScreenSharePickerViewModel : ViewModelBase
     public ObservableCollection<ScreenCaptureSource> Windows { get; }
     public ObservableCollection<ScreenCaptureSource> Applications { get; }
 
-    // Resolution and framerate options
+    // Resolution, framerate, and quality options
     public IReadOnlyList<ScreenShareResolution> Resolutions => ScreenShareResolution.All;
     public IReadOnlyList<ScreenShareFramerate> Framerates => ScreenShareFramerate.All;
+    public IReadOnlyList<ScreenShareQuality> Qualities => ScreenShareQuality.All;
 
     public ScreenShareResolution SelectedResolution
     {
@@ -57,6 +60,12 @@ public class ScreenSharePickerViewModel : ViewModelBase
     {
         get => _selectedFramerate;
         set => this.RaiseAndSetIfChanged(ref _selectedFramerate, value);
+    }
+
+    public ScreenShareQuality SelectedQuality
+    {
+        get => _selectedQuality;
+        set => this.RaiseAndSetIfChanged(ref _selectedQuality, value);
     }
 
     public bool ShowDisplays
@@ -173,6 +182,7 @@ public class ScreenSharePickerViewModel : ViewModelBase
                 SelectedSource,
                 SelectedResolution,
                 SelectedFramerate,
+                SelectedQuality,
                 IncludeAudio && CanCaptureAudio);
             _onComplete(settings);
         }

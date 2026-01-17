@@ -134,14 +134,70 @@
             </StackPanel>
 
             <!-- Quality Settings -->
-            <Grid Grid.Row="2" ColumnDefinitions="*,16,*,16,Auto" Margin="0,0,0,16">
-                <StackPanel Grid.Column="0">
-                    <TextBlock Text="Resolution"
+            <StackPanel Grid.Row="2" Spacing="12" Margin="0,0,0,16">
+                <!-- First row: Resolution, Frame Rate, Audio -->
+                <Grid ColumnDefinitions="*,16,*,16,Auto">
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Resolution"
+                                   Foreground="#b9bbbe"
+                                   FontSize="12"
+                                   Margin="0,0,0,4"/>
+                        <ComboBox ItemsSource="{Binding Resolutions}"
+                                  SelectedItem="{Binding SelectedResolution}"
+                                  HorizontalAlignment="Stretch"
+                                  Background="#40444b"
+                                  Foreground="#ffffff"
+                                  BorderThickness="0"
+                                  CornerRadius="4"
+                                  Padding="12,8">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Label}" Foreground="#ffffff"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Frame Rate"
+                                   Foreground="#b9bbbe"
+                                   FontSize="12"
+                                   Margin="0,0,0,4"/>
+                        <ComboBox ItemsSource="{Binding Framerates}"
+                                  SelectedItem="{Binding SelectedFramerate}"
+                                  HorizontalAlignment="Stretch"
+                                  Background="#40444b"
+                                  Foreground="#ffffff"
+                                  BorderThickness="0"
+                                  CornerRadius="4"
+                                  Padding="12,8">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Label}" Foreground="#ffffff"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <!-- Audio checkbox (macOS only) -->
+                    <StackPanel Grid.Column="4" VerticalAlignment="Bottom"
+                                IsVisible="{Binding CanCaptureAudio}">
+                        <CheckBox IsChecked="{Binding IncludeAudio}"
+                                  Foreground="#b9bbbe"
+                                  Cursor="Hand">
+                            <TextBlock Text="Share audio" Foreground="#b9bbbe" FontSize="13"/>
+                        </CheckBox>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Second row: Quality (full width for description) -->
+                <StackPanel>
+                    <TextBlock Text="Quality"
                                Foreground="#b9bbbe"
                                FontSize="12"
                                Margin="0,0,0,4"/>
-                    <ComboBox ItemsSource="{Binding Resolutions}"
-                              SelectedItem="{Binding SelectedResolution}"
+                    <ComboBox ItemsSource="{Binding Qualities}"
+                              SelectedItem="{Binding SelectedQuality}"
                               HorizontalAlignment="Stretch"
                               Background="#40444b"
                               Foreground="#ffffff"
@@ -150,43 +206,15 @@
                               Padding="12,8">
                         <ComboBox.ItemTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding Label}" Foreground="#ffffff"/>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="{Binding Label}" Foreground="#ffffff" FontWeight="Medium"/>
+                                    <TextBlock Text="{Binding Description}" Foreground="#72767d" FontSize="12"/>
+                                </StackPanel>
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>
                 </StackPanel>
-
-                <StackPanel Grid.Column="2">
-                    <TextBlock Text="Frame Rate"
-                               Foreground="#b9bbbe"
-                               FontSize="12"
-                               Margin="0,0,0,4"/>
-                    <ComboBox ItemsSource="{Binding Framerates}"
-                              SelectedItem="{Binding SelectedFramerate}"
-                              HorizontalAlignment="Stretch"
-                              Background="#40444b"
-                              Foreground="#ffffff"
-                              BorderThickness="0"
-                              CornerRadius="4"
-                              Padding="12,8">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Label}" Foreground="#ffffff"/>
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-                </StackPanel>
-
-                <!-- Audio checkbox (macOS only) -->
-                <StackPanel Grid.Column="4" VerticalAlignment="Bottom"
-                            IsVisible="{Binding CanCaptureAudio}">
-                    <CheckBox IsChecked="{Binding IncludeAudio}"
-                              Foreground="#b9bbbe"
-                              Cursor="Hand">
-                        <TextBlock Text="Share audio" Foreground="#b9bbbe" FontSize="13"/>
-                    </CheckBox>
-                </StackPanel>
-            </Grid>
+            </StackPanel>
 
             <!-- Source Lists -->
             <Panel Grid.Row="3" Margin="0,0,0,16">

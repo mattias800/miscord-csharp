@@ -124,12 +124,13 @@ public class ScreenShareManager : IAsyncDisposable
         var screenWidth = settings?.Resolution.Width ?? DefaultScreenWidth;
         var screenHeight = settings?.Resolution.Height ?? DefaultScreenHeight;
         var screenFps = settings?.Framerate.Fps ?? DefaultScreenFps;
+        var bitrateMbps = settings?.Quality.BitrateMbps ?? 8;  // Default to Balanced (8 Mbps)
         var source = settings?.Source;
         var captureAudio = settings?.IncludeAudio ?? false;
 
         try
         {
-            Console.WriteLine($"ScreenShareManager: Starting screen capture... (source: {source?.Name ?? "default"}, {screenWidth}x{screenHeight} @ {screenFps}fps)");
+            Console.WriteLine($"ScreenShareManager: Starting screen capture... (source: {source?.Name ?? "default"}, {screenWidth}x{screenHeight} @ {screenFps}fps, {bitrateMbps} Mbps)");
 
             // Check if we should use native capture
             string? nativeCapturePath = null;
@@ -140,7 +141,7 @@ public class ScreenShareManager : IAsyncDisposable
                 nativeCapturePath = _captureLocator.GetSnackaCaptureVideoToolboxPath();
                 if (nativeCapturePath != null)
                 {
-                    nativeCaptureArgs = _captureLocator.GetSnackaCaptureVideoToolboxArgs(source, screenWidth, screenHeight, screenFps, captureAudio);
+                    nativeCaptureArgs = _captureLocator.GetSnackaCaptureVideoToolboxArgs(source, screenWidth, screenHeight, screenFps, captureAudio, bitrateMbps);
                 }
             }
             else if (_captureLocator.ShouldUseSnackaCaptureWindows())
@@ -148,7 +149,7 @@ public class ScreenShareManager : IAsyncDisposable
                 nativeCapturePath = _captureLocator.GetSnackaCaptureWindowsPath();
                 if (nativeCapturePath != null)
                 {
-                    nativeCaptureArgs = _captureLocator.GetSnackaCaptureWindowsArgs(source, screenWidth, screenHeight, screenFps, captureAudio);
+                    nativeCaptureArgs = _captureLocator.GetSnackaCaptureWindowsArgs(source, screenWidth, screenHeight, screenFps, captureAudio, bitrateMbps);
                 }
             }
             else if (_captureLocator.ShouldUseSnackaCaptureLinux())
@@ -156,7 +157,7 @@ public class ScreenShareManager : IAsyncDisposable
                 nativeCapturePath = _captureLocator.GetSnackaCaptureLinuxPath();
                 if (nativeCapturePath != null)
                 {
-                    nativeCaptureArgs = _captureLocator.GetSnackaCaptureLinuxArgs(source, screenWidth, screenHeight, screenFps);
+                    nativeCaptureArgs = _captureLocator.GetSnackaCaptureLinuxArgs(source, screenWidth, screenHeight, screenFps, captureAudio, bitrateMbps);
                 }
             }
 

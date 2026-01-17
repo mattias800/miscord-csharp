@@ -51,11 +51,56 @@ public record ScreenShareFramerate(int Fps, string Label)
 }
 
 /// <summary>
-/// Settings for screen sharing including source, resolution, framerate, and audio options.
+/// Quality preset for screen sharing, primarily controlling bitrate.
+/// Higher bitrates provide better quality but require more bandwidth.
+/// </summary>
+public record ScreenShareQuality(int BitrateMbps, string Label, string Description)
+{
+    /// <summary>
+    /// Smooth Motion - 4 Mbps. Best for presentations and static content.
+    /// Lower bandwidth usage, may show artifacts during fast motion.
+    /// </summary>
+    public static ScreenShareQuality SmoothMotion => new(4, "Smooth Motion", "4 Mbps - Good for presentations");
+
+    /// <summary>
+    /// Balanced - 8 Mbps. Good balance of quality and bandwidth.
+    /// Suitable for general use including light gaming.
+    /// </summary>
+    public static ScreenShareQuality Balanced => new(8, "Balanced", "8 Mbps - Good for general use");
+
+    /// <summary>
+    /// High Quality - 15 Mbps. Better quality for detailed content and gaming.
+    /// Handles moderate motion well with minimal artifacts.
+    /// </summary>
+    public static ScreenShareQuality HighQuality => new(15, "High Quality", "15 Mbps - Great for gaming");
+
+    /// <summary>
+    /// Gaming - 25 Mbps. Optimized for fast-paced gaming with lots of motion.
+    /// Excellent quality even during intense action scenes.
+    /// </summary>
+    public static ScreenShareQuality Gaming => new(25, "Gaming", "25 Mbps - Best for fast-paced games");
+
+    /// <summary>
+    /// Ultra - 50 Mbps. Maximum quality for the best possible visual experience.
+    /// Requires excellent network connection. Ideal for competitive gaming or streaming.
+    /// </summary>
+    public static ScreenShareQuality Ultra => new(50, "Ultra", "50 Mbps - Maximum quality");
+
+    public static IReadOnlyList<ScreenShareQuality> All => new[]
+    {
+        SmoothMotion, Balanced, HighQuality, Gaming, Ultra
+    };
+
+    public override string ToString() => $"{Label} ({Description})";
+}
+
+/// <summary>
+/// Settings for screen sharing including source, resolution, framerate, quality, and audio options.
 /// </summary>
 public record ScreenShareSettings(
     ScreenCaptureSource Source,
     ScreenShareResolution Resolution,
     ScreenShareFramerate Framerate,
+    ScreenShareQuality Quality,
     bool IncludeAudio = false  // Whether to capture and share audio from the source
 );

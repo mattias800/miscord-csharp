@@ -206,7 +206,13 @@ public class NativeCaptureLocator
     /// <summary>
     /// Builds SnackaCaptureVideoToolbox command arguments based on source and settings.
     /// </summary>
-    public string GetSnackaCaptureVideoToolboxArgs(ScreenCaptureSource? source, int width, int height, int fps, bool captureAudio)
+    /// <param name="source">The capture source (display, window, or application)</param>
+    /// <param name="width">Output width in pixels</param>
+    /// <param name="height">Output height in pixels</param>
+    /// <param name="fps">Frames per second</param>
+    /// <param name="captureAudio">Whether to capture system audio</param>
+    /// <param name="bitrateMbps">Encoding bitrate in Mbps (default: 8)</param>
+    public string GetSnackaCaptureVideoToolboxArgs(ScreenCaptureSource? source, int width, int height, int fps, bool captureAudio, int bitrateMbps = 8)
     {
         var args = new List<string>();
 
@@ -251,7 +257,7 @@ public class NativeCaptureLocator
 
         // Use direct H.264 encoding via VideoToolbox (bypasses ffmpeg)
         args.Add("--encode");
-        args.Add("--bitrate 6");  // 6 Mbps for screen share
+        args.Add($"--bitrate {bitrateMbps}");
 
         return string.Join(" ", args);
     }
@@ -259,7 +265,13 @@ public class NativeCaptureLocator
     /// <summary>
     /// Builds SnackaCaptureWindows command arguments based on source and settings.
     /// </summary>
-    public string GetSnackaCaptureWindowsArgs(ScreenCaptureSource? source, int width, int height, int fps, bool captureAudio)
+    /// <param name="source">The capture source (display or window)</param>
+    /// <param name="width">Output width in pixels</param>
+    /// <param name="height">Output height in pixels</param>
+    /// <param name="fps">Frames per second</param>
+    /// <param name="captureAudio">Whether to capture system audio</param>
+    /// <param name="bitrateMbps">Encoding bitrate in Mbps (default: 8)</param>
+    public string GetSnackaCaptureWindowsArgs(ScreenCaptureSource? source, int width, int height, int fps, bool captureAudio, int bitrateMbps = 8)
     {
         var args = new List<string>();
 
@@ -289,7 +301,7 @@ public class NativeCaptureLocator
 
         // Use direct H.264 encoding via Media Foundation (NVENC/AMF/QuickSync)
         args.Add("--encode");
-        args.Add("--bitrate 6");  // 6 Mbps for screen share
+        args.Add($"--bitrate {bitrateMbps}");
 
         return string.Join(" ", args);
     }
@@ -297,7 +309,13 @@ public class NativeCaptureLocator
     /// <summary>
     /// Builds SnackaCaptureLinux command arguments based on source and settings.
     /// </summary>
-    public string GetSnackaCaptureLinuxArgs(ScreenCaptureSource? source, int width, int height, int fps, bool captureAudio = false)
+    /// <param name="source">The capture source (display)</param>
+    /// <param name="width">Output width in pixels</param>
+    /// <param name="height">Output height in pixels</param>
+    /// <param name="fps">Frames per second</param>
+    /// <param name="captureAudio">Whether to capture system audio</param>
+    /// <param name="bitrateMbps">Encoding bitrate in Mbps (default: 8)</param>
+    public string GetSnackaCaptureLinuxArgs(ScreenCaptureSource? source, int width, int height, int fps, bool captureAudio = false, int bitrateMbps = 8)
     {
         var args = new List<string>();
 
@@ -322,7 +340,7 @@ public class NativeCaptureLocator
 
         // Use direct H.264 encoding via VAAPI
         args.Add("--encode");
-        args.Add("--bitrate 6");  // 6 Mbps for screen share
+        args.Add($"--bitrate {bitrateMbps}");
 
         return string.Join(" ", args);
     }
