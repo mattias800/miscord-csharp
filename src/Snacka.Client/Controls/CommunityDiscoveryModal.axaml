@@ -1,0 +1,185 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="using:Snacka.Client.Controls"
+             xmlns:services="using:Snacka.Client.Services"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             mc:Ignorable="d"
+             x:Class="Snacka.Client.Controls.CommunityDiscoveryModal">
+
+    <Border Background="#80000000"
+            IsVisible="{Binding IsOpen, RelativeSource={RelativeSource AncestorType=controls:CommunityDiscoveryModal}}"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch">
+        <!-- Centered Content Panel -->
+        <Border Background="#18181b"
+                CornerRadius="16"
+                MaxWidth="700"
+                MaxHeight="600"
+                MinWidth="500"
+                Margin="40"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                BoxShadow="0 25 50 -12 #40000000">
+            <Grid RowDefinitions="Auto,*">
+                <!-- Header -->
+                <Border Grid.Row="0"
+                        Background="#27272a"
+                        CornerRadius="16,16,0,0"
+                        Padding="20,16">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="4">
+                            <TextBlock Text="Browse Communities"
+                                       Foreground="#fafafa"
+                                       FontSize="20"
+                                       FontWeight="SemiBold"/>
+                            <TextBlock Text="Discover and join communities"
+                                       Foreground="#71717a"
+                                       FontSize="13"/>
+                        </StackPanel>
+                        <Button Grid.Column="1"
+                                Command="{Binding CloseCommand, RelativeSource={RelativeSource AncestorType=controls:CommunityDiscoveryModal}}"
+                                ToolTip.Tip="Close"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="8"
+                                CornerRadius="8"
+                                VerticalAlignment="Top">
+                            <ui:SymbolIcon Symbol="Dismiss"
+                                       Foreground="#71717a"
+                                       FontSize="16"/>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Content -->
+                <Border Grid.Row="1" Padding="20">
+                    <Grid>
+                        <!-- Loading State -->
+                        <StackPanel HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    IsVisible="{Binding IsLoading, RelativeSource={RelativeSource AncestorType=controls:CommunityDiscoveryModal}}">
+                            <ui:ProgressRing Width="40"
+                                              Height="40"
+                                              IsIndeterminate="True"
+                                              Foreground="#5865f2"/>
+                            <TextBlock Text="Loading communities..."
+                                       Foreground="#71717a"
+                                       FontSize="14"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,16,0,0"/>
+                        </StackPanel>
+
+                        <!-- Error State -->
+                        <StackPanel HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Spacing="16">
+                            <StackPanel.IsVisible>
+                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                    <Binding Path="IsLoading" RelativeSource="{RelativeSource AncestorType=controls:CommunityDiscoveryModal}" Converter="{x:Static BoolConverters.Not}"/>
+                                    <Binding Path="ErrorMessage" RelativeSource="{RelativeSource AncestorType=controls:CommunityDiscoveryModal}" Converter="{x:Static StringConverters.IsNotNullOrEmpty}"/>
+                                </MultiBinding>
+                            </StackPanel.IsVisible>
+                            <Border Background="#1aef4444"
+                                    CornerRadius="50"
+                                    Width="64"
+                                    Height="64"
+                                    HorizontalAlignment="Center">
+                                <ui:SymbolIcon Symbol="Important"
+                                           FontSize="32"
+                                           Foreground="#f87171"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="Failed to load communities"
+                                       Foreground="#fca5a5"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       HorizontalAlignment="Center"/>
+                            <TextBlock Text="{Binding ErrorMessage, RelativeSource={RelativeSource AncestorType=controls:CommunityDiscoveryModal}}"
+                                       Foreground="#a1a1aa"
+                                       FontSize="13"
+                                       HorizontalAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       MaxWidth="300"/>
+                            <Button Classes="btn-secondary"
+                                    Padding="16,8"
+                                    CornerRadius="8"
+                                    HorizontalAlignment="Center"
+                                    Command="{Binding RefreshCommand, RelativeSource={RelativeSource AncestorType=controls:CommunityDiscoveryModal}}">
+                                <TextBlock Text="Try Again" FontSize="13"/>
+                            </Button>
+                        </StackPanel>
+
+                        <!-- Empty State -->
+                        <StackPanel HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Spacing="16">
+                            <StackPanel.IsVisible>
+                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                    <Binding Path="IsLoading" RelativeSource="{RelativeSource AncestorType=controls:CommunityDiscoveryModal}" Converter="{x:Static BoolConverters.Not}"/>
+                                    <Binding Path="ErrorMessage" RelativeSource="{RelativeSource AncestorType=controls:CommunityDiscoveryModal}" Converter="{x:Static StringConverters.IsNullOrEmpty}"/>
+                                    <Binding Path="HasNoCommunities" RelativeSource="{RelativeSource AncestorType=controls:CommunityDiscoveryModal}"/>
+                                </MultiBinding>
+                            </StackPanel.IsVisible>
+                            <Border Background="#27272a"
+                                    CornerRadius="50"
+                                    Width="64"
+                                    Height="64"
+                                    HorizontalAlignment="Center">
+                                <ui:SymbolIcon Symbol="Find"
+                                           FontSize="32"
+                                           Foreground="#52525b"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="No communities available"
+                                       Foreground="#fafafa"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       HorizontalAlignment="Center"/>
+                            <TextBlock Text="There are no communities to join at the moment. Why not create your own?"
+                                       Foreground="#71717a"
+                                       FontSize="13"
+                                       HorizontalAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       TextAlignment="Center"
+                                       MaxWidth="300"/>
+                            <Button Classes="btn-primary"
+                                    Padding="20,10"
+                                    CornerRadius="8"
+                                    HorizontalAlignment="Center"
+                                    Command="{Binding CreateCommunityCommand, RelativeSource={RelativeSource AncestorType=controls:CommunityDiscoveryModal}}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <ui:SymbolIcon Symbol="Add" Foreground="White" FontSize="14"/>
+                                    <TextBlock Text="Create Community" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+
+                        <!-- Communities List -->
+                        <ScrollViewer>
+                            <ScrollViewer.IsVisible>
+                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                    <Binding Path="IsLoading" RelativeSource="{RelativeSource AncestorType=controls:CommunityDiscoveryModal}" Converter="{x:Static BoolConverters.Not}"/>
+                                    <Binding Path="ErrorMessage" RelativeSource="{RelativeSource AncestorType=controls:CommunityDiscoveryModal}" Converter="{x:Static StringConverters.IsNullOrEmpty}"/>
+                                    <Binding Path="HasNoCommunities" RelativeSource="{RelativeSource AncestorType=controls:CommunityDiscoveryModal}" Converter="{x:Static BoolConverters.Not}"/>
+                                </MultiBinding>
+                            </ScrollViewer.IsVisible>
+                            <ItemsControl ItemsSource="{Binding Communities, RelativeSource={RelativeSource AncestorType=controls:CommunityDiscoveryModal}}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="services:CommunityResponse">
+                                        <controls:CommunityCard Community="{Binding}"
+                                                                IsJoining="{Binding $parent[controls:CommunityDiscoveryModal].JoiningCommunityId, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue=False}"
+                                                                JoinCommand="{Binding $parent[controls:CommunityDiscoveryModal].JoinCommunityCommand}"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+</UserControl>

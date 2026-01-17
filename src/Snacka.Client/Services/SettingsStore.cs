@@ -52,6 +52,9 @@ public class UserSettings
     // Controller settings
     public bool ControllerRumbleEnabled { get; set; } = true;
 
+    // Onboarding flags
+    public bool HasSeenWelcome { get; set; } = false;
+
     // Window position and size (null = use default/center)
     public int? WindowX { get; set; }
     public int? WindowY { get; set; }

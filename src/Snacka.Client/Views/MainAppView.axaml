@@ -178,6 +178,17 @@
 
         <!-- Main Content Area (Chat, DM, or Voice Channel) -->
         <Grid Grid.Column="3">
+            <!-- Empty State (shown when user has no communities) -->
+            <controls:NoCommunityView CreateCommunityCommand="{Binding CreateCommunityCommand}"
+                                      BrowseCommunitiesCommand="{Binding OpenCommunityDiscoveryCommand}">
+                <controls:NoCommunityView.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="HasNoCommunities"/>
+                        <Binding Path="IsViewingDM" Converter="{x:Static BoolConverters.Not}"/>
+                    </MultiBinding>
+                </controls:NoCommunityView.IsVisible>
+            </controls:NoCommunityView>
+
             <!-- DM Content (shown when viewing DM conversation) -->
             <controls:DMContentView IsVisible="{Binding IsViewingDM}"
                                     ViewModel="{Binding DMContent}"/>
@@ -251,6 +262,7 @@
                     <MultiBinding Converter="{x:Static BoolConverters.And}">
                         <Binding Path="IsViewingDM" Converter="{x:Static BoolConverters.Not}"/>
                         <Binding Path="IsViewingVoiceChannel" Converter="{x:Static BoolConverters.Not}"/>
+                        <Binding Path="HasNoCommunities" Converter="{x:Static BoolConverters.Not}"/>
                     </MultiBinding>
                 </controls:ChatAreaView.IsVisible>
             </controls:ChatAreaView>
@@ -922,6 +934,30 @@
                 </StackPanel>
             </Border>
         </Border>
+
+        <!-- Community Discovery Modal Overlay -->
+        <controls:CommunityDiscoveryModal Grid.ColumnSpan="6"
+                                          IsOpen="{Binding IsCommunityDiscoveryOpen}"
+                                          IsLoading="{Binding IsLoadingDiscovery}"
+                                          ErrorMessage="{Binding DiscoveryError}"
+                                          Communities="{Binding DiscoverableCommunities}"
+                                          HasNoCommunities="{Binding HasNoDiscoverableCommunities}"
+                                          JoiningCommunityId="{Binding JoiningCommunityId}"
+                                          CloseCommand="{Binding CloseCommunityDiscoveryCommand}"
+                                          RefreshCommand="{Binding RefreshDiscoverableCommunitiesCommand}"
+                                          JoinCommunityCommand="{Binding JoinCommunityCommand}"
+                                          CreateCommunityCommand="{Binding CreateCommunityCommand}"
+                                          HorizontalAlignment="Stretch"
+                                          VerticalAlignment="Stretch"/>
+
+        <!-- Welcome Modal Overlay (shown on first login) -->
+        <controls:WelcomeModal Grid.ColumnSpan="6"
+                               IsOpen="{Binding IsWelcomeModalOpen}"
+                               CloseCommand="{Binding CloseWelcomeModalCommand}"
+                               BrowseCommunitiesCommand="{Binding WelcomeBrowseCommunitiesCommand}"
+                               CreateCommunityCommand="{Binding WelcomeCreateCommunityCommand}"
+                               HorizontalAlignment="Stretch"
+                               VerticalAlignment="Stretch"/>
         </Grid>
     </Grid>
 </UserControl>

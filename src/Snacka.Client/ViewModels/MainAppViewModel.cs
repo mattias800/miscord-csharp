@@ -161,6 +161,14 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private ConnectionState _connectionState = ConnectionState.Connected;
     private int _reconnectSecondsRemaining;
 
+    // Community discovery state
+    private bool _isWelcomeModalOpen;
+    private bool _isCommunityDiscoveryOpen;
+    private bool _isLoadingDiscovery;
+    private ObservableCollection<CommunityResponse> _discoverableCommunities = new();
+    private string? _discoveryError;
+    private Guid? _joiningCommunityId;
+
     public MainAppViewModel(IApiClient apiClient, ISignalRService signalR, IWebRtcService webRtc, IScreenCaptureService screenCaptureService, ISettingsStore settingsStore, IAudioDeviceService audioDeviceService, IControllerStreamingService controllerStreamingService, IControllerHostService controllerHostService, string baseUrl, AuthResponse auth, Action onLogout, Action? onSwitchServer = null, Action? onOpenDMs = null, Action<Guid?, string?>? onOpenDMsWithUser = null, Action? onOpenSettings = null, bool gifsEnabled = false)
     {
         _apiClient = apiClient;
@@ -347,6 +355,15 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // Recent DMs commands (sidebar section)
         SelectRecentDmCommand = ReactiveCommand.Create<ConversationSummary>(SelectRecentDm);
         ToggleRecentDmsExpandedCommand = ReactiveCommand.Create(() => { IsRecentDmsExpanded = !IsRecentDmsExpanded; });
+
+        // Community discovery commands
+        OpenCommunityDiscoveryCommand = ReactiveCommand.CreateFromTask(OpenCommunityDiscoveryAsync);
+        CloseCommunityDiscoveryCommand = ReactiveCommand.Create(() => { IsCommunityDiscoveryOpen = false; });
+        CloseWelcomeModalCommand = ReactiveCommand.Create(CloseWelcomeModal);
+        JoinCommunityCommand = ReactiveCommand.CreateFromTask<CommunityResponse>(JoinDiscoveredCommunityAsync);
+        RefreshDiscoverableCommunitiesCommand = ReactiveCommand.CreateFromTask(LoadDiscoverableCommunitiesAsync);
+        WelcomeBrowseCommunitiesCommand = ReactiveCommand.CreateFromTask(WelcomeBrowseCommunitiesAsync);
+        WelcomeCreateCommunityCommand = ReactiveCommand.CreateFromTask(WelcomeCreateCommunityAsync);
 
         // Controller access request commands
         AcceptControllerRequestCommand = ReactiveCommand.CreateFromTask<ControllerAccessRequest>(AcceptControllerRequestAsync);
@@ -1269,6 +1286,67 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     {
         get => _isInviteStatusError;
         set => this.RaiseAndSetIfChanged(ref _isInviteStatusError, value);
+    }
+
+    // Community discovery properties
+    /// <summary>
+    /// Whether the user has no communities (used to show empty state).
+    /// </summary>
+    public bool HasNoCommunities => Communities.Count == 0;
+
+    /// <summary>
+    /// Whether the welcome modal is open (first-time user experience).
+    /// </summary>
+    public bool IsWelcomeModalOpen
+    {
+        get => _isWelcomeModalOpen;
+        set => this.RaiseAndSetIfChanged(ref _isWelcomeModalOpen, value);
+    }
+
+    /// <summary>
+    /// Whether the community discovery modal is open.
+    /// </summary>
+    public bool IsCommunityDiscoveryOpen
+    {
+        get => _isCommunityDiscoveryOpen;
+        set => this.RaiseAndSetIfChanged(ref _isCommunityDiscoveryOpen, value);
+    }
+
+    /// <summary>
+    /// Whether discoverable communities are being loaded.
+    /// </summary>
+    public bool IsLoadingDiscovery
+    {
+        get => _isLoadingDiscovery;
+        set => this.RaiseAndSetIfChanged(ref _isLoadingDiscovery, value);
+    }
+
+    /// <summary>
+    /// The list of discoverable communities.
+    /// </summary>
+    public ObservableCollection<CommunityResponse> DiscoverableCommunities => _discoverableCommunities;
+
+    /// <summary>
+    /// Whether there are no discoverable communities.
+    /// </summary>
+    public bool HasNoDiscoverableCommunities => _discoverableCommunities.Count == 0;
+
+    /// <summary>
+    /// Error message from loading discoverable communities.
+    /// </summary>
+    public string? DiscoveryError
+    {
+        get => _discoveryError;
+        set => this.RaiseAndSetIfChanged(ref _discoveryError, value);
+    }
+
+    /// <summary>
+    /// The community ID currently being joined (for showing loading state).
+    /// </summary>
+    public Guid? JoiningCommunityId
+    {
+        get => _joiningCommunityId;
+        set => this.RaiseAndSetIfChanged(ref _joiningCommunityId, value);
     }
 
     // Controller access request properties
@@ -2400,6 +2478,15 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<ConversationSummary, Unit> SelectRecentDmCommand { get; }
     public ReactiveCommand<Unit, Unit> ToggleRecentDmsExpandedCommand { get; }
 
+    // Community discovery commands
+    public ReactiveCommand<Unit, Unit> OpenCommunityDiscoveryCommand { get; }
+    public ReactiveCommand<Unit, Unit> CloseCommunityDiscoveryCommand { get; }
+    public ReactiveCommand<Unit, Unit> CloseWelcomeModalCommand { get; }
+    public ReactiveCommand<CommunityResponse, Unit> JoinCommunityCommand { get; }
+    public ReactiveCommand<Unit, Unit> RefreshDiscoverableCommunitiesCommand { get; }
+    public ReactiveCommand<Unit, Unit> WelcomeBrowseCommunitiesCommand { get; }
+    public ReactiveCommand<Unit, Unit> WelcomeCreateCommunityCommand { get; }
+
     // Controller access request commands
     public ReactiveCommand<ControllerAccessRequest, Unit> AcceptControllerRequestCommand { get; }
     public ReactiveCommand<ControllerAccessRequest, Unit> DeclineControllerRequestCommand { get; }
@@ -2457,9 +2544,18 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 foreach (var community in result.Data)
                     Communities.Add(community);
 
+                // Notify HasNoCommunities property
+                this.RaisePropertyChanged(nameof(HasNoCommunities));
+
                 // Select first community if none selected
                 if (SelectedCommunity is null && Communities.Count > 0)
                     SelectedCommunity = Communities[0];
+
+                // Show welcome modal for first-time users with no communities
+                if (Communities.Count == 0 && !_settingsStore.Settings.HasSeenWelcome)
+                {
+                    IsWelcomeModalOpen = true;
+                }
             }
             else
             {
@@ -2469,6 +2565,101 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         finally
         {
             IsLoading = false;
+        }
+    }
+
+    private void CloseWelcomeModal()
+    {
+        IsWelcomeModalOpen = false;
+        _settingsStore.Settings.HasSeenWelcome = true;
+        _settingsStore.Save();
+    }
+
+    private async Task WelcomeBrowseCommunitiesAsync()
+    {
+        CloseWelcomeModal();
+        await OpenCommunityDiscoveryAsync();
+    }
+
+    private async Task WelcomeCreateCommunityAsync()
+    {
+        CloseWelcomeModal();
+        await CreateCommunityAsync();
+    }
+
+    private async Task OpenCommunityDiscoveryAsync()
+    {
+        IsCommunityDiscoveryOpen = true;
+        await LoadDiscoverableCommunitiesAsync();
+    }
+
+    private async Task LoadDiscoverableCommunitiesAsync()
+    {
+        IsLoadingDiscovery = true;
+        DiscoveryError = null;
+
+        try
+        {
+            var result = await _apiClient.DiscoverCommunitiesAsync();
+            if (result.Success && result.Data is not null)
+            {
+                _discoverableCommunities.Clear();
+                foreach (var community in result.Data)
+                    _discoverableCommunities.Add(community);
+
+                this.RaisePropertyChanged(nameof(HasNoDiscoverableCommunities));
+            }
+            else
+            {
+                DiscoveryError = result.Error ?? "Failed to load communities";
+            }
+        }
+        catch (Exception ex)
+        {
+            DiscoveryError = ex.Message;
+        }
+        finally
+        {
+            IsLoadingDiscovery = false;
+        }
+    }
+
+    private async Task JoinDiscoveredCommunityAsync(CommunityResponse community)
+    {
+        if (JoiningCommunityId is not null) return; // Already joining
+
+        JoiningCommunityId = community.Id;
+
+        try
+        {
+            var result = await _apiClient.JoinCommunityAsync(community.Id);
+            if (result.Success)
+            {
+                // Close the discovery modal
+                IsCommunityDiscoveryOpen = false;
+
+                // Reload communities
+                await LoadCommunitiesAsync();
+
+                // Select the joined community
+                var joinedCommunity = Communities.FirstOrDefault(c => c.Id == community.Id);
+                if (joinedCommunity is not null)
+                {
+                    SelectedCommunity = joinedCommunity;
+                }
+            }
+            else
+            {
+                DiscoveryError = result.Error ?? "Failed to join community";
+            }
+        }
+        catch (Exception ex)
+        {
+            DiscoveryError = ex.Message;
+        }
+        finally
+        {
+            JoiningCommunityId = null;
         }
     }
 

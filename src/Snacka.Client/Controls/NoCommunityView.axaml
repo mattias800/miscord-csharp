@@ -1,0 +1,78 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="using:Snacka.Client.Controls"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             mc:Ignorable="d"
+             x:Class="Snacka.Client.Controls.NoCommunityView">
+
+    <Grid Background="{StaticResource Content2Brush}">
+        <StackPanel HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    MaxWidth="400"
+                    Spacing="24">
+            <!-- Icon -->
+            <Border Width="80"
+                    Height="80"
+                    CornerRadius="40"
+                    HorizontalAlignment="Center"
+                    Background="#27272a">
+                <ui:SymbolIcon Symbol="People"
+                           Foreground="#52525b"
+                           FontSize="36"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+            </Border>
+
+            <!-- Heading -->
+            <StackPanel Spacing="8" HorizontalAlignment="Center">
+                <TextBlock Text="You're not in any communities yet"
+                           Foreground="#fafafa"
+                           FontSize="20"
+                           FontWeight="SemiBold"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"/>
+                <TextBlock Text="Create your own community or join an existing one to start chatting with others."
+                           Foreground="#71717a"
+                           FontSize="14"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <!-- Action Buttons -->
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Center"
+                        Spacing="12">
+                <Button Classes="btn-secondary"
+                        Padding="20,12"
+                        CornerRadius="10"
+                        Command="{Binding CreateCommunityCommand, RelativeSource={RelativeSource AncestorType=controls:NoCommunityView}}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <ui:SymbolIcon Symbol="Add" Foreground="#fafafa" FontSize="16"/>
+                        <TextBlock Text="Create Community"
+                                   Foreground="#fafafa"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <Button Classes="btn-primary"
+                        Padding="20,12"
+                        CornerRadius="10"
+                        Command="{Binding BrowseCommunitiesCommand, RelativeSource={RelativeSource AncestorType=controls:NoCommunityView}}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <ui:SymbolIcon Symbol="Find" Foreground="White" FontSize="16"/>
+                        <TextBlock Text="Browse Communities"
+                                   Foreground="White"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</UserControl>

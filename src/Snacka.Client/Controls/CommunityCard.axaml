@@ -1,0 +1,102 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="using:Snacka.Client.Controls"
+             xmlns:conv="using:Snacka.Client.Converters"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             mc:Ignorable="d"
+             x:Class="Snacka.Client.Controls.CommunityCard">
+
+    <Border Background="#27272a"
+            CornerRadius="12"
+            Padding="16"
+            Margin="0,0,0,8">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+            <!-- Community Icon/Avatar -->
+            <Border Grid.Column="0"
+                    Width="48"
+                    Height="48"
+                    CornerRadius="12"
+                    Margin="0,0,14,0"
+                    VerticalAlignment="Top">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Color="#7c3aed" Offset="0"/>
+                        <GradientStop Color="#5865f2" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <TextBlock Text="{Binding Community.Name, RelativeSource={RelativeSource AncestorType=controls:CommunityCard}, Converter={x:Static conv:FirstCharConverter.Instance}}"
+                           Foreground="White"
+                           FontSize="18"
+                           FontWeight="Bold"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+            </Border>
+
+            <!-- Community Info -->
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                <TextBlock Text="{Binding Community.Name, RelativeSource={RelativeSource AncestorType=controls:CommunityCard}}"
+                           Foreground="#fafafa"
+                           FontSize="15"
+                           FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis"/>
+
+                <!-- Description (truncated to 2 lines) -->
+                <TextBlock Text="{Binding Community.Description, RelativeSource={RelativeSource AncestorType=controls:CommunityCard}}"
+                           Foreground="#a1a1aa"
+                           FontSize="13"
+                           TextWrapping="Wrap"
+                           MaxLines="2"
+                           TextTrimming="CharacterEllipsis"
+                           IsVisible="{Binding Community.Description, RelativeSource={RelativeSource AncestorType=controls:CommunityCard}, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+                <!-- Meta Info -->
+                <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,0">
+                    <!-- Member Count -->
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <ui:SymbolIcon Symbol="People" Foreground="#71717a" FontSize="12"/>
+                        <TextBlock Text="{Binding Community.MemberCount, RelativeSource={RelativeSource AncestorType=controls:CommunityCard}, StringFormat='{}{0} members'}"
+                                   Foreground="#71717a"
+                                   FontSize="12"/>
+                    </StackPanel>
+
+                    <!-- Owner -->
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <ui:SymbolIcon Symbol="Contact" Foreground="#71717a" FontSize="12"/>
+                        <TextBlock Text="{Binding Community.OwnerEffectiveDisplayName, RelativeSource={RelativeSource AncestorType=controls:CommunityCard}}"
+                                   Foreground="#71717a"
+                                   FontSize="12"
+                                   TextTrimming="CharacterEllipsis"
+                                   MaxWidth="120"/>
+                    </StackPanel>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Join Button -->
+            <Button Grid.Column="2"
+                    Classes="btn-primary"
+                    Padding="16,8"
+                    CornerRadius="8"
+                    VerticalAlignment="Center"
+                    Command="{Binding JoinCommand, RelativeSource={RelativeSource AncestorType=controls:CommunityCard}}"
+                    CommandParameter="{Binding Community, RelativeSource={RelativeSource AncestorType=controls:CommunityCard}}"
+                    IsEnabled="{Binding !IsJoining, RelativeSource={RelativeSource AncestorType=controls:CommunityCard}}">
+                <Panel>
+                    <!-- Normal state -->
+                    <TextBlock Text="Join"
+                               Foreground="White"
+                               FontSize="13"
+                               FontWeight="SemiBold"
+                               IsVisible="{Binding !IsJoining, RelativeSource={RelativeSource AncestorType=controls:CommunityCard}}"/>
+                    <!-- Loading state -->
+                    <ui:ProgressRing Width="16"
+                                      Height="16"
+                                      IsIndeterminate="True"
+                                      Foreground="White"
+                                      IsVisible="{Binding IsJoining, RelativeSource={RelativeSource AncestorType=controls:CommunityCard}}"/>
+                </Panel>
+            </Button>
+        </Grid>
+    </Border>
+</UserControl>

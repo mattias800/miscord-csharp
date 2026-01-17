@@ -1,0 +1,109 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="using:Snacka.Client.Controls"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             mc:Ignorable="d"
+             x:Class="Snacka.Client.Controls.WelcomeModal">
+
+    <Border Background="#80000000"
+            IsVisible="{Binding IsOpen, RelativeSource={RelativeSource AncestorType=controls:WelcomeModal}}"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch">
+        <!-- Centered Content Panel -->
+        <Border Background="#18181b"
+                CornerRadius="20"
+                MaxWidth="480"
+                Margin="40"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                BoxShadow="0 25 50 -12 #40000000"
+                Padding="40,36">
+            <StackPanel Spacing="28" HorizontalAlignment="Center">
+                <!-- App Icon -->
+                <Border Width="80"
+                        Height="80"
+                        CornerRadius="20"
+                        HorizontalAlignment="Center">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                            <GradientStop Color="#5865f2" Offset="0"/>
+                            <GradientStop Color="#7c3aed" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <ui:SymbolIcon Symbol="Message"
+                               Foreground="White"
+                               FontSize="36"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Border>
+
+                <!-- Welcome Text -->
+                <StackPanel Spacing="12" HorizontalAlignment="Center">
+                    <TextBlock Text="Welcome to Snacka!"
+                               Foreground="#fafafa"
+                               FontSize="28"
+                               FontWeight="Bold"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="Snacka is a place to hang out with friends, join communities, and chat in real-time with voice and video."
+                               Foreground="#a1a1aa"
+                               FontSize="15"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               MaxWidth="380"
+                               LineHeight="22"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Action Buttons -->
+                <StackPanel Spacing="12" HorizontalAlignment="Stretch">
+                    <Button Classes="btn-primary"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Padding="0,14"
+                            CornerRadius="10"
+                            Command="{Binding BrowseCommunitiesCommand, RelativeSource={RelativeSource AncestorType=controls:WelcomeModal}}">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <ui:SymbolIcon Symbol="Find" Foreground="White" FontSize="18"/>
+                            <TextBlock Text="Browse Communities"
+                                       Foreground="White"
+                                       FontSize="15"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Classes="btn-secondary"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Padding="0,14"
+                            CornerRadius="10"
+                            Command="{Binding CreateCommunityCommand, RelativeSource={RelativeSource AncestorType=controls:WelcomeModal}}">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <ui:SymbolIcon Symbol="Add" Foreground="#fafafa" FontSize="18"/>
+                            <TextBlock Text="Create a Community"
+                                       Foreground="#fafafa"
+                                       FontSize="15"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!-- Skip link -->
+                <Button Background="Transparent"
+                        BorderThickness="0"
+                        HorizontalAlignment="Center"
+                        Padding="16,8"
+                        CornerRadius="8"
+                        Cursor="Hand"
+                        Command="{Binding CloseCommand, RelativeSource={RelativeSource AncestorType=controls:WelcomeModal}}">
+                    <TextBlock Text="Skip for now"
+                               Foreground="#71717a"
+                               FontSize="13"/>
+                </Button>
+            </StackPanel>
+        </Border>
+    </Border>
+</UserControl>
