@@ -149,6 +149,20 @@
                                                     BorderThickness="3"
                                                     BorderBrush="{StaticResource SuccessBrush}"
                                                     IsVisible="{Binding ShowSpeakingIndicator}"/>
+
+                                            <!-- Gaming Station indicator badge -->
+                                            <Border Background="{StaticResource AccentBrush}"
+                                                    CornerRadius="4"
+                                                    Padding="6,3"
+                                                    HorizontalAlignment="Left"
+                                                    VerticalAlignment="Top"
+                                                    Margin="8"
+                                                    IsVisible="{Binding IsGamingStation}">
+                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                    <ui:SymbolIcon Symbol="XboxConsole" FontSize="12" Foreground="White"/>
+                                                    <TextBlock Text="Gaming Station" FontSize="10" FontWeight="SemiBold" Foreground="White"/>
+                                                </StackPanel>
+                                            </Border>
                                         </Grid>
                                     </Border>
 
@@ -202,6 +216,23 @@
                                                            FontSize="10"
                                                            Width="30"
                                                            VerticalAlignment="Center"/>
+                                            </StackPanel>
+
+                                            <!-- Gaming Station controls (Share Screen button for owner's gaming stations) -->
+                                            <StackPanel Grid.Column="2"
+                                                        Orientation="Horizontal"
+                                                        Spacing="4"
+                                                        VerticalAlignment="Center"
+                                                        IsVisible="{Binding ShowGamingStationControls}">
+                                                <Button Classes="btn-primary"
+                                                        Click="OnGamingStationShareScreenClick"
+                                                        Tag="{Binding}"
+                                                        ToolTip.Tip="Start screen sharing on this gaming station">
+                                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                                        <ui:SymbolIcon Symbol="Share" Foreground="White" FontSize="12"/>
+                                                        <TextBlock Text="Share Screen" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                </Button>
                                             </StackPanel>
 
                                             <!-- Right: Action buttons (only for screen shares when watching) -->

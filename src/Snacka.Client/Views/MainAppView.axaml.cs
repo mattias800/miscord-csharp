@@ -33,6 +33,8 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
 
         // ESC key to exit fullscreen video, Cmd+K for quick switcher (handledEventsToo to capture globally)
         this.AddHandler(KeyDownEvent, OnGlobalKeyDown, RoutingStrategies.Tunnel, handledEventsToo: true);
+        // Gaming station keyboard capture (key up events)
+        this.AddHandler(KeyUpEvent, OnGlobalKeyUp, RoutingStrategies.Tunnel, handledEventsToo: true);
 
         // Push-to-talk: Space key handling
         this.AddHandler(KeyDownEvent, OnPushToTalkKeyDown, RoutingStrategies.Tunnel);
@@ -205,9 +207,23 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         }
     }
 
-    // Global key handler for ESC to exit fullscreen/overlay and Cmd+K / Ctrl+K for quick switcher
-    private void OnGlobalKeyDown(object? sender, KeyEventArgs e)
+    // Global key handler for ESC to exit fullscreen/overlay, Cmd+K / Ctrl+K for quick switcher, and gaming station input
+    private async void OnGlobalKeyDown(object? sender, KeyEventArgs e)
     {
+        // Gaming station keyboard capture (when enabled in fullscreen)
+        if (ViewModel?.IsVideoFullscreen == true &&
+            ViewModel.IsKeyboardCaptureEnabled &&
+            ViewModel.IsFullscreenGamingStation)
+        {
+            // Don't capture ESC - allow it to exit fullscreen
+            if (e.Key != Key.Escape)
+            {
+                await ForwardKeyboardInputAsync(e, isDown: true);
+                e.Handled = true;
+                return;
+            }
+        }
+
         if (e.Key == Key.Escape && ViewModel?.IsVideoFullscreen == true)
         {
             ViewModel.CloseFullscreen();
@@ -229,6 +245,55 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         {
             OpenQuickSwitcher();
             e.Handled = true;
+        }
+    }
+
+    // Global key up handler for gaming station keyboard capture
+    private async void OnGlobalKeyUp(object? sender, KeyEventArgs e)
+    {
+        // Gaming station keyboard capture (when enabled in fullscreen)
+        if (ViewModel?.IsVideoFullscreen == true &&
+            ViewModel.IsKeyboardCaptureEnabled &&
+            ViewModel.IsFullscreenGamingStation)
+        {
+            // Don't capture ESC
+            if (e.Key != Key.Escape)
+            {
+                await ForwardKeyboardInputAsync(e, isDown: false);
+                e.Handled = true;
+            }
+        }
+    }
+
+    // Forward keyboard input to gaming station
+    private async Task ForwardKeyboardInputAsync(KeyEventArgs e, bool isDown)
+    {
+        if (ViewModel?.CurrentVoiceChannel == null) return;
+
+        var key = e.Key.ToString();
+        var ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control);
+        var alt = e.KeyModifiers.HasFlag(KeyModifiers.Alt);
+        var shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
+        var meta = e.KeyModifiers.HasFlag(KeyModifiers.Meta);
+
+        var input = new StationKeyboardInput(
+            Guid.Empty, // StationId not needed - server finds it by channel
+            key,
+            isDown,
+            ctrl,
+            alt,
+            shift,
+            meta);
+
+        try
+        {
+            await ViewModel.SignalRService.SendStationKeyboardInputAsync(
+                ViewModel.CurrentVoiceChannel.Id,
+                input);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to send keyboard input: {ex.Message}");
         }
     }
 
@@ -734,6 +799,25 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         }
     }
 
+    // Called when clicking the controller toggle for gaming stations
+    private async void OnGamingStationControllerToggleClick(object? sender, RoutedEventArgs e)
+    {
+        if (ViewModel != null && sender is ToggleButton toggle)
+        {
+            // The toggle's IsChecked will be set after this handler returns
+            // So we check the current state to determine what action to take
+            var isChecked = toggle.IsChecked == true;
+
+            // If it was checked and now being unchecked, stop streaming
+            // If it was unchecked and now being checked, start streaming
+            await ViewModel.ToggleFullscreenControllerAccessAsync();
+
+            // Update toggle state based on actual streaming state
+            toggle.IsChecked = ViewModel.FullscreenStream != null &&
+                               ViewModel.IsStreamingControllerTo(ViewModel.FullscreenStream.UserId);
+        }
+    }
+
     // Update the fullscreen controller button text based on streaming state
     private void UpdateFullscreenControllerButton()
     {
@@ -898,6 +982,114 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
             _isDrawing = false;
             _currentStrokePoints.Clear();
             _currentPolyline = null;
+        }
+    }
+
+    // ==================== Gaming Station Mouse Capture ====================
+
+    // Track last mouse position for delta calculation
+    private Point? _lastMousePosition;
+
+    private async void OnMouseCapturePointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (ViewModel?.IsVideoFullscreen != true ||
+            !ViewModel.IsMouseCaptureEnabled ||
+            !ViewModel.IsFullscreenGamingStation)
+            return;
+
+        var position = e.GetPosition(sender as Visual);
+        var bounds = (sender as Visual)?.Bounds ?? new Rect();
+        var normalizedX = bounds.Width > 0 ? position.X / bounds.Width : 0;
+        var normalizedY = bounds.Height > 0 ? position.Y / bounds.Height : 0;
+
+        var props = e.GetCurrentPoint(sender as Visual).Properties;
+        int? button = null;
+        if (props.IsLeftButtonPressed) button = 0;
+        else if (props.IsRightButtonPressed) button = 1;
+        else if (props.IsMiddleButtonPressed) button = 2;
+
+        await ForwardMouseInputAsync(StationMouseInputType.Down, normalizedX, normalizedY, button, null, null);
+        _lastMousePosition = position;
+        e.Handled = true;
+    }
+
+    private async void OnMouseCapturePointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (ViewModel?.IsVideoFullscreen != true ||
+            !ViewModel.IsMouseCaptureEnabled ||
+            !ViewModel.IsFullscreenGamingStation)
+            return;
+
+        var position = e.GetPosition(sender as Visual);
+        var bounds = (sender as Visual)?.Bounds ?? new Rect();
+        var normalizedX = bounds.Width > 0 ? position.X / bounds.Width : 0;
+        var normalizedY = bounds.Height > 0 ? position.Y / bounds.Height : 0;
+
+        await ForwardMouseInputAsync(StationMouseInputType.Move, normalizedX, normalizedY, null, null, null);
+        _lastMousePosition = position;
+        // Don't mark as handled to allow other handlers to work
+    }
+
+    private async void OnMouseCapturePointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (ViewModel?.IsVideoFullscreen != true ||
+            !ViewModel.IsMouseCaptureEnabled ||
+            !ViewModel.IsFullscreenGamingStation)
+            return;
+
+        var position = e.GetPosition(sender as Visual);
+        var bounds = (sender as Visual)?.Bounds ?? new Rect();
+        var normalizedX = bounds.Width > 0 ? position.X / bounds.Width : 0;
+        var normalizedY = bounds.Height > 0 ? position.Y / bounds.Height : 0;
+
+        int? button = null;
+        var init = e.InitialPressMouseButton;
+        if (init == MouseButton.Left) button = 0;
+        else if (init == MouseButton.Right) button = 1;
+        else if (init == MouseButton.Middle) button = 2;
+
+        await ForwardMouseInputAsync(StationMouseInputType.Up, normalizedX, normalizedY, button, null, null);
+        e.Handled = true;
+    }
+
+    private async void OnMouseCapturePointerWheelChanged(object? sender, PointerWheelEventArgs e)
+    {
+        if (ViewModel?.IsVideoFullscreen != true ||
+            !ViewModel.IsMouseCaptureEnabled ||
+            !ViewModel.IsFullscreenGamingStation)
+            return;
+
+        var position = e.GetPosition(sender as Visual);
+        var bounds = (sender as Visual)?.Bounds ?? new Rect();
+        var normalizedX = bounds.Width > 0 ? position.X / bounds.Width : 0;
+        var normalizedY = bounds.Height > 0 ? position.Y / bounds.Height : 0;
+
+        await ForwardMouseInputAsync(StationMouseInputType.Wheel, normalizedX, normalizedY, null, e.Delta.X, e.Delta.Y);
+        e.Handled = true;
+    }
+
+    private async Task ForwardMouseInputAsync(StationMouseInputType type, double x, double y, int? button, double? deltaX, double? deltaY)
+    {
+        if (ViewModel?.CurrentVoiceChannel == null) return;
+
+        var input = new StationMouseInput(
+            Guid.Empty, // StationId not needed - server finds it by channel
+            type,
+            x,
+            y,
+            button,
+            deltaX,
+            deltaY);
+
+        try
+        {
+            await ViewModel.SignalRService.SendStationMouseInputAsync(
+                ViewModel.CurrentVoiceChannel.Id,
+                input);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to send mouse input: {ex.Message}");
         }
     }
 

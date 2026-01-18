@@ -527,6 +527,17 @@
                         </Image.IsVisible>
                     </Image>
 
+                    <!-- Mouse Capture Overlay (for gaming station remote control) -->
+                    <Border x:Name="MouseCaptureOverlay"
+                            Background="Transparent"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            IsHitTestVisible="{Binding IsMouseCaptureEnabled}"
+                            PointerPressed="OnMouseCapturePointerPressed"
+                            PointerMoved="OnMouseCapturePointerMoved"
+                            PointerReleased="OnMouseCapturePointerReleased"
+                            PointerWheelChanged="OnMouseCapturePointerWheelChanged"/>
+
                     <!-- Drawing Canvas Overlay (transparent, captures drawing input when enabled) -->
                     <Canvas x:Name="AnnotationCanvas"
                             Background="Transparent"
@@ -636,20 +647,78 @@
                                        VerticalAlignment="Center"/>
                         </StackPanel>
 
-                        <!-- Right side: Controller button, Volume slider and Close button -->
+                        <!-- Right side: Input capture toggles (gaming station), Controller button, Volume slider and Close button -->
                         <StackPanel HorizontalAlignment="Right"
                                     VerticalAlignment="Center"
                                     Orientation="Horizontal"
                                     Spacing="16">
-                            <!-- Share Controller button (only for remote screen shares) -->
+                            <!-- Gaming Station Input Capture Toggles (only for gaming station screen shares) -->
+                            <Border Background="#E009090b"
+                                    CornerRadius="12"
+                                    Padding="8,4"
+                                    IsVisible="{Binding IsFullscreenGamingStation}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="Input Capture:"
+                                               Foreground="#b0b0b0"
+                                               FontSize="11"
+                                               VerticalAlignment="Center"/>
+
+                                    <!-- Keyboard toggle -->
+                                    <ToggleButton IsChecked="{Binding IsKeyboardCaptureEnabled}"
+                                                  Padding="8,4"
+                                                  Background="#40FFFFFF"
+                                                  Foreground="White"
+                                                  CornerRadius="8"
+                                                  ToolTip.Tip="Capture keyboard input and send to gaming station">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <ui:SymbolIcon Symbol="Keyboard" FontSize="12" Foreground="White"/>
+                                            <TextBlock Text="Keyboard" VerticalAlignment="Center" FontSize="11"/>
+                                        </StackPanel>
+                                    </ToggleButton>
+
+                                    <!-- Mouse toggle -->
+                                    <ToggleButton IsChecked="{Binding IsMouseCaptureEnabled}"
+                                                  Padding="8,4"
+                                                  Background="#40FFFFFF"
+                                                  Foreground="White"
+                                                  CornerRadius="8"
+                                                  ToolTip.Tip="Capture mouse input and send to gaming station">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <ui:SymbolIcon Symbol="TouchPointer" FontSize="12" Foreground="White"/>
+                                            <TextBlock Text="Mouse" VerticalAlignment="Center" FontSize="11"/>
+                                        </StackPanel>
+                                    </ToggleButton>
+
+                                    <!-- Controller toggle (uses existing controller streaming) -->
+                                    <ToggleButton x:Name="GamingStationControllerToggle"
+                                                  Padding="8,4"
+                                                  Background="#40FFFFFF"
+                                                  Foreground="White"
+                                                  CornerRadius="8"
+                                                  Click="OnGamingStationControllerToggleClick"
+                                                  ToolTip.Tip="Share controller input with gaming station">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <ui:SymbolIcon Symbol="Games" FontSize="12" Foreground="White"/>
+                                            <TextBlock Text="Controller" VerticalAlignment="Center" FontSize="11"/>
+                                        </StackPanel>
+                                    </ToggleButton>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Share Controller button (only for regular remote screen shares, not gaming stations) -->
                             <Button Padding="10,6"
                                     Background="#40FFFFFF"
                                     BorderThickness="0"
                                     CornerRadius="12"
                                     Cursor="Hand"
-                                    IsVisible="{Binding FullscreenStream.IsRemoteScreenShare}"
                                     Click="OnFullscreenShareControllerClick"
                                     ToolTip.Tip="Share your controller input with the host">
+                                <Button.IsVisible>
+                                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                        <Binding Path="FullscreenStream.IsRemoteScreenShare"/>
+                                        <Binding Path="!IsFullscreenGamingStation"/>
+                                    </MultiBinding>
+                                </Button.IsVisible>
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <ui:SymbolIcon Symbol="Games" Foreground="White" FontSize="14"/>
                                     <TextBlock x:Name="FullscreenControllerButtonText" Text="Share Controller" Foreground="White" FontSize="12" VerticalAlignment="Center"/>

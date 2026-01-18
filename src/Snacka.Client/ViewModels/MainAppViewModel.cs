@@ -91,6 +91,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private bool _isGpuFullscreenActive;
     private IHardwareVideoDecoder? _fullscreenHardwareDecoder;
 
+    // Gaming station input capture state (when viewing gaming station stream in fullscreen)
+    private bool _isKeyboardCaptureEnabled;
+    private bool _isMouseCaptureEnabled;
+
     // Gaming stations state (old architecture - to be replaced)
     private bool _isViewingGamingStations;
     private bool _isLoadingStations;
@@ -229,6 +233,34 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
         // Create voice channel content view model for video grid
         _voiceChannelContent = new VoiceChannelContentViewModel(_webRtc, _signalR, auth.UserId);
+
+        // Wire up gaming station remote control callbacks
+        _voiceChannelContent.OnGamingStationShareScreen = async machineId =>
+        {
+            try
+            {
+                Console.WriteLine($"MainAppVM: Sending share screen command to gaming station {machineId}");
+                await _signalR.CommandStationStartScreenShareAsync(machineId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"MainAppVM: Failed to command gaming station share screen: {ex.Message}");
+                ErrorMessage = "Failed to start screen share on gaming station";
+            }
+        };
+        _voiceChannelContent.OnGamingStationStopShareScreen = async machineId =>
+        {
+            try
+            {
+                Console.WriteLine($"MainAppVM: Sending stop share screen command to gaming station {machineId}");
+                await _signalR.CommandStationStopScreenShareAsync(machineId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"MainAppVM: Failed to command gaming station stop screen share: {ex.Message}");
+                ErrorMessage = "Failed to stop screen share on gaming station";
+            }
+        };
 
         // Create annotation service for drawing on screen shares
         _annotationService = new AnnotationService(_signalR);
@@ -1280,6 +1312,35 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             Console.WriteLine($"Gaming station mode disabled remotely");
         });
 
+        // Gaming Station input events (when this client is a gaming station receiving input from owner)
+        _signalR.StationKeyboardInputReceived += e =>
+        {
+            if (!IsGamingStationEnabled) return;
+
+            var input = e.Input;
+            Console.WriteLine($"Gaming station received keyboard input: key={input.Key}, down={input.IsDown}, ctrl={input.Ctrl}, alt={input.Alt}, shift={input.Shift}, meta={input.Meta}");
+
+            // TODO: Inject keyboard input using platform-specific APIs
+            // Windows: SendInput with KEYBDINPUT
+            // macOS: CGEventPost with CGEventCreateKeyboardEvent
+            // Linux: XTest extension or uinput
+            InjectKeyboardInput(input);
+        };
+
+        _signalR.StationMouseInputReceived += e =>
+        {
+            if (!IsGamingStationEnabled) return;
+
+            var input = e.Input;
+            Console.WriteLine($"Gaming station received mouse input: type={input.Type}, x={input.X:F3}, y={input.Y:F3}, button={input.Button}");
+
+            // TODO: Inject mouse input using platform-specific APIs
+            // Windows: SendInput with MOUSEINPUT
+            // macOS: CGEventPost with CGEventCreateMouseEvent
+            // Linux: XTest extension or uinput
+            InjectMouseInput(input);
+        };
+
         // Set up typing cleanup timer
         _typingCleanupTimer = new System.Timers.Timer(1000); // Check every second
         _typingCleanupTimer.Elapsed += (s, e) => Dispatcher.UIThread.Post(CleanupExpiredTypingIndicators);
@@ -2192,6 +2253,12 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public bool IsInVoiceChannel => CurrentVoiceChannel is not null;
 
     /// <summary>
+    /// The SignalR service for real-time communication.
+    /// Exposed for input forwarding to gaming stations.
+    /// </summary>
+    public ISignalRService SignalRService => _signalR;
+
+    /// <summary>
     /// Channel ID where the user is in voice on another device (null if not in voice elsewhere).
     /// </summary>
     public Guid? VoiceOnOtherDeviceChannelId
@@ -2495,6 +2562,36 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         private set => this.RaiseAndSetIfChanged(ref _fullscreenHardwareDecoder, value);
     }
 
+    /// <summary>
+    /// Whether keyboard input capture is enabled for gaming station remote control.
+    /// When enabled, keyboard events in fullscreen are forwarded to the gaming station.
+    /// </summary>
+    public bool IsKeyboardCaptureEnabled
+    {
+        get => _isKeyboardCaptureEnabled;
+        set => this.RaiseAndSetIfChanged(ref _isKeyboardCaptureEnabled, value);
+    }
+
+    /// <summary>
+    /// Whether mouse input capture is enabled for gaming station remote control.
+    /// When enabled, mouse events in fullscreen are forwarded to the gaming station.
+    /// </summary>
+    public bool IsMouseCaptureEnabled
+    {
+        get => _isMouseCaptureEnabled;
+        set => this.RaiseAndSetIfChanged(ref _isMouseCaptureEnabled, value);
+    }
+
+    /// <summary>
+    /// Whether the fullscreen stream is from a gaming station that supports remote input.
+    /// </summary>
+    public bool IsFullscreenGamingStation => FullscreenStream?.IsGamingStation == true;
+
+    /// <summary>
+    /// The machine ID of the gaming station being viewed in fullscreen.
+    /// </summary>
+    public string? FullscreenGamingStationMachineId => FullscreenStream?.GamingStationMachineId;
+
     public void OpenFullscreen(VideoStreamViewModel stream)
     {
         FullscreenStream = stream;
@@ -2578,6 +2675,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         IsVideoFullscreen = false;
         FullscreenStream = null;
         IsAnnotationEnabled = false; // Disable drawing when exiting fullscreen
+
+        // Disable gaming station input capture when exiting fullscreen
+        IsKeyboardCaptureEnabled = false;
+        IsMouseCaptureEnabled = false;
     }
 
     /// <summary>
@@ -3392,6 +3493,40 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         {
             Console.WriteLine($"Failed to send mouse input to station: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Injects keyboard input into the local system (for gaming station mode).
+    /// This is called when the gaming station receives input from the remote owner.
+    /// </summary>
+    private void InjectKeyboardInput(StationKeyboardInput input)
+    {
+        // Platform-specific input injection
+        // For a full implementation, this would use:
+        // - Windows: SendInput API with KEYBDINPUT structure
+        // - macOS: CGEventPost with CGEventCreateKeyboardEvent
+        // - Linux: XTest extension or uinput virtual device
+
+        // For now, log that we would inject the input
+        // Actual injection requires platform-specific native code
+        Console.WriteLine($"[INJECT KEYBOARD] key={input.Key} down={input.IsDown} ctrl={input.Ctrl} alt={input.Alt} shift={input.Shift}");
+    }
+
+    /// <summary>
+    /// Injects mouse input into the local system (for gaming station mode).
+    /// This is called when the gaming station receives input from the remote owner.
+    /// </summary>
+    private void InjectMouseInput(StationMouseInput input)
+    {
+        // Platform-specific input injection
+        // For a full implementation, this would use:
+        // - Windows: SendInput API with MOUSEINPUT structure
+        // - macOS: CGEventPost with CGEventCreateMouseEvent
+        // - Linux: XTest extension or uinput virtual device
+
+        // The normalized coordinates (0-1) need to be scaled to screen dimensions
+        // For now, log that we would inject the input
+        Console.WriteLine($"[INJECT MOUSE] type={input.Type} x={input.X:F3} y={input.Y:F3} button={input.Button}");
     }
 
     private async Task CreateCommunityAsync()

@@ -100,4 +100,16 @@ public partial class VoiceChannelContentView : UserControl
             ShareControllerRequested?.Invoke(this, stream);
         }
     }
+
+    private void OnGamingStationShareScreenClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.Tag is VideoStreamViewModel stream)
+        {
+            // Invoke the gaming station share screen callback if available
+            if (stream.GamingStationMachineId is not null)
+            {
+                stream.OnShareScreenCommand?.Invoke(stream.GamingStationMachineId);
+            }
+        }
+    }
 }

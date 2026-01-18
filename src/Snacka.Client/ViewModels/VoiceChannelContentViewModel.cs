@@ -26,6 +26,12 @@ public class VideoStreamViewModel : ReactiveObject
     private float _volume = 1.0f;
     private Action<Guid, VideoStreamType, float>? _onVolumeChanged;
 
+    // Gaming station properties
+    private bool _isGamingStation;
+    private string? _gamingStationMachineId;
+    private Action<string>? _onShareScreenCommand;
+    private Action<string>? _onStopShareScreenCommand;
+
     public VideoStreamViewModel(Guid userId, string username, VideoStreamType streamType, Guid localUserId)
         : this(userId, username, streamType, localUserId, null)
     {
@@ -49,6 +55,77 @@ public class VideoStreamViewModel : ReactiveObject
     public Guid UserId { get; }
     public string Username { get; }
     public VideoStreamType StreamType { get; }
+
+    /// <summary>
+    /// Whether this participant is a gaming station that can be remotely controlled.
+    /// </summary>
+    public bool IsGamingStation
+    {
+        get => _isGamingStation;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _isGamingStation, value);
+            this.RaisePropertyChanged(nameof(ShowGamingStationControls));
+        }
+    }
+
+    /// <summary>
+    /// The machine ID of the gaming station (for sending remote commands).
+    /// </summary>
+    public string? GamingStationMachineId
+    {
+        get => _gamingStationMachineId;
+        set => this.RaiseAndSetIfChanged(ref _gamingStationMachineId, value);
+    }
+
+    /// <summary>
+    /// Whether to show gaming station remote control buttons.
+    /// Only shown for gaming station camera tiles that belong to the local user.
+    /// </summary>
+    public bool ShowGamingStationControls =>
+        IsGamingStation &&
+        StreamType == VideoStreamType.Camera &&
+        UserId == _localUserId;
+
+    /// <summary>
+    /// Callback for when the "Share Screen" button is clicked on a gaming station tile.
+    /// </summary>
+    public Action<string>? OnShareScreenCommand
+    {
+        get => _onShareScreenCommand;
+        set => this.RaiseAndSetIfChanged(ref _onShareScreenCommand, value);
+    }
+
+    /// <summary>
+    /// Callback for when the "Stop Share" button is clicked on a gaming station tile.
+    /// </summary>
+    public Action<string>? OnStopShareScreenCommand
+    {
+        get => _onStopShareScreenCommand;
+        set => this.RaiseAndSetIfChanged(ref _onStopShareScreenCommand, value);
+    }
+
+    /// <summary>
+    /// Invokes the share screen command for this gaming station.
+    /// </summary>
+    public void ShareScreen()
+    {
+        if (!string.IsNullOrEmpty(GamingStationMachineId))
+        {
+            OnShareScreenCommand?.Invoke(GamingStationMachineId);
+        }
+    }
+
+    /// <summary>
+    /// Invokes the stop share screen command for this gaming station.
+    /// </summary>
+    public void StopShareScreen()
+    {
+        if (!string.IsNullOrEmpty(GamingStationMachineId))
+        {
+            OnStopShareScreenCommand?.Invoke(GamingStationMachineId);
+        }
+    }
 
     /// <summary>
     /// Whether this is a screen share from a remote user (not the local user).
@@ -259,6 +336,8 @@ public class ParticipantInfo
     public bool IsScreenSharing { get; set; }
     public bool ScreenShareHasAudio { get; set; }
     public bool IsSpeaking { get; set; }
+    public bool IsGamingStation { get; set; }
+    public string? GamingStationMachineId { get; set; }
 }
 
 /// <summary>
@@ -273,6 +352,18 @@ public class VoiceChannelContentViewModel : ReactiveObject, IDisposable
     private ChannelResponse? _channel;
     private ObservableCollection<VideoStreamViewModel> _videoStreams = new();
     private readonly Dictionary<Guid, ParticipantInfo> _participants = new();
+
+    /// <summary>
+    /// Callback for when a gaming station's "Share Screen" button is clicked.
+    /// The parameter is the gaming station's machine ID.
+    /// </summary>
+    public Action<string>? OnGamingStationShareScreen { get; set; }
+
+    /// <summary>
+    /// Callback for when a gaming station's "Stop Share" button is clicked.
+    /// The parameter is the gaming station's machine ID.
+    /// </summary>
+    public Action<string>? OnGamingStationStopShareScreen { get; set; }
 
     public VoiceChannelContentViewModel(IWebRtcService webRtc, ISignalRService signalR, Guid localUserId)
     {
@@ -301,12 +392,26 @@ public class VoiceChannelContentViewModel : ReactiveObject, IDisposable
     /// <summary>
     /// Creates a VideoStreamViewModel with the volume callback wired up.
     /// </summary>
-    private VideoStreamViewModel CreateVideoStream(Guid userId, string username, VideoStreamType streamType)
+    private VideoStreamViewModel CreateVideoStream(
+        Guid userId,
+        string username,
+        VideoStreamType streamType,
+        bool isGamingStation = false,
+        string? gamingStationMachineId = null)
     {
         var stream = new VideoStreamViewModel(userId, username, streamType, _localUserId, OnStreamVolumeChanged);
 
         // Set initial volume from saved settings
         stream.Volume = _webRtc.GetUserVolume(userId);
+
+        // Set gaming station properties if applicable
+        if (isGamingStation && !string.IsNullOrEmpty(gamingStationMachineId))
+        {
+            stream.IsGamingStation = true;
+            stream.GamingStationMachineId = gamingStationMachineId;
+            stream.OnShareScreenCommand = OnGamingStationShareScreen;
+            stream.OnStopShareScreenCommand = OnGamingStationStopShareScreen;
+        }
 
         return stream;
     }
@@ -352,17 +457,29 @@ public class VoiceChannelContentViewModel : ReactiveObject, IDisposable
                     IsDeafened = p.IsDeafened,
                     IsCameraOn = p.IsCameraOn,
                     IsScreenSharing = p.IsScreenSharing,
-                    ScreenShareHasAudio = p.ScreenShareHasAudio
+                    ScreenShareHasAudio = p.ScreenShareHasAudio,
+                    IsGamingStation = p.IsGamingStation,
+                    GamingStationMachineId = p.GamingStationMachineId
                 };
                 _participants[p.UserId] = info;
 
                 // Every participant always has a camera stream (shows avatar when camera off, video when on)
-                VideoStreams.Add(CreateVideoStream(p.UserId, p.Username, VideoStreamType.Camera));
+                VideoStreams.Add(CreateVideoStream(
+                    p.UserId,
+                    p.Username,
+                    VideoStreamType.Camera,
+                    p.IsGamingStation,
+                    p.GamingStationMachineId));
 
                 // Screen share adds a second stream
                 if (p.IsScreenSharing)
                 {
-                    var screenStream = CreateVideoStream(p.UserId, p.Username, VideoStreamType.ScreenShare);
+                    var screenStream = CreateVideoStream(
+                        p.UserId,
+                        p.Username,
+                        VideoStreamType.ScreenShare,
+                        p.IsGamingStation,
+                        p.GamingStationMachineId);
                     screenStream.HasAudio = p.ScreenShareHasAudio;
                     VideoStreams.Add(screenStream);
                 }
@@ -385,17 +502,29 @@ public class VoiceChannelContentViewModel : ReactiveObject, IDisposable
                 IsDeafened = participant.IsDeafened,
                 IsCameraOn = participant.IsCameraOn,
                 IsScreenSharing = participant.IsScreenSharing,
-                ScreenShareHasAudio = participant.ScreenShareHasAudio
+                ScreenShareHasAudio = participant.ScreenShareHasAudio,
+                IsGamingStation = participant.IsGamingStation,
+                GamingStationMachineId = participant.GamingStationMachineId
             };
             _participants[participant.UserId] = info;
 
             // Every participant always has a camera stream (shows avatar when camera off, video when on)
-            VideoStreams.Add(CreateVideoStream(participant.UserId, participant.Username, VideoStreamType.Camera));
+            VideoStreams.Add(CreateVideoStream(
+                participant.UserId,
+                participant.Username,
+                VideoStreamType.Camera,
+                participant.IsGamingStation,
+                participant.GamingStationMachineId));
 
             // Screen share adds a second stream
             if (participant.IsScreenSharing)
             {
-                var screenStream = CreateVideoStream(participant.UserId, participant.Username, VideoStreamType.ScreenShare);
+                var screenStream = CreateVideoStream(
+                    participant.UserId,
+                    participant.Username,
+                    VideoStreamType.ScreenShare,
+                    participant.IsGamingStation,
+                    participant.GamingStationMachineId);
                 screenStream.HasAudio = participant.ScreenShareHasAudio;
                 VideoStreams.Add(screenStream);
             }
