@@ -1,0 +1,133 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Snacka.Client.ViewModels"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             x:Class="Snacka.Client.Views.GamingStationSettingsView"
+             x:DataType="vm:GamingStationSettingsViewModel">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="24" MaxWidth="600">
+            <!-- Header -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="Gaming Station"
+                           Classes="heading-1"
+                           Foreground="{StaticResource ForegroundBrush}"/>
+                <TextBlock Text="Turn this device into a gaming station that can be remotely controlled from your other devices."
+                           Classes="text-muted"
+                           TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <!-- Enable Gaming Station Toggle -->
+            <Border Background="{StaticResource Content1Brush}"
+                    CornerRadius="12"
+                    Padding="20">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <ui:SymbolIcon Grid.Column="0"
+                                   Symbol="XboxConsole"
+                                   FontSize="24"
+                                   Foreground="{StaticResource PrimaryBrush}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,16,0"/>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                        <TextBlock Text="Enable Gaming Station Mode"
+                                   FontWeight="SemiBold"
+                                   FontSize="14"
+                                   Foreground="{StaticResource ForegroundBrush}"/>
+                        <TextBlock Text="Allow this device to be controlled remotely when you're on another device."
+                                   Classes="text-muted"
+                                   FontSize="12"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <ToggleSwitch Grid.Column="2"
+                                  IsChecked="{Binding IsGamingStationEnabled}"
+                                  VerticalAlignment="Center"
+                                  OnContent=""
+                                  OffContent=""/>
+                </Grid>
+            </Border>
+
+            <!-- Display Name -->
+            <Border Background="{StaticResource Content1Brush}"
+                    CornerRadius="12"
+                    Padding="20"
+                    IsVisible="{Binding IsGamingStationEnabled}">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Display Name"
+                               FontWeight="SemiBold"
+                               FontSize="14"
+                               Foreground="{StaticResource ForegroundBrush}"/>
+                    <TextBlock Text="A friendly name for this gaming station. Leave empty to use the computer name."
+                               Classes="text-muted"
+                               FontSize="12"
+                               TextWrapping="Wrap"/>
+                    <TextBox Text="{Binding GamingStationDisplayName}"
+                             Watermark="e.g., Living Room PC"
+                             MaxWidth="300"
+                             HorizontalAlignment="Left"/>
+                </StackPanel>
+            </Border>
+
+            <!-- How it works -->
+            <Border Background="{StaticResource Content1Brush}"
+                    CornerRadius="12"
+                    Padding="20"
+                    IsVisible="{Binding IsGamingStationEnabled}">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="How it works"
+                               FontWeight="SemiBold"
+                               FontSize="14"
+                               Foreground="{StaticResource ForegroundBrush}"/>
+
+                    <StackPanel Spacing="12">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <Border Width="24" Height="24" CornerRadius="12" Background="{StaticResource PrimaryBrush}">
+                                <TextBlock Text="1" Foreground="White" FontWeight="Bold" FontSize="12"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="This device will appear in your member list on other devices"
+                                       Classes="text-body" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <Border Width="24" Height="24" CornerRadius="12" Background="{StaticResource PrimaryBrush}">
+                                <TextBlock Text="2" Foreground="White" FontWeight="Bold" FontSize="12"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="You can command it to join voice channels and start screen sharing"
+                                       Classes="text-body" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <Border Width="24" Height="24" CornerRadius="12" Background="{StaticResource PrimaryBrush}">
+                                <TextBlock Text="3" Foreground="White" FontWeight="Bold" FontSize="12"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="Send keyboard, mouse, and controller input remotely"
+                                       Classes="text-body" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Note about local override -->
+            <Border Background="#30FFAA00"
+                    CornerRadius="12"
+                    Padding="16"
+                    IsVisible="{Binding IsGamingStationEnabled}">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <ui:SymbolIcon Symbol="Important"
+                                   FontSize="18"
+                                   Foreground="{StaticResource WarningBrush}"
+                                   VerticalAlignment="Top"
+                                   Margin="0,2,0,0"/>
+                    <TextBlock Text="You always maintain local control. A banner at the top of the screen lets you stop screen sharing, leave channels, or disable gaming station mode at any time."
+                               Classes="text-body"
+                               TextWrapping="Wrap"
+                               Foreground="{StaticResource ForegroundBrush}"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

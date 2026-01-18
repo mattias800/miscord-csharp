@@ -48,6 +48,8 @@ public class SettingsViewModel : ViewModelBase
             ControllerSettingsViewModel = new ControllerSettingsViewModel(_controllerService, _settingsStore);
         }
 
+        GamingStationSettingsViewModel = new GamingStationSettingsViewModel(_settingsStore);
+
         if (apiClient is not null && onAccountDeleted is not null)
         {
             AccountSettingsViewModel = new AccountSettingsViewModel(
@@ -97,6 +99,7 @@ public class SettingsViewModel : ViewModelBase
     public AudioSettingsViewModel AudioSettingsViewModel { get; }
     public VideoSettingsViewModel VideoSettingsViewModel { get; }
     public ControllerSettingsViewModel? ControllerSettingsViewModel { get; }
+    public GamingStationSettingsViewModel GamingStationSettingsViewModel { get; }
     public AccountSettingsViewModel? AccountSettingsViewModel { get; }
     public AdminPanelViewModel? AdminPanelViewModel { get; }
     public AboutSettingsViewModel AboutSettingsViewModel { get; }
@@ -122,6 +125,7 @@ public class SettingsViewModel : ViewModelBase
             "Voice & Video" => AudioSettingsViewModel,
             "Video" => VideoSettingsViewModel,
             "Controllers" => ControllerSettingsViewModel,
+            "Gaming Station" => GamingStationSettingsViewModel,
             "My Account" => AccountSettingsViewModel,
             "Server Admin" => AdminPanelViewModel,
             "About" => AboutSettingsViewModel,

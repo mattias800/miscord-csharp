@@ -102,6 +102,24 @@
                             </StackPanel>
                         </Button>
 
+                        <!-- Gaming Station -->
+                        <Button Command="{Binding SelectCategoryCommand}"
+                                CommandParameter="Gaming Station"
+                                Background="{Binding SelectedCategory, Converter={x:Static conv:SettingsCategoryBackgroundConverter.Instance}, ConverterParameter='Gaming Station'}"
+                                BorderThickness="0"
+                                HorizontalContentAlignment="Left"
+                                Padding="12,10"
+                                Margin="0,2"
+                                CornerRadius="10"
+                                Cursor="Hand">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <ui:SymbolIcon Symbol="XboxConsole" FontSize="16" Foreground="{Binding SelectedCategory, Converter={x:Static conv:SettingsCategoryForegroundConverter.Instance}, ConverterParameter='Gaming Station'}"/>
+                                <TextBlock Text="Gaming Station"
+                                           Foreground="{Binding SelectedCategory, Converter={x:Static conv:SettingsCategoryForegroundConverter.Instance}, ConverterParameter='Gaming Station'}"
+                                           FontSize="14"/>
+                            </StackPanel>
+                        </Button>
+
                         <!-- User Settings Section -->
                         <TextBlock Text="USER SETTINGS"
                                    FontSize="11"
@@ -209,6 +227,9 @@
                     </DataTemplate>
                     <DataTemplate DataType="{x:Type vm:ControllerSettingsViewModel}">
                         <Views:ControllerSettingsView/>
+                    </DataTemplate>
+                    <DataTemplate DataType="{x:Type vm:GamingStationSettingsViewModel}">
+                        <Views:GamingStationSettingsView/>
                     </DataTemplate>
                     <DataTemplate DataType="{x:Type vm:AccountSettingsViewModel}">
                         <Views:AccountSettingsView/>
