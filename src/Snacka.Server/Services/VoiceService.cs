@@ -165,7 +165,9 @@ public class VoiceService : IVoiceService
                 p.IsScreenSharing,
                 p.ScreenShareHasAudio,
                 p.IsCameraOn,
-                p.JoinedAt
+                p.JoinedAt,
+                false,  // IsGamingStation - will be enriched in hub
+                null    // GamingStationMachineId - will be enriched in hub
             ))
             .ToListAsync(cancellationToken);
     }
@@ -187,7 +189,9 @@ public class VoiceService : IVoiceService
                 p.IsScreenSharing,
                 p.ScreenShareHasAudio,
                 p.IsCameraOn,
-                p.JoinedAt
+                p.JoinedAt,
+                false,  // IsGamingStation - will be enriched in hub
+                null    // GamingStationMachineId - will be enriched in hub
             ))
             .FirstOrDefaultAsync(cancellationToken);
     }

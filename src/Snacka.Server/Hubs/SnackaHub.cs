@@ -539,6 +539,9 @@ public class SnackaHub : Hub
 
             var participant = await _voiceService.JoinChannelAsync(channelId, userId.Value);
 
+            // Enrich with gaming station info if this participant is a gaming station
+            participant = EnrichWithGamingStationInfo(participant);
+
             // Track this connection as the voice connection for this user
             lock (Lock)
             {
@@ -1712,6 +1715,30 @@ public class SnackaHub : Hub
                 CurrentChannelId: null,
                 IsScreenSharing: false
             ));
+    }
+
+    /// <summary>
+    /// Enriches a VoiceParticipantResponse with gaming station info if the participant is a gaming station.
+    /// </summary>
+    private VoiceParticipantResponse EnrichWithGamingStationInfo(VoiceParticipantResponse participant)
+    {
+        lock (Lock)
+        {
+            // Check if this participant is a gaming station
+            var stationEntry = GamingStations.FirstOrDefault(kvp =>
+                kvp.Value.OwnerId == participant.UserId &&
+                kvp.Value.ConnectionId == Context.ConnectionId);
+
+            if (stationEntry.Key is not null)
+            {
+                return participant with
+                {
+                    IsGamingStation = true,
+                    GamingStationMachineId = stationEntry.Key
+                };
+            }
+        }
+        return participant;
     }
 
     /// <summary>

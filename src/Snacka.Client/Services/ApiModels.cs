@@ -304,7 +304,9 @@ public record VoiceParticipantResponse(
     bool IsScreenSharing,
     bool ScreenShareHasAudio,
     bool IsCameraOn,
-    DateTime JoinedAt
+    DateTime JoinedAt,
+    bool IsGamingStation = false,
+    string? GamingStationMachineId = null
 );
 
 public record VoiceStateUpdate(
