@@ -242,6 +242,52 @@ public class SnackaHub : Hub
                 }
             }
 
+            // Handle gaming station disconnect cleanup
+            try
+            {
+                var stationService = Context.GetHttpContext()?.RequestServices.GetService<IGamingStationService>();
+                if (stationService is not null)
+                {
+                    // Check if this connection was a station
+                    await stationService.SetStationOfflineAsync(Context.ConnectionId);
+
+                    // Check if this connection was a user connected to a station
+                    await stationService.DisconnectUserByConnectionIdAsync(Context.ConnectionId);
+                }
+
+                // Clean up in-memory station tracking
+                lock (Lock)
+                {
+                    // Find and remove any station connections
+                    var stationsToRemove = StationConnections
+                        .Where(kvp => kvp.Value == Context.ConnectionId)
+                        .Select(kvp => kvp.Key)
+                        .ToList();
+
+                    foreach (var stationId in stationsToRemove)
+                    {
+                        StationConnections.Remove(stationId);
+                        _logger.LogInformation("Station {StationId} disconnected", stationId);
+                    }
+
+                    // Find and remove any station user connections
+                    var userConnectionsToRemove = StationUserConnections
+                        .Where(kvp => kvp.Value == Context.ConnectionId)
+                        .Select(kvp => kvp.Key)
+                        .ToList();
+
+                    foreach (var key in userConnectionsToRemove)
+                    {
+                        StationUserConnections.Remove(key);
+                        _logger.LogInformation("User {UserId} disconnected from station {StationId}", key.Item2, key.Item1);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to handle gaming station disconnect cleanup for connection {ConnectionId}", Context.ConnectionId);
+            }
+
             // Only update online status if this was the last connection
             if (isLastConnection)
             {
@@ -1589,6 +1635,360 @@ public class SnackaHub : Hub
         }
 
         return Task.FromResult(new List<(Guid, byte)>());
+    }
+
+    // ==================== Gaming Station Methods ====================
+
+    // Track station connections: StationId -> ConnectionId
+    private static readonly Dictionary<Guid, string> StationConnections = new();
+
+    // Track users connected to stations: (StationId, UserId) -> ConnectionId
+    private static readonly Dictionary<(Guid, Guid), string> StationUserConnections = new();
+
+    /// <summary>
+    /// Called by a gaming station when it comes online.
+    /// </summary>
+    public async Task StationOnline(Guid stationId, string machineId)
+    {
+        var userId = GetUserId();
+        if (userId is null) return;
+
+        var stationService = Context.GetHttpContext()?.RequestServices.GetService<IGamingStationService>();
+        if (stationService is null) return;
+
+        var station = await stationService.SetStationOnlineAsync(stationId, userId.Value, machineId, Context.ConnectionId);
+        if (station is null)
+        {
+            _logger.LogWarning("Station {StationId} failed to come online for user {UserId}", stationId, userId.Value);
+            return;
+        }
+
+        lock (Lock)
+        {
+            StationConnections[stationId] = Context.ConnectionId;
+        }
+
+        // Add to station group
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"station:{stationId}");
+
+        // Notify users with access to this station
+        await Clients.User(userId.Value.ToString())
+            .SendAsync("StationOnline", new StationOnlineEvent(stationId, station.Name, station.OwnerId));
+
+        _logger.LogInformation("Station {StationId} ({StationName}) came online", stationId, station.Name);
+    }
+
+    /// <summary>
+    /// Called by a gaming station when it goes offline gracefully.
+    /// </summary>
+    public async Task StationOffline(Guid stationId)
+    {
+        var userId = GetUserId();
+        if (userId is null) return;
+
+        var stationService = Context.GetHttpContext()?.RequestServices.GetService<IGamingStationService>();
+        if (stationService is null) return;
+
+        await stationService.SetStationOfflineAsync(Context.ConnectionId);
+
+        lock (Lock)
+        {
+            StationConnections.Remove(stationId);
+        }
+
+        // Remove from station group
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"station:{stationId}");
+
+        // Notify users with access
+        await Clients.User(userId.Value.ToString())
+            .SendAsync("StationOffline", new StationOfflineEvent(stationId));
+
+        _logger.LogInformation("Station {StationId} went offline", stationId);
+    }
+
+    /// <summary>
+    /// Called by a user to connect to a gaming station.
+    /// </summary>
+    public async Task<StationSessionUserResponse?> ConnectToStation(Guid stationId, StationInputMode inputMode)
+    {
+        var userId = GetUserId();
+        if (userId is null) return null;
+
+        var stationService = Context.GetHttpContext()?.RequestServices.GetService<IGamingStationService>();
+        if (stationService is null) return null;
+
+        try
+        {
+            var sessionUser = await stationService.ConnectUserAsync(
+                stationId, userId.Value, Context.ConnectionId, inputMode);
+
+            lock (Lock)
+            {
+                StationUserConnections[(stationId, userId.Value)] = Context.ConnectionId;
+            }
+
+            // Add to station group
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"station:{stationId}");
+
+            // Get user info
+            var user = await _db.Users.FindAsync(userId.Value);
+
+            // Notify the station that a user is connecting
+            string? stationConnectionId;
+            lock (Lock)
+            {
+                StationConnections.TryGetValue(stationId, out stationConnectionId);
+            }
+
+            if (stationConnectionId is not null)
+            {
+                await Clients.Client(stationConnectionId)
+                    .SendAsync("UserConnecting", new UserConnectingToStationEvent(
+                        userId.Value,
+                        user?.Username ?? "Unknown",
+                        user?.EffectiveDisplayName ?? "Unknown",
+                        inputMode
+                    ));
+            }
+
+            // Notify others in the station
+            await Clients.OthersInGroup($"station:{stationId}")
+                .SendAsync("UserConnectedToStation", new UserConnectedToStationEvent(
+                    stationId,
+                    userId.Value,
+                    user?.Username ?? "Unknown",
+                    user?.EffectiveDisplayName ?? "Unknown",
+                    sessionUser.PlayerSlot,
+                    inputMode
+                ));
+
+            _logger.LogInformation("User {UserId} connected to station {StationId}", userId.Value, stationId);
+            return sessionUser;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to connect user {UserId} to station {StationId}", userId.Value, stationId);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Called by a user to disconnect from a gaming station.
+    /// </summary>
+    public async Task DisconnectFromStation(Guid stationId)
+    {
+        var userId = GetUserId();
+        if (userId is null) return;
+
+        var stationService = Context.GetHttpContext()?.RequestServices.GetService<IGamingStationService>();
+        if (stationService is null) return;
+
+        await stationService.DisconnectUserAsync(stationId, userId.Value);
+
+        lock (Lock)
+        {
+            StationUserConnections.Remove((stationId, userId.Value));
+        }
+
+        // Remove from station group
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"station:{stationId}");
+
+        // Notify others in the station
+        await Clients.OthersInGroup($"station:{stationId}")
+            .SendAsync("UserDisconnectedFromStation", new UserDisconnectedFromStationEvent(stationId, userId.Value));
+
+        _logger.LogInformation("User {UserId} disconnected from station {StationId}", userId.Value, stationId);
+    }
+
+    /// <summary>
+    /// Station sends WebRTC offer to a connecting user.
+    /// </summary>
+    public async Task SendStationOffer(Guid userId, string sdp)
+    {
+        var stationUserId = GetUserId();
+        if (stationUserId is null) return;
+
+        // Get the station for this connection
+        var stationService = Context.GetHttpContext()?.RequestServices.GetService<IGamingStationService>();
+        if (stationService is null) return;
+
+        var station = await stationService.GetStationByConnectionIdAsync(Context.ConnectionId);
+        if (station is null) return;
+
+        // Send offer to user's station connection
+        string? userConnectionId;
+        lock (Lock)
+        {
+            StationUserConnections.TryGetValue((station.Id, userId), out userConnectionId);
+        }
+
+        if (userConnectionId is not null)
+        {
+            await Clients.Client(userConnectionId)
+                .SendAsync("StationOffer", new StationWebRtcOffer(station.Id, userId, sdp));
+            _logger.LogDebug("Sent station WebRTC offer from station {StationId} to user {UserId}", station.Id, userId);
+        }
+    }
+
+    /// <summary>
+    /// User sends WebRTC answer to station.
+    /// </summary>
+    public async Task SendStationAnswer(Guid stationId, string sdp)
+    {
+        var userId = GetUserId();
+        if (userId is null) return;
+
+        // Send answer to station
+        string? stationConnectionId;
+        lock (Lock)
+        {
+            StationConnections.TryGetValue(stationId, out stationConnectionId);
+        }
+
+        if (stationConnectionId is not null)
+        {
+            await Clients.Client(stationConnectionId)
+                .SendAsync("StationAnswer", new StationWebRtcAnswer(stationId, sdp));
+            _logger.LogDebug("Sent WebRTC answer from user {UserId} to station {StationId}", userId.Value, stationId);
+        }
+    }
+
+    /// <summary>
+    /// Exchange ICE candidates for station streaming.
+    /// </summary>
+    public async Task SendStationIceCandidate(Guid stationId, Guid? targetUserId, string candidate, string? sdpMid, int? sdpMLineIndex)
+    {
+        var userId = GetUserId();
+        if (userId is null) return;
+
+        // Determine if sender is station or user
+        string? targetConnectionId;
+        lock (Lock)
+        {
+            if (targetUserId.HasValue)
+            {
+                // Sender is station, target is user
+                StationUserConnections.TryGetValue((stationId, targetUserId.Value), out targetConnectionId);
+            }
+            else
+            {
+                // Sender is user, target is station
+                StationConnections.TryGetValue(stationId, out targetConnectionId);
+            }
+        }
+
+        if (targetConnectionId is not null)
+        {
+            await Clients.Client(targetConnectionId)
+                .SendAsync("StationIceCandidate", new StationIceCandidate(
+                    stationId, targetUserId ?? userId.Value, candidate, sdpMid, sdpMLineIndex));
+        }
+    }
+
+    /// <summary>
+    /// User sends keyboard input to station.
+    /// </summary>
+    public async Task SendStationKeyboardInput(StationKeyboardInput input)
+    {
+        var userId = GetUserId();
+        if (userId is null) return;
+
+        // Verify user is connected to station with appropriate input mode
+        var stationService = Context.GetHttpContext()?.RequestServices.GetService<IGamingStationService>();
+        if (stationService is null) return;
+
+        var permission = await stationService.GetUserPermissionAsync(input.StationId, userId.Value);
+        if (permission is null || permission < StationPermission.FullControl)
+        {
+            return; // No permission for keyboard input
+        }
+
+        // Update last input time
+        await stationService.UpdateLastInputAsync(input.StationId, userId.Value);
+
+        // Forward to station
+        string? stationConnectionId;
+        lock (Lock)
+        {
+            StationConnections.TryGetValue(input.StationId, out stationConnectionId);
+        }
+
+        if (stationConnectionId is not null)
+        {
+            await Clients.Client(stationConnectionId)
+                .SendAsync("KeyboardInput", input);
+        }
+    }
+
+    /// <summary>
+    /// User sends mouse input to station.
+    /// </summary>
+    public async Task SendStationMouseInput(StationMouseInput input)
+    {
+        var userId = GetUserId();
+        if (userId is null) return;
+
+        // Verify user is connected to station with appropriate input mode
+        var stationService = Context.GetHttpContext()?.RequestServices.GetService<IGamingStationService>();
+        if (stationService is null) return;
+
+        var permission = await stationService.GetUserPermissionAsync(input.StationId, userId.Value);
+        if (permission is null || permission < StationPermission.FullControl)
+        {
+            return; // No permission for mouse input
+        }
+
+        // Update last input time (throttle for high-frequency mouse events)
+        // In production, consider batching or throttling this
+        _ = stationService.UpdateLastInputAsync(input.StationId, userId.Value);
+
+        // Forward to station
+        string? stationConnectionId;
+        lock (Lock)
+        {
+            StationConnections.TryGetValue(input.StationId, out stationConnectionId);
+        }
+
+        if (stationConnectionId is not null)
+        {
+            await Clients.Client(stationConnectionId)
+                .SendAsync("MouseInput", input);
+        }
+    }
+
+    /// <summary>
+    /// User sends controller input to station.
+    /// </summary>
+    public async Task SendStationControllerInput(StationControllerInput input)
+    {
+        var userId = GetUserId();
+        if (userId is null) return;
+
+        // Verify user is connected to station with appropriate input mode
+        var stationService = Context.GetHttpContext()?.RequestServices.GetService<IGamingStationService>();
+        if (stationService is null) return;
+
+        var permission = await stationService.GetUserPermissionAsync(input.StationId, userId.Value);
+        if (permission is null || permission < StationPermission.Controller)
+        {
+            return; // No permission for controller input
+        }
+
+        // Update last input time (throttle for high-frequency controller events)
+        _ = stationService.UpdateLastInputAsync(input.StationId, userId.Value);
+
+        // Forward to station
+        string? stationConnectionId;
+        lock (Lock)
+        {
+            StationConnections.TryGetValue(input.StationId, out stationConnectionId);
+        }
+
+        if (stationConnectionId is not null)
+        {
+            await Clients.Client(stationConnectionId)
+                .SendAsync("ControllerInput", input);
+        }
     }
 
     private Guid? GetUserId()

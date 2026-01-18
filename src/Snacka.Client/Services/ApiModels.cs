@@ -450,3 +450,126 @@ public record NotificationResponse(
 );
 
 public record NotificationCountResponse(int UnreadCount);
+
+// ============================================================================
+// Gaming Station Models
+// ============================================================================
+
+/// <summary>
+/// Response for a gaming station.
+/// </summary>
+public record GamingStationResponse(
+    Guid Id,
+    Guid OwnerId,
+    string OwnerUsername,
+    string OwnerEffectiveDisplayName,
+    string Name,
+    string? Description,
+    StationStatus Status,
+    DateTime? LastSeenAt,
+    DateTime CreatedAt,
+    int ConnectedUserCount,
+    bool IsOwner,
+    StationPermission? MyPermission
+);
+
+/// <summary>
+/// Response for a station access grant.
+/// </summary>
+public record StationAccessGrantResponse(
+    Guid Id,
+    Guid StationId,
+    Guid UserId,
+    string Username,
+    string EffectiveDisplayName,
+    string? Avatar,
+    StationPermission Permission,
+    Guid GrantedById,
+    string GrantedByUsername,
+    DateTime GrantedAt,
+    DateTime? ExpiresAt
+);
+
+/// <summary>
+/// Response for a station session.
+/// </summary>
+public record StationSessionResponse(
+    Guid Id,
+    Guid StationId,
+    DateTime StartedAt,
+    List<StationSessionUserResponse> ConnectedUsers
+);
+
+/// <summary>
+/// Response for a user connected to a station session.
+/// </summary>
+public record StationSessionUserResponse(
+    Guid UserId,
+    string Username,
+    string EffectiveDisplayName,
+    string? Avatar,
+    int? PlayerSlot,
+    StationInputMode InputMode,
+    DateTime ConnectedAt,
+    DateTime? LastInputAt
+);
+
+// Station API Request Records
+public record RegisterStationRequest(string Name, string? Description, string MachineId);
+public record UpdateStationRequest(string? Name, string? Description);
+public record GrantStationAccessRequest(Guid UserId, StationPermission Permission = StationPermission.Controller, DateTime? ExpiresAt = null);
+public record UpdateStationAccessRequest(StationPermission? Permission, DateTime? ExpiresAt);
+public record ConnectToStationRequest(StationInputMode PreferredInputMode = StationInputMode.Controller);
+public record AssignPlayerSlotRequest(Guid UserId, int? PlayerSlot);
+
+// Station SignalR Events
+public record StationOnlineEvent(Guid StationId, string StationName, Guid OwnerId);
+public record StationOfflineEvent(Guid StationId);
+public record StationStatusChangedEvent(Guid StationId, StationStatus Status, int ConnectedUserCount);
+public record UserConnectedToStationEvent(Guid StationId, Guid UserId, string Username, string EffectiveDisplayName, int? PlayerSlot, StationInputMode InputMode);
+public record UserDisconnectedFromStationEvent(Guid StationId, Guid UserId);
+public record PlayerSlotAssignedEvent(Guid StationId, Guid UserId, int? PlayerSlot);
+public record StationAccessGrantedEvent(Guid StationId, string StationName, Guid UserId, StationPermission Permission, Guid GrantedById, string GrantedByUsername);
+public record StationAccessRevokedEvent(Guid StationId, Guid UserId, Guid RevokedById);
+public record UserConnectingToStationEvent(Guid UserId, string Username, string EffectiveDisplayName, StationInputMode RequestedInputMode);
+
+// Station WebRTC Signaling
+public record StationWebRtcOffer(Guid StationId, Guid UserId, string Sdp);
+public record StationWebRtcAnswer(Guid StationId, string Sdp);
+public record StationIceCandidate(Guid StationId, Guid? UserId, string Candidate, string? SdpMid, int? SdpMLineIndex);
+
+// Station Input Events
+public record StationKeyboardInput(Guid StationId, string Key, bool IsDown, bool Ctrl, bool Alt, bool Shift, bool Meta);
+public record StationMouseInput(Guid StationId, StationMouseInputType Type, double X, double Y, int? Button, double? DeltaX, double? DeltaY);
+public record StationControllerInput(Guid StationId, int PlayerSlot, ushort Buttons, byte LeftTrigger, byte RightTrigger, short LeftStickX, short LeftStickY, short RightStickX, short RightStickY);
+
+public enum StationMouseInputType
+{
+    Move = 0,
+    Down = 1,
+    Up = 2,
+    Wheel = 3
+}
+
+public enum StationStatus
+{
+    Offline = 0,
+    Online = 1,
+    InUse = 2,
+    Maintenance = 3
+}
+
+public enum StationPermission
+{
+    ViewOnly = 0,
+    Controller = 1,
+    FullControl = 2,
+    Admin = 3
+}
+
+public enum StationInputMode
+{
+    ViewOnly = 0,
+    Controller = 1,
+    FullInput = 2
+}

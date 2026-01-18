@@ -892,6 +892,80 @@ public class ApiClient : IApiClient
             return $"Request failed: {statusCode}";
         }
     }
+
+    // Gaming Station methods
+    public async Task<ApiResult<List<GamingStationResponse>>> GetStationsAsync()
+    {
+        return await GetAsync<List<GamingStationResponse>>("/api/gaming-stations");
+    }
+
+    public async Task<ApiResult<GamingStationResponse>> GetStationAsync(Guid stationId)
+    {
+        return await GetAsync<GamingStationResponse>($"/api/gaming-stations/{stationId}");
+    }
+
+    public async Task<ApiResult<GamingStationResponse>> RegisterStationAsync(string name, string? description, string machineId)
+    {
+        return await PostAsync<RegisterStationRequest, GamingStationResponse>(
+            "/api/gaming-stations",
+            new RegisterStationRequest(name, description, machineId));
+    }
+
+    public async Task<ApiResult<GamingStationResponse>> UpdateStationAsync(Guid stationId, string? name, string? description)
+    {
+        return await PutAsync<UpdateStationRequest, GamingStationResponse>(
+            $"/api/gaming-stations/{stationId}",
+            new UpdateStationRequest(name, description));
+    }
+
+    public async Task<ApiResult<bool>> DeleteStationAsync(Guid stationId)
+    {
+        return await DeleteAsync($"/api/gaming-stations/{stationId}");
+    }
+
+    public async Task<ApiResult<List<StationAccessGrantResponse>>> GetStationAccessGrantsAsync(Guid stationId)
+    {
+        return await GetAsync<List<StationAccessGrantResponse>>($"/api/gaming-stations/{stationId}/access");
+    }
+
+    public async Task<ApiResult<StationAccessGrantResponse>> GrantStationAccessAsync(
+        Guid stationId,
+        Guid userId,
+        StationPermission permission,
+        DateTime? expiresAt = null)
+    {
+        return await PostAsync<GrantStationAccessRequest, StationAccessGrantResponse>(
+            $"/api/gaming-stations/{stationId}/access",
+            new GrantStationAccessRequest(userId, permission, expiresAt));
+    }
+
+    public async Task<ApiResult<StationAccessGrantResponse>> UpdateStationAccessAsync(
+        Guid stationId,
+        Guid grantId,
+        StationPermission? permission,
+        DateTime? expiresAt)
+    {
+        return await PutAsync<UpdateStationAccessRequest, StationAccessGrantResponse>(
+            $"/api/gaming-stations/{stationId}/access/{grantId}",
+            new UpdateStationAccessRequest(permission, expiresAt));
+    }
+
+    public async Task<ApiResult<bool>> RevokeStationAccessAsync(Guid stationId, Guid userId)
+    {
+        return await DeleteAsync($"/api/gaming-stations/{stationId}/access/{userId}");
+    }
+
+    public async Task<ApiResult<StationSessionResponse>> GetStationSessionAsync(Guid stationId)
+    {
+        return await GetAsync<StationSessionResponse>($"/api/gaming-stations/{stationId}/session");
+    }
+
+    public async Task<ApiResult<StationSessionUserResponse>> AssignPlayerSlotAsync(Guid stationId, Guid userId, int? playerSlot)
+    {
+        return await PostAsync<AssignPlayerSlotRequest, StationSessionUserResponse>(
+            $"/api/gaming-stations/{stationId}/player-slot",
+            new AssignPlayerSlotRequest(userId, playerSlot));
+    }
 }
 
 // For parsing ASP.NET Core validation errors

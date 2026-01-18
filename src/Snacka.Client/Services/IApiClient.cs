@@ -112,6 +112,19 @@ public interface IApiClient
     Task<ApiResult<bool>> MarkAllNotificationsAsReadAsync();
     Task<ApiResult<bool>> DismissNotificationAsync(Guid notificationId);
     Task<ApiResult<bool>> DismissAllNotificationsAsync();
+
+    // Gaming Stations
+    Task<ApiResult<List<GamingStationResponse>>> GetStationsAsync();
+    Task<ApiResult<GamingStationResponse>> GetStationAsync(Guid stationId);
+    Task<ApiResult<GamingStationResponse>> RegisterStationAsync(string name, string? description, string machineId);
+    Task<ApiResult<GamingStationResponse>> UpdateStationAsync(Guid stationId, string? name, string? description);
+    Task<ApiResult<bool>> DeleteStationAsync(Guid stationId);
+    Task<ApiResult<List<StationAccessGrantResponse>>> GetStationAccessGrantsAsync(Guid stationId);
+    Task<ApiResult<StationAccessGrantResponse>> GrantStationAccessAsync(Guid stationId, Guid userId, StationPermission permission, DateTime? expiresAt = null);
+    Task<ApiResult<StationAccessGrantResponse>> UpdateStationAccessAsync(Guid stationId, Guid grantId, StationPermission? permission, DateTime? expiresAt);
+    Task<ApiResult<bool>> RevokeStationAccessAsync(Guid stationId, Guid userId);
+    Task<ApiResult<StationSessionResponse>> GetStationSessionAsync(Guid stationId);
+    Task<ApiResult<StationSessionUserResponse>> AssignPlayerSlotAsync(Guid stationId, Guid userId, int? playerSlot);
 }
 
 /// <summary>

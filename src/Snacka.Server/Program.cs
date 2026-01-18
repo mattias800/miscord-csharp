@@ -180,6 +180,7 @@ builder.Services.AddScoped<ICommunityInviteService, CommunityInviteService>();
 builder.Services.AddScoped<IVoiceService, VoiceService>();
 builder.Services.AddScoped<IReactionService, ReactionService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IGamingStationService, GamingStationService>();
 
 // Add link preview service with HttpClient
 builder.Services.AddHttpClient<ILinkPreviewService, LinkPreviewService>();

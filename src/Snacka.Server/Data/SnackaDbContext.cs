@@ -20,6 +20,10 @@ public sealed class SnackaDbContext : DbContext
     public DbSet<MessageAttachment> MessageAttachments => Set<MessageAttachment>();
     public DbSet<CommunityInvite> CommunityInvites => Set<CommunityInvite>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<GamingStation> GamingStations => Set<GamingStation>();
+    public DbSet<StationAccessGrant> StationAccessGrants => Set<StationAccessGrant>();
+    public DbSet<StationSession> StationSessions => Set<StationSession>();
+    public DbSet<StationSessionUser> StationSessionUsers => Set<StationSessionUser>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -257,5 +261,73 @@ public sealed class SnackaDbContext : DbContext
         modelBuilder.Entity<Notification>()
             .HasIndex(n => new { n.RecipientId, n.IsRead, n.IsDismissed })
             .HasDatabaseName("IX_Notifications_Recipient_Unread");
+
+        // GamingStation configuration
+        modelBuilder.Entity<GamingStation>()
+            .HasKey(gs => gs.Id);
+        modelBuilder.Entity<GamingStation>()
+            .HasOne(gs => gs.Owner)
+            .WithMany()
+            .HasForeignKey(gs => gs.OwnerId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<GamingStation>()
+            .HasIndex(gs => gs.OwnerId);
+        modelBuilder.Entity<GamingStation>()
+            .HasIndex(gs => gs.ConnectionId);
+        modelBuilder.Entity<GamingStation>()
+            .HasIndex(gs => new { gs.OwnerId, gs.MachineId })
+            .IsUnique();
+
+        // StationAccessGrant configuration
+        modelBuilder.Entity<StationAccessGrant>()
+            .HasKey(sag => sag.Id);
+        modelBuilder.Entity<StationAccessGrant>()
+            .HasOne(sag => sag.Station)
+            .WithMany(gs => gs.AccessGrants)
+            .HasForeignKey(sag => sag.StationId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<StationAccessGrant>()
+            .HasOne(sag => sag.User)
+            .WithMany()
+            .HasForeignKey(sag => sag.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<StationAccessGrant>()
+            .HasOne(sag => sag.GrantedBy)
+            .WithMany()
+            .HasForeignKey(sag => sag.GrantedById)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<StationAccessGrant>()
+            .HasIndex(sag => new { sag.StationId, sag.UserId })
+            .IsUnique();
+
+        // StationSession configuration
+        modelBuilder.Entity<StationSession>()
+            .HasKey(ss => ss.Id);
+        modelBuilder.Entity<StationSession>()
+            .HasOne(ss => ss.Station)
+            .WithMany(gs => gs.Sessions)
+            .HasForeignKey(ss => ss.StationId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<StationSession>()
+            .HasIndex(ss => new { ss.StationId, ss.EndedAt });
+
+        // StationSessionUser configuration
+        modelBuilder.Entity<StationSessionUser>()
+            .HasKey(ssu => ssu.Id);
+        modelBuilder.Entity<StationSessionUser>()
+            .HasOne(ssu => ssu.Session)
+            .WithMany(ss => ss.ConnectedUsers)
+            .HasForeignKey(ssu => ssu.SessionId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<StationSessionUser>()
+            .HasOne(ssu => ssu.User)
+            .WithMany()
+            .HasForeignKey(ssu => ssu.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<StationSessionUser>()
+            .HasIndex(ssu => ssu.ConnectionId);
+        modelBuilder.Entity<StationSessionUser>()
+            .HasIndex(ssu => new { ssu.SessionId, ssu.UserId })
+            .IsUnique();
     }
 }
