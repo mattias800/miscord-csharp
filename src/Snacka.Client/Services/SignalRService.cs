@@ -93,6 +93,10 @@ public interface ISignalRService : IAsyncDisposable
     event Action<VoiceStateChangedEvent>? VoiceStateChanged;
     event Action<SpeakingStateChangedEvent>? SpeakingStateChanged;
 
+    // Multi-device voice events
+    event Action<VoiceSessionActiveOnOtherDeviceEvent>? VoiceSessionActiveOnOtherDevice;
+    event Action<DisconnectedFromVoiceEvent>? DisconnectedFromVoice;
+
     // Admin voice action events
     event Action<ServerVoiceStateChangedEvent>? ServerVoiceStateChanged;
     event Action<UserMovedEvent>? UserMoved;
@@ -247,6 +251,10 @@ public class SignalRService : ISignalRService
     public event Action<VoiceParticipantLeftEvent>? VoiceParticipantLeft;
     public event Action<VoiceStateChangedEvent>? VoiceStateChanged;
     public event Action<SpeakingStateChangedEvent>? SpeakingStateChanged;
+
+    // Multi-device voice events
+    public event Action<VoiceSessionActiveOnOtherDeviceEvent>? VoiceSessionActiveOnOtherDevice;
+    public event Action<DisconnectedFromVoiceEvent>? DisconnectedFromVoice;
 
     // Admin voice action events
     public event Action<ServerVoiceStateChangedEvent>? ServerVoiceStateChanged;
@@ -755,6 +763,19 @@ public class SignalRService : ISignalRService
         _hubConnection.On<SpeakingStateChangedEvent>("SpeakingStateChanged", e =>
         {
             SpeakingStateChanged?.Invoke(e);
+        });
+
+        // Multi-device voice events
+        _hubConnection.On<VoiceSessionActiveOnOtherDeviceEvent>("VoiceSessionActiveOnOtherDevice", e =>
+        {
+            Console.WriteLine($"SignalR: VoiceSessionActiveOnOtherDevice - user is in voice on another device (channel {e.ChannelId}, {e.ChannelName})");
+            VoiceSessionActiveOnOtherDevice?.Invoke(e);
+        });
+
+        _hubConnection.On<DisconnectedFromVoiceEvent>("DisconnectedFromVoice", e =>
+        {
+            Console.WriteLine($"SignalR: DisconnectedFromVoice - {e.Reason}, channel {e.ChannelId}");
+            DisconnectedFromVoice?.Invoke(e);
         });
 
         // Admin voice action events

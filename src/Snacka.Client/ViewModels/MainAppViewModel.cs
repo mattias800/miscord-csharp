@@ -54,6 +54,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private VoiceConnectionStatus _voiceConnectionStatus = VoiceConnectionStatus.Disconnected;
     private ObservableCollection<VoiceParticipantResponse> _voiceParticipants = new();
 
+    // Multi-device voice state (tracks when user is in voice on another device)
+    private Guid? _voiceOnOtherDeviceChannelId;
+    private string? _voiceOnOtherDeviceChannelName;
+
     // Drag preview state
     private List<VoiceChannelViewModel>? _originalVoiceChannelOrder;
     private Guid? _currentPreviewDraggedId;
@@ -934,6 +938,53 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             if (CurrentVoiceChannel is not null && e.ChannelId == CurrentVoiceChannel.Id)
             {
                 _voiceChannelContent?.UpdateSpeakingState(e.UserId, e.IsSpeaking);
+            }
+        });
+
+        // Multi-device voice events
+        _signalR.VoiceSessionActiveOnOtherDevice += e => Dispatcher.UIThread.Post(() =>
+        {
+            Console.WriteLine($"EVENT VoiceSessionActiveOnOtherDevice: In voice on another device (channel {e.ChannelId}, {e.ChannelName})");
+            VoiceOnOtherDeviceChannelId = e.ChannelId;
+            VoiceOnOtherDeviceChannelName = e.ChannelName;
+        });
+
+        _signalR.DisconnectedFromVoice += e => Dispatcher.UIThread.Post(async () =>
+        {
+            Console.WriteLine($"EVENT DisconnectedFromVoice: {e.Reason}, channel {e.ChannelId}");
+
+            if (CurrentVoiceChannel is not null && CurrentVoiceChannel.Id == e.ChannelId)
+            {
+                // Stop screen sharing first
+                if (IsScreenSharing)
+                {
+                    HideSharerAnnotationOverlay();
+                    await _webRtc.SetScreenSharingAsync(false);
+                    _currentScreenShareSettings = null;
+                    _annotationService.OnScreenShareEnded(_auth.UserId);
+                }
+
+                // Leave WebRTC connections (but don't notify server - it already knows)
+                await _webRtc.LeaveVoiceChannelAsync();
+
+                // Remove ourselves from the VoiceChannelViewModel
+                var voiceChannelVm = VoiceChannelViewModels.FirstOrDefault(v => v.Id == e.ChannelId);
+                voiceChannelVm?.RemoveParticipant(_auth.UserId);
+
+                // Clear local state
+                CurrentVoiceChannel = null;
+                VoiceParticipants.Clear();
+                IsCameraOn = false;
+                IsScreenSharing = false;
+                IsVoiceVideoOverlayOpen = false;
+                SelectedVoiceChannelForViewing = null;
+                _voiceChannelContent?.SetParticipants(Enumerable.Empty<VoiceParticipantResponse>());
+
+                // Track that we're now in voice on another device
+                VoiceOnOtherDeviceChannelId = e.ChannelId;
+                VoiceOnOtherDeviceChannelName = voiceChannelVm?.Name;
+
+                Console.WriteLine("Disconnected from voice: joined from another device");
             }
         });
 
@@ -1939,6 +1990,33 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     }
 
     public bool IsInVoiceChannel => CurrentVoiceChannel is not null;
+
+    /// <summary>
+    /// Channel ID where the user is in voice on another device (null if not in voice elsewhere).
+    /// </summary>
+    public Guid? VoiceOnOtherDeviceChannelId
+    {
+        get => _voiceOnOtherDeviceChannelId;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _voiceOnOtherDeviceChannelId, value);
+            this.RaisePropertyChanged(nameof(IsInVoiceOnOtherDevice));
+        }
+    }
+
+    /// <summary>
+    /// Name of the channel where the user is in voice on another device.
+    /// </summary>
+    public string? VoiceOnOtherDeviceChannelName
+    {
+        get => _voiceOnOtherDeviceChannelName;
+        set => this.RaiseAndSetIfChanged(ref _voiceOnOtherDeviceChannelName, value);
+    }
+
+    /// <summary>
+    /// Whether the user is in a voice channel on another device.
+    /// </summary>
+    public bool IsInVoiceOnOtherDevice => VoiceOnOtherDeviceChannelId.HasValue;
 
     /// <summary>
     /// Whether the user is in a voice channel in a different community than currently selected.
@@ -3353,6 +3431,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private async Task JoinVoiceChannelAsync(ChannelResponse channel)
     {
         if (channel.Type != ChannelType.Voice) return;
+
+        // Clear "in voice on other device" state since we're joining from this device
+        VoiceOnOtherDeviceChannelId = null;
+        VoiceOnOtherDeviceChannelName = null;
 
         // Leave current voice channel if any
         if (CurrentVoiceChannel is not null)

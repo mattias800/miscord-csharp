@@ -21,8 +21,10 @@ public class SnackaHub : Hub
     private readonly IHubContext<SnackaHub> _hubContext;
     private readonly INotificationService _notificationService;
     private readonly ILogger<SnackaHub> _logger;
-    private static readonly Dictionary<string, Guid> ConnectedUsers = new();
-    private static readonly Dictionary<Guid, string> UserConnections = new(); // UserId -> ConnectionId
+    // Multi-device support: one user can have multiple connections
+    private static readonly Dictionary<string, Guid> ConnectedUsers = new();  // ConnectionId -> UserId
+    private static readonly Dictionary<Guid, HashSet<string>> UserConnections = new();  // UserId -> ConnectionIds
+    private static readonly Dictionary<Guid, string> VoiceConnections = new();  // UserId -> Voice ConnectionId (only one device in voice)
     private static readonly object Lock = new();
 
     public SnackaHub(
@@ -50,10 +52,18 @@ public class SnackaHub : Hub
             return;
         }
 
+        bool isFirstConnection;
         lock (Lock)
         {
             ConnectedUsers[Context.ConnectionId] = userId.Value;
-            UserConnections[userId.Value] = Context.ConnectionId;
+
+            if (!UserConnections.TryGetValue(userId.Value, out var connections))
+            {
+                connections = new HashSet<string>();
+                UserConnections[userId.Value] = connections;
+            }
+            isFirstConnection = connections.Count == 0;
+            connections.Add(Context.ConnectionId);
         }
 
         try
@@ -61,12 +71,16 @@ public class SnackaHub : Hub
             var user = await _db.Users.FindAsync(userId.Value);
             if (user is not null)
             {
-                user.IsOnline = true;
-                user.UpdatedAt = DateTime.UtcNow;
-                await _db.SaveChangesAsync();
+                // Only update online status and notify if this is the first connection
+                if (isFirstConnection)
+                {
+                    user.IsOnline = true;
+                    user.UpdatedAt = DateTime.UtcNow;
+                    await _db.SaveChangesAsync();
 
-                // Notify all clients about user coming online
-                await Clients.Others.SendAsync("UserOnline", new UserPresence(user.Id, user.Username, true));
+                    // Notify all clients about user coming online
+                    await Clients.Others.SendAsync("UserOnline", new UserPresence(user.Id, user.Username, true));
+                }
 
                 // Add user to their community groups
                 var communityIds = await _db.UserCommunities
@@ -92,6 +106,23 @@ public class SnackaHub : Hub
                     await Clients.Caller.SendAsync("UnreadNotificationCount", unreadCount);
                     _logger.LogInformation("Sent {Count} pending notifications to user {Username}", unreadCount, user.Username);
                 }
+
+                // Check if user is in a voice channel on another device
+                var voiceParticipant = await _db.VoiceParticipants
+                    .Include(p => p.Channel)
+                    .FirstOrDefaultAsync(p => p.UserId == userId.Value);
+
+                if (voiceParticipant != null)
+                {
+                    // User is in voice on another device - notify this connection
+                    await Clients.Caller.SendAsync("VoiceSessionActiveOnOtherDevice", new
+                    {
+                        ChannelId = voiceParticipant.ChannelId,
+                        ChannelName = voiceParticipant.Channel?.Name
+                    });
+                    _logger.LogInformation("User {Username} connected but is in voice on another device (channel {ChannelId})",
+                        user.Username, voiceParticipant.ChannelId);
+                }
             }
         }
         catch (Exception ex)
@@ -107,104 +138,174 @@ public class SnackaHub : Hub
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         Guid? userId;
+        bool isLastConnection;
+        bool isVoiceConnection;
+
         lock (Lock)
         {
             if (ConnectedUsers.TryGetValue(Context.ConnectionId, out var id))
             {
                 userId = id;
                 ConnectedUsers.Remove(Context.ConnectionId);
-                UserConnections.Remove(id);
+
+                // Remove this connection from the user's connection set
+                if (UserConnections.TryGetValue(id, out var connections))
+                {
+                    connections.Remove(Context.ConnectionId);
+                    isLastConnection = connections.Count == 0;
+                    if (isLastConnection)
+                    {
+                        UserConnections.Remove(id);
+                    }
+                }
+                else
+                {
+                    isLastConnection = true;
+                }
+
+                // Check if this was the voice connection
+                isVoiceConnection = VoiceConnections.TryGetValue(id, out var voiceConnId) &&
+                                   voiceConnId == Context.ConnectionId;
+                if (isVoiceConnection)
+                {
+                    VoiceConnections.Remove(id);
+                }
             }
             else
             {
                 userId = null;
+                isLastConnection = false;
+                isVoiceConnection = false;
             }
         }
 
         if (userId is not null)
         {
-            // Leave any voice channels on disconnect - wrap in try-catch for DB resilience
-            try
+            // Only leave voice channel if this was the voice connection
+            if (isVoiceConnection)
             {
-                var currentChannel = await _voiceService.GetUserCurrentChannelAsync(userId.Value);
-                if (currentChannel.HasValue)
+                try
                 {
-                    // Remove SFU session first (in-memory, won't fail)
-                    _sfuService.RemoveSession(currentChannel.Value, userId.Value);
+                    var currentChannel = await _voiceService.GetUserCurrentChannelAsync(userId.Value);
+                    if (currentChannel.HasValue)
+                    {
+                        // Remove SFU session first (in-memory, won't fail)
+                        _sfuService.RemoveSession(currentChannel.Value, userId.Value);
 
-                    // Get the channel to find its community
-                    Guid? communityId = null;
-                    try
-                    {
-                        var channel = await _db.Channels
-                            .FirstOrDefaultAsync(c => c.Id == currentChannel.Value);
-                        communityId = channel?.CommunityId;
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to get channel info during disconnect for user {UserId}", userId.Value);
-                    }
-
-                    try
-                    {
-                        await _voiceService.LeaveChannelAsync(currentChannel.Value, userId.Value);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to leave voice channel during disconnect for user {UserId}", userId.Value);
-                    }
-
-                    // Notify users in the community (best effort)
-                    if (communityId.HasValue)
-                    {
+                        // Get the channel to find its community
+                        Guid? communityId = null;
                         try
                         {
-                            await Clients.Group($"community:{communityId.Value}")
-                                .SendAsync("VoiceParticipantLeft", new VoiceParticipantLeftEvent(currentChannel.Value, userId.Value));
+                            var channel = await _db.Channels
+                                .FirstOrDefaultAsync(c => c.Id == currentChannel.Value);
+                            communityId = channel?.CommunityId;
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning(ex, "Failed to notify voice participant left for user {UserId}", userId.Value);
+                            _logger.LogWarning(ex, "Failed to get channel info during disconnect for user {UserId}", userId.Value);
                         }
+
+                        try
+                        {
+                            await _voiceService.LeaveChannelAsync(currentChannel.Value, userId.Value);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to leave voice channel during disconnect for user {UserId}", userId.Value);
+                        }
+
+                        // Notify users in the community (best effort)
+                        if (communityId.HasValue)
+                        {
+                            try
+                            {
+                                await Clients.Group($"community:{communityId.Value}")
+                                    .SendAsync("VoiceParticipantLeft", new VoiceParticipantLeftEvent(currentChannel.Value, userId.Value));
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "Failed to notify voice participant left for user {UserId}", userId.Value);
+                            }
+                        }
+
+                        // Notify other connections of this user that voice session ended
+                        await Clients.User(userId.Value.ToString()).SendAsync("VoiceSessionEnded", new
+                        {
+                            Reason = "DeviceDisconnected"
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to get current voice channel during disconnect for user {UserId}", userId.Value);
+                    // Continue with disconnect handling even if voice cleanup fails
+                }
+            }
+
+            // Only update online status if this was the last connection
+            if (isLastConnection)
+            {
+                try
+                {
+                    var user = await _db.Users.FindAsync(userId.Value);
+                    if (user is not null)
+                    {
+                        user.IsOnline = false;
+                        user.UpdatedAt = DateTime.UtcNow;
+                        await _db.SaveChangesAsync();
+
+                        await Clients.Others.SendAsync("UserOffline", new UserPresence(user.Id, user.Username, false));
+                        _logger.LogInformation("User {Username} disconnected (last connection)", user.Username);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to update user offline status for user {UserId}", userId.Value);
+                    // Still try to notify clients even if DB update failed
+                    try
+                    {
+                        await Clients.Others.SendAsync("UserOffline", new UserPresence(userId.Value, "Unknown", false));
+                    }
+                    catch
+                    {
+                        // Ignore notification failures
                     }
                 }
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogWarning(ex, "Failed to get current voice channel during disconnect for user {UserId}", userId.Value);
-                // Continue with disconnect handling even if voice cleanup fails
-            }
-
-            // Update user online status - wrap in try-catch for DB resilience
-            try
-            {
-                var user = await _db.Users.FindAsync(userId.Value);
-                if (user is not null)
-                {
-                    user.IsOnline = false;
-                    user.UpdatedAt = DateTime.UtcNow;
-                    await _db.SaveChangesAsync();
-
-                    await Clients.Others.SendAsync("UserOffline", new UserPresence(user.Id, user.Username, false));
-                    _logger.LogInformation("User {Username} disconnected", user.Username);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to update user offline status for user {UserId}", userId.Value);
-                // Still try to notify clients even if DB update failed
-                try
-                {
-                    await Clients.Others.SendAsync("UserOffline", new UserPresence(userId.Value, "Unknown", false));
-                }
-                catch
-                {
-                    // Ignore notification failures
-                }
+                _logger.LogInformation("User {UserId} disconnected one device, {Count} connections remaining",
+                    userId.Value, GetConnectionCountForUser(userId.Value));
             }
         }
 
         await base.OnDisconnectedAsync(exception);
+    }
+
+    /// <summary>
+    /// Gets the number of active connections for a user.
+    /// </summary>
+    private static int GetConnectionCountForUser(Guid userId)
+    {
+        lock (Lock)
+        {
+            return UserConnections.TryGetValue(userId, out var connections) ? connections.Count : 0;
+        }
+    }
+
+    /// <summary>
+    /// Gets all connection IDs for a user except the current one.
+    /// </summary>
+    private IEnumerable<string> GetOtherConnectionsForUser(Guid userId)
+    {
+        lock (Lock)
+        {
+            if (UserConnections.TryGetValue(userId, out var connections))
+            {
+                return connections.Where(c => c != Context.ConnectionId).ToList();
+            }
+            return [];
+        }
     }
 
     public async Task JoinServer(Guid communityId)
@@ -305,6 +406,7 @@ public class SnackaHub : Hub
 
     /// <summary>
     /// Notifies a user that someone is typing in a DM conversation.
+    /// Sends to all connected devices of the recipient.
     /// </summary>
     public async Task SendDMTyping(Guid recipientUserId)
     {
@@ -322,18 +424,9 @@ public class SnackaHub : Hub
         var user = await _db.Users.FindAsync(userId.Value);
         if (user is null) return;
 
-        // Find recipient's connection
-        string? targetConnectionId;
-        lock (Lock)
-        {
-            UserConnections.TryGetValue(recipientUserId, out targetConnectionId);
-        }
-
-        if (targetConnectionId is not null)
-        {
-            await Clients.Client(targetConnectionId)
-                .SendAsync("DMUserTyping", new DMTypingEvent(userId.Value, user.Username, user.EffectiveDisplayName));
-        }
+        // Send to all of the recipient's connected devices
+        await Clients.User(recipientUserId.ToString())
+            .SendAsync("DMUserTyping", new DMTypingEvent(userId.Value, user.Username, user.EffectiveDisplayName));
     }
 
     // ==================== Voice Channel Methods ====================
@@ -351,14 +444,42 @@ public class SnackaHub : Hub
                 .FirstOrDefaultAsync(c => c.Id == channelId && c.Type == Shared.Models.ChannelType.Voice);
             if (channel is null) return null;
 
-            // Leave current voice channel if in one
+            // Check if user is already in voice (possibly on another device)
             var currentChannel = await _voiceService.GetUserCurrentChannelAsync(userId.Value);
             if (currentChannel.HasValue)
             {
+                // Notify other connections of this user that they're being disconnected from voice
+                var otherConnections = GetOtherConnectionsForUser(userId.Value);
+                foreach (var connId in otherConnections)
+                {
+                    try
+                    {
+                        await Clients.Client(connId).SendAsync("DisconnectedFromVoice", new
+                        {
+                            Reason = "JoinedFromAnotherDevice",
+                            ChannelId = currentChannel.Value
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to notify connection {ConnectionId} of voice disconnect", connId);
+                    }
+                }
+
+                // Clean up old SFU session before leaving
+                _sfuService.RemoveSession(currentChannel.Value, userId.Value);
+
+                // Leave the current voice channel
                 await LeaveVoiceChannel(currentChannel.Value);
             }
 
             var participant = await _voiceService.JoinChannelAsync(channelId, userId.Value);
+
+            // Track this connection as the voice connection for this user
+            lock (Lock)
+            {
+                VoiceConnections[userId.Value] = Context.ConnectionId;
+            }
 
             // Join the voice channel SignalR group (for WebRTC signaling)
             await Groups.AddToGroupAsync(Context.ConnectionId, $"voice:{channelId}");
@@ -440,15 +561,16 @@ public class SnackaHub : Hub
                 {
                     try
                     {
-                        string? targetConnectionId;
+                        // Send to the voice connection specifically (not all connections)
+                        string? voiceConnectionId;
                         lock (Lock)
                         {
-                            UserConnections.TryGetValue(userId.Value, out targetConnectionId);
+                            VoiceConnections.TryGetValue(userId.Value, out voiceConnectionId);
                         }
 
-                        if (targetConnectionId != null)
+                        if (voiceConnectionId != null)
                         {
-                            await hubContext.Clients.Client(targetConnectionId).SendAsync("SfuIceCandidate", new
+                            await hubContext.Clients.Client(voiceConnectionId).SendAsync("SfuIceCandidate", new
                             {
                                 Candidate = candidate.candidate,
                                 SdpMid = candidate.sdpMid,
@@ -555,6 +677,12 @@ public class SnackaHub : Hub
         // Remove SFU session
         _sfuService.RemoveSession(channelId, userId.Value);
 
+        // Clear voice connection tracking
+        lock (Lock)
+        {
+            VoiceConnections.Remove(userId.Value);
+        }
+
         await _voiceService.LeaveChannelAsync(channelId, userId.Value);
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"voice:{channelId}");
 
@@ -563,6 +691,23 @@ public class SnackaHub : Hub
         {
             await Clients.Group($"community:{channel.CommunityId}")
                 .SendAsync("VoiceParticipantLeft", new VoiceParticipantLeftEvent(channelId, userId.Value));
+        }
+
+        // Notify all other connections of this user that voice session ended
+        foreach (var connId in GetOtherConnectionsForUser(userId.Value))
+        {
+            try
+            {
+                await Clients.Client(connId).SendAsync("VoiceSessionEnded", new
+                {
+                    Reason = "LeftVoiceChannel",
+                    ChannelId = channelId
+                });
+            }
+            catch
+            {
+                // Ignore failures
+            }
         }
 
         _logger.LogInformation("User {UserId} left voice channel {ChannelId}", userId.Value, channelId);
@@ -1002,15 +1147,16 @@ public class SnackaHub : Hub
             return;
         }
 
-        string? targetConnectionId;
+        // Send to the target user's voice connection (voice is single-device)
+        string? targetVoiceConnectionId;
         lock (Lock)
         {
-            UserConnections.TryGetValue(targetUserId, out targetConnectionId);
+            VoiceConnections.TryGetValue(targetUserId, out targetVoiceConnectionId);
         }
 
-        if (targetConnectionId is not null)
+        if (targetVoiceConnectionId is not null)
         {
-            await Clients.Client(targetConnectionId)
+            await Clients.Client(targetVoiceConnectionId)
                 .SendAsync("WebRtcOffer", new { FromUserId = userId.Value, Sdp = sdp });
             _logger.LogDebug("Sent WebRTC offer from {FromUser} to {ToUser}", userId.Value, targetUserId);
         }
@@ -1029,15 +1175,16 @@ public class SnackaHub : Hub
             return;
         }
 
-        string? targetConnectionId;
+        // Send to the target user's voice connection (voice is single-device)
+        string? targetVoiceConnectionId;
         lock (Lock)
         {
-            UserConnections.TryGetValue(targetUserId, out targetConnectionId);
+            VoiceConnections.TryGetValue(targetUserId, out targetVoiceConnectionId);
         }
 
-        if (targetConnectionId is not null)
+        if (targetVoiceConnectionId is not null)
         {
-            await Clients.Client(targetConnectionId)
+            await Clients.Client(targetVoiceConnectionId)
                 .SendAsync("WebRtcAnswer", new { FromUserId = userId.Value, Sdp = sdp });
             _logger.LogDebug("Sent WebRTC answer from {FromUser} to {ToUser}", userId.Value, targetUserId);
         }
@@ -1056,15 +1203,16 @@ public class SnackaHub : Hub
             return;
         }
 
-        string? targetConnectionId;
+        // Send to the target user's voice connection (voice is single-device)
+        string? targetVoiceConnectionId;
         lock (Lock)
         {
-            UserConnections.TryGetValue(targetUserId, out targetConnectionId);
+            VoiceConnections.TryGetValue(targetUserId, out targetVoiceConnectionId);
         }
 
-        if (targetConnectionId is not null)
+        if (targetVoiceConnectionId is not null)
         {
-            await Clients.Client(targetConnectionId)
+            await Clients.Client(targetVoiceConnectionId)
                 .SendAsync("IceCandidate", new
                 {
                     FromUserId = userId.Value,
@@ -1112,11 +1260,11 @@ public class SnackaHub : Hub
             PendingControllerRequests[key] = DateTime.UtcNow;
         }
 
-        // Send request to host
+        // Send request to host (voice connection only - controller streaming is part of voice)
         string? hostConnectionId;
         lock (Lock)
         {
-            UserConnections.TryGetValue(hostUserId, out hostConnectionId);
+            VoiceConnections.TryGetValue(hostUserId, out hostConnectionId);
         }
 
         if (hostConnectionId is not null)
@@ -1184,11 +1332,11 @@ public class SnackaHub : Hub
             sessions.Add((guestUserId, controllerSlot));
         }
 
-        // Notify guest
+        // Notify guest (voice connection only - controller streaming is part of voice)
         string? guestConnectionId;
         lock (Lock)
         {
-            UserConnections.TryGetValue(guestUserId, out guestConnectionId);
+            VoiceConnections.TryGetValue(guestUserId, out guestConnectionId);
         }
 
         if (guestConnectionId is not null)
@@ -1221,11 +1369,11 @@ public class SnackaHub : Hub
             PendingControllerRequests.Remove(key);
         }
 
-        // Notify guest
+        // Notify guest (voice connection only - controller streaming is part of voice)
         string? guestConnectionId;
         lock (Lock)
         {
-            UserConnections.TryGetValue(guestUserId, out guestConnectionId);
+            VoiceConnections.TryGetValue(guestUserId, out guestConnectionId);
         }
 
         if (guestConnectionId is not null)
@@ -1309,14 +1457,14 @@ public class SnackaHub : Hub
             return;
         }
 
-        // Notify both parties
+        // Notify both parties (voice connections only - controller streaming is part of voice)
         var stoppedEvent = new ControllerAccessStoppedEvent(channelId, hostUserId, guestUserId, reason);
 
         string? hostConnectionId, guestConnectionId;
         lock (Lock)
         {
-            UserConnections.TryGetValue(hostUserId, out hostConnectionId);
-            UserConnections.TryGetValue(guestUserId, out guestConnectionId);
+            VoiceConnections.TryGetValue(hostUserId, out hostConnectionId);
+            VoiceConnections.TryGetValue(guestUserId, out guestConnectionId);
         }
 
         if (hostConnectionId is not null)
@@ -1361,11 +1509,11 @@ public class SnackaHub : Hub
         // Get sender info for the event
         var sender = await _db.Users.FindAsync(userId.Value);
 
-        // Forward to host
+        // Forward to host (voice connection only - controller streaming is part of voice)
         string? hostConnectionId;
         lock (Lock)
         {
-            UserConnections.TryGetValue(state.HostUserId, out hostConnectionId);
+            VoiceConnections.TryGetValue(state.HostUserId, out hostConnectionId);
         }
 
         if (hostConnectionId is not null)
@@ -1405,11 +1553,11 @@ public class SnackaHub : Hub
             return;
         }
 
-        // Forward to guest
+        // Forward to guest (voice connection only - controller streaming is part of voice)
         string? guestConnectionId;
         lock (Lock)
         {
-            UserConnections.TryGetValue(rumble.GuestUserId, out guestConnectionId);
+            VoiceConnections.TryGetValue(rumble.GuestUserId, out guestConnectionId);
         }
 
         if (guestConnectionId is not null)

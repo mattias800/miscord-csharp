@@ -321,6 +321,10 @@ public record VoiceParticipantLeftEvent(Guid ChannelId, Guid UserId);
 public record VoiceStateChangedEvent(Guid ChannelId, Guid UserId, VoiceStateUpdate State);
 public record SpeakingStateChangedEvent(Guid ChannelId, Guid UserId, bool IsSpeaking);
 
+// Multi-device voice events
+public record VoiceSessionActiveOnOtherDeviceEvent(Guid ChannelId, string? ChannelName);
+public record DisconnectedFromVoiceEvent(string Reason, Guid ChannelId);
+
 // Admin voice action events
 public record ServerVoiceStateChangedEvent(
     Guid ChannelId,
