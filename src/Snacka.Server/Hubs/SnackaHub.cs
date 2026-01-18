@@ -2156,76 +2156,8 @@ public class SnackaHub : Hub
         }
     }
 
-    /// <summary>
-    /// User sends keyboard input to station.
-    /// </summary>
-    public async Task SendStationKeyboardInput(StationKeyboardInput input)
-    {
-        var userId = GetUserId();
-        if (userId is null) return;
-
-        // Verify user is connected to station with appropriate input mode
-        var stationService = Context.GetHttpContext()?.RequestServices.GetService<IGamingStationService>();
-        if (stationService is null) return;
-
-        var permission = await stationService.GetUserPermissionAsync(input.StationId, userId.Value);
-        if (permission is null || permission < StationPermission.FullControl)
-        {
-            return; // No permission for keyboard input
-        }
-
-        // Update last input time
-        await stationService.UpdateLastInputAsync(input.StationId, userId.Value);
-
-        // Forward to station
-        string? stationConnectionId;
-        lock (Lock)
-        {
-            StationConnections.TryGetValue(input.StationId, out stationConnectionId);
-        }
-
-        if (stationConnectionId is not null)
-        {
-            await Clients.Client(stationConnectionId)
-                .SendAsync("KeyboardInput", input);
-        }
-    }
-
-    /// <summary>
-    /// User sends mouse input to station.
-    /// </summary>
-    public async Task SendStationMouseInput(StationMouseInput input)
-    {
-        var userId = GetUserId();
-        if (userId is null) return;
-
-        // Verify user is connected to station with appropriate input mode
-        var stationService = Context.GetHttpContext()?.RequestServices.GetService<IGamingStationService>();
-        if (stationService is null) return;
-
-        var permission = await stationService.GetUserPermissionAsync(input.StationId, userId.Value);
-        if (permission is null || permission < StationPermission.FullControl)
-        {
-            return; // No permission for mouse input
-        }
-
-        // Update last input time (throttle for high-frequency mouse events)
-        // In production, consider batching or throttling this
-        _ = stationService.UpdateLastInputAsync(input.StationId, userId.Value);
-
-        // Forward to station
-        string? stationConnectionId;
-        lock (Lock)
-        {
-            StationConnections.TryGetValue(input.StationId, out stationConnectionId);
-        }
-
-        if (stationConnectionId is not null)
-        {
-            await Clients.Client(stationConnectionId)
-                .SendAsync("MouseInput", input);
-        }
-    }
+    // NOTE: SendStationKeyboardInput and SendStationMouseInput with StationId parameter
+    // have been replaced by the new voice-channel-based methods that take channelId.
 
     /// <summary>
     /// User sends controller input to station.
