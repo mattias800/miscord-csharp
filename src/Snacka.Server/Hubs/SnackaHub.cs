@@ -676,6 +676,9 @@ public class SnackaHub : Hub
             await Clients.OthersInGroup($"community:{channel.CommunityId}")
                 .SendAsync("VoiceParticipantJoined", new VoiceParticipantJoinedEvent(channelId, participant));
 
+            // Update gaming station status if this connection is a gaming station
+            await UpdateGamingStationChannelStatus(userId.Value, channelId);
+
             _logger.LogInformation("User {UserId} joined voice channel {ChannelId}", userId.Value, channelId);
 
             return participant;
@@ -773,6 +776,9 @@ public class SnackaHub : Hub
                 // Ignore failures
             }
         }
+
+        // Update gaming station status if this connection is a gaming station
+        await UpdateGamingStationChannelStatus(userId.Value, null);
 
         _logger.LogInformation("User {UserId} left voice channel {ChannelId}", userId.Value, channelId);
     }
@@ -1706,6 +1712,58 @@ public class SnackaHub : Hub
                 CurrentChannelId: null,
                 IsScreenSharing: false
             ));
+    }
+
+    /// <summary>
+    /// Updates a gaming station's channel status when it joins or leaves a voice channel.
+    /// Called automatically when any user joins/leaves a voice channel.
+    /// </summary>
+    private async Task UpdateGamingStationChannelStatus(Guid userId, Guid? channelId)
+    {
+        // Find the gaming station for this connection
+        GamingStationInfo? station;
+        string? machineId = null;
+
+        lock (Lock)
+        {
+            // Find the gaming station that has this connection ID
+            var connectionId = Context.ConnectionId;
+            var entry = GamingStations.FirstOrDefault(kvp => kvp.Value.ConnectionId == connectionId);
+            if (entry.Key is null) return; // Not a gaming station
+
+            machineId = entry.Key;
+            station = entry.Value;
+        }
+
+        if (station is null || station.OwnerId != userId) return;
+
+        // Update the station's channel status
+        var updatedStation = station with
+        {
+            CurrentChannelId = channelId,
+            IsScreenSharing = channelId is null ? false : station.IsScreenSharing // Clear screen share when leaving
+        };
+
+        lock (Lock)
+        {
+            GamingStations[machineId] = updatedStation;
+        }
+
+        // Notify the owner's devices about the status change
+        await Clients.User(userId.ToString())
+            .SendAsync("GamingStationStatusChanged", new GamingStationStatusChangedEvent(
+                station.OwnerId,
+                station.OwnerUsername,
+                machineId,
+                station.DisplayName,
+                station.IsAvailable,
+                IsInVoiceChannel: channelId.HasValue,
+                CurrentChannelId: channelId,
+                IsScreenSharing: updatedStation.IsScreenSharing
+            ));
+
+        _logger.LogInformation("Gaming station {MachineId} channel status updated: ChannelId={ChannelId}",
+            machineId, channelId);
     }
 
     /// <summary>
