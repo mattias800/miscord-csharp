@@ -491,6 +491,22 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             IsVoiceVideoOverlayOpen = false;
         });
 
+        // Gaming station commands
+        DisableGamingStationCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
+            // Disable gaming station mode locally
+            _settingsStore.Settings.IsGamingStationEnabled = false;
+            _settingsStore.Save();
+
+            // Report the status change to the server
+            await ReportGamingStationStatusAsync();
+
+            // Update UI
+            this.RaisePropertyChanged(nameof(IsGamingStationEnabled));
+            this.RaisePropertyChanged(nameof(ShowGamingStationBanner));
+            Console.WriteLine("Gaming station mode disabled locally");
+        });
+
         // Admin voice commands
         ServerMuteUserCommand = ReactiveCommand.CreateFromTask<VoiceParticipantViewModel>(ServerMuteUserAsync);
         ServerDeafenUserCommand = ReactiveCommand.CreateFromTask<VoiceParticipantViewModel>(ServerDeafenUserAsync);
@@ -1430,6 +1446,20 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public bool IsGamingStationEnabled => _settingsStore.Settings.IsGamingStationEnabled;
 
     /// <summary>
+    /// Whether to show the gaming station status banner.
+    /// Shows when gaming station mode is enabled.
+    /// </summary>
+    public bool ShowGamingStationBanner => IsGamingStationEnabled;
+
+    /// <summary>
+    /// Status text for the gaming station banner showing current channel.
+    /// </summary>
+    public string GamingStationChannelStatus =>
+        CurrentVoiceChannel is not null
+            ? $"In: {CurrentVoiceChannel.Name}"
+            : "Not in a voice channel";
+
+    /// <summary>
     /// Recent DM conversations for the sidebar, sorted by last message time.
     /// </summary>
     public ObservableCollection<ConversationSummary> RecentDms => _recentDms;
@@ -2247,6 +2277,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             this.RaisePropertyChanged(nameof(ShowAudioDeviceWarning));
             this.RaisePropertyChanged(nameof(IsVoiceInDifferentCommunity));
             this.RaisePropertyChanged(nameof(VoiceCommunityName));
+            this.RaisePropertyChanged(nameof(GamingStationChannelStatus));
         }
     }
 
@@ -2979,6 +3010,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     // Voice video overlay commands (for viewing video grid while navigating elsewhere)
     public ReactiveCommand<Unit, Unit> ShowVoiceVideoOverlayCommand { get; }
     public ReactiveCommand<Unit, Unit> HideVoiceVideoOverlayCommand { get; }
+
+    // Gaming station commands
+    public ReactiveCommand<Unit, Unit> DisableGamingStationCommand { get; }
 
     // Admin voice commands
     public ReactiveCommand<VoiceParticipantViewModel, Unit> ServerMuteUserCommand { get; }

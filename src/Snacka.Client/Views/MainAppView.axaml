@@ -48,6 +48,85 @@
             </StackPanel>
         </Border>
 
+        <!-- Gaming Station Remote Control Banner (shown when this client is a gaming station being controlled) -->
+        <Border Grid.Row="0" Grid.ColumnSpan="6"
+                Background="{StaticResource AccentBrush}"
+                Padding="12,8"
+                IsVisible="{Binding ShowGamingStationBanner}">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <!-- Left: Icon and status text -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <ui:SymbolIcon Symbol="XboxConsole" FontSize="20" Foreground="White"/>
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Gaming Station Mode Active"
+                                   Foreground="White"
+                                   FontWeight="SemiBold"
+                                   FontSize="13"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="{Binding GamingStationChannelStatus}"
+                                       Foreground="#E0E0E0"
+                                       FontSize="11"/>
+                            <TextBlock Text="•"
+                                       Foreground="#A0A0A0"
+                                       FontSize="11"
+                                       IsVisible="{Binding IsScreenSharing}"/>
+                            <TextBlock Text="Screen Sharing"
+                                       Foreground="#E0E0E0"
+                                       FontSize="11"
+                                       IsVisible="{Binding IsScreenSharing}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Right: Local override buttons -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <!-- Stop Screen Share button -->
+                    <Button Padding="8,4"
+                            Background="#40FFFFFF"
+                            BorderThickness="0"
+                            CornerRadius="6"
+                            Cursor="Hand"
+                            IsVisible="{Binding IsScreenSharing}"
+                            Command="{Binding StopScreenShareCommand}"
+                            ToolTip.Tip="Stop sharing your screen">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <ui:SymbolIcon Symbol="Share" Foreground="White" FontSize="12"/>
+                            <TextBlock Text="Stop Share" Foreground="White" FontSize="11" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Leave Channel button -->
+                    <Button Padding="8,4"
+                            Background="#40FFFFFF"
+                            BorderThickness="0"
+                            CornerRadius="6"
+                            Cursor="Hand"
+                            IsVisible="{Binding IsInVoiceChannel}"
+                            Command="{Binding LeaveVoiceChannelCommand}"
+                            ToolTip.Tip="Leave the voice channel">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <ui:SymbolIcon Symbol="Speaker2" Foreground="White" FontSize="12"/>
+                            <TextBlock Text="Leave Channel" Foreground="White" FontSize="11" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Disable Gaming Station button -->
+                    <Button Padding="8,4"
+                            Background="{StaticResource DangerBrush}"
+                            BorderThickness="0"
+                            CornerRadius="6"
+                            Cursor="Hand"
+                            Command="{Binding DisableGamingStationCommand}"
+                            ToolTip.Tip="Disable gaming station mode">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <ui:SymbolIcon Symbol="Dismiss" Foreground="White" FontSize="12"/>
+                            <TextBlock Text="Disable" Foreground="White" FontSize="11" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
         <!-- Main Content Grid (Row 1) -->
         <Grid x:Name="MainContentGrid" Grid.Row="1" Grid.ColumnSpan="6">
             <Grid.ColumnDefinitions>
