@@ -1126,6 +1126,87 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             UpdateRecentDmWithMessage(message);
         });
 
+        // Gaming Station events
+        _signalR.StationOnline += e => Dispatcher.UIThread.Post(() =>
+        {
+            Console.WriteLine($"EVENT StationOnline: station {e.StationId} ({e.StationName}) is now online");
+            // Update station status in lists
+            var station = _myStations.FirstOrDefault(s => s.Id == e.StationId)
+                       ?? _sharedStations.FirstOrDefault(s => s.Id == e.StationId);
+            if (station is not null)
+            {
+                var index = _myStations.IndexOf(station);
+                if (index >= 0)
+                    _myStations[index] = station with { Status = Services.StationStatus.Online };
+                else
+                {
+                    index = _sharedStations.IndexOf(station);
+                    if (index >= 0)
+                        _sharedStations[index] = station with { Status = Services.StationStatus.Online };
+                }
+            }
+        });
+
+        _signalR.StationOffline += e => Dispatcher.UIThread.Post(() =>
+        {
+            Console.WriteLine($"EVENT StationOffline: station {e.StationId} is now offline");
+            // Update station status in lists
+            var station = _myStations.FirstOrDefault(s => s.Id == e.StationId)
+                       ?? _sharedStations.FirstOrDefault(s => s.Id == e.StationId);
+            if (station is not null)
+            {
+                var index = _myStations.IndexOf(station);
+                if (index >= 0)
+                    _myStations[index] = station with { Status = Services.StationStatus.Offline };
+                else
+                {
+                    index = _sharedStations.IndexOf(station);
+                    if (index >= 0)
+                        _sharedStations[index] = station with { Status = Services.StationStatus.Offline };
+                }
+            }
+        });
+
+        _signalR.StationOfferReceived += e => Dispatcher.UIThread.Post(() =>
+        {
+            Console.WriteLine($"EVENT StationOfferReceived: WebRTC offer from station {e.StationId}");
+            if (ConnectedStationId == e.StationId)
+            {
+                // Handle WebRTC offer from station - TODO: integrate with video decoder
+                // For now, log and track that we got the offer
+                StationConnectionStatus = "Receiving stream...";
+            }
+        });
+
+        _signalR.StationIceCandidateReceived += e => Dispatcher.UIThread.Post(() =>
+        {
+            Console.WriteLine($"EVENT StationIceCandidateReceived: ICE candidate from station {e.StationId}");
+            // TODO: Forward to WebRTC peer connection
+        });
+
+        _signalR.UserConnectedToStation += e => Dispatcher.UIThread.Post(() =>
+        {
+            Console.WriteLine($"EVENT UserConnectedToStation: {e.Username} connected to station {e.StationId} as player {e.PlayerSlot}");
+            if (ConnectedStationId == e.StationId)
+            {
+                StationConnectedUserCount++;
+                // If this is us, update our player slot
+                if (e.UserId == _auth.UserId)
+                {
+                    StationPlayerSlot = e.PlayerSlot;
+                }
+            }
+        });
+
+        _signalR.UserDisconnectedFromStation += e => Dispatcher.UIThread.Post(() =>
+        {
+            Console.WriteLine($"EVENT UserDisconnectedFromStation: user {e.UserId} left station {e.StationId}");
+            if (ConnectedStationId == e.StationId)
+            {
+                StationConnectedUserCount = Math.Max(0, StationConnectedUserCount - 1);
+            }
+        });
+
         // Set up typing cleanup timer
         _typingCleanupTimer = new System.Timers.Timer(1000); // Check every second
         _typingCleanupTimer.Elapsed += (s, e) => Dispatcher.UIThread.Post(CleanupExpiredTypingIndicators);
@@ -3170,23 +3251,32 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
         try
         {
-            // TODO: Establish WebRTC connection via SignalR
-            // For now, simulate connection
-            await Task.Delay(1000);
+            // Connect via SignalR - this will trigger WebRTC offer from the station
+            var result = await _signalR.ConnectToStationAsync(station.Id, Services.StationInputMode.Controller);
 
-            StationConnectionStatus = "Connected";
-            IsConnectingToStation = false;
-            StationConnectedUserCount = 1;
-            StationLatency = 25;
-            StationResolution = "1920x1080";
+            if (result is not null)
+            {
+                StationConnectionStatus = "Connected";
+                IsConnectingToStation = false;
+                StationPlayerSlot = result.PlayerSlot;
+                StationConnectedUserCount = 1; // Will be updated via SignalR events
 
-            Console.WriteLine($"Connected to station: {station.Name}");
+                // Resolution will be updated when we receive the video stream
+                StationResolution = "Waiting for stream...";
+
+                Console.WriteLine($"Connected to station: {station.Name}, Player slot: {result.PlayerSlot}");
+            }
+            else
+            {
+                throw new InvalidOperationException("Failed to connect to station - no response from server");
+            }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Failed to connect to station: {ex.Message}");
             StationConnectionStatus = "Connection failed";
             IsConnectingToStation = false;
+            ErrorMessage = $"Failed to connect: {ex.Message}";
         }
     }
 
@@ -3194,10 +3284,18 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     {
         if (ConnectedStationId is null) return;
 
+        var stationId = ConnectedStationId.Value;
         Console.WriteLine($"Disconnecting from station: {ConnectedStationName}");
 
-        // TODO: Close WebRTC connection via SignalR
-        await Task.CompletedTask;
+        try
+        {
+            // Disconnect via SignalR
+            await _signalR.DisconnectFromStationAsync(stationId);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error disconnecting from station: {ex.Message}");
+        }
 
         // Reset state
         IsViewingStationStream = false;
@@ -3224,6 +3322,40 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     {
         // TODO: Show station management modal
         Console.WriteLine($"Managing station: {station.Name} (ID: {station.Id})");
+    }
+
+    /// <summary>
+    /// Sends keyboard input to the connected gaming station.
+    /// </summary>
+    public async Task SendStationKeyboardInputAsync(StationKeyboardInput input)
+    {
+        if (ConnectedStationId is null) return;
+
+        try
+        {
+            await _signalR.SendStationKeyboardInputAsync(input);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to send keyboard input to station: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Sends mouse input to the connected gaming station.
+    /// </summary>
+    public async Task SendStationMouseInputAsync(StationMouseInput input)
+    {
+        if (ConnectedStationId is null) return;
+
+        try
+        {
+            await _signalR.SendStationMouseInputAsync(input);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to send mouse input to station: {ex.Message}");
+        }
     }
 
     private async Task CreateCommunityAsync()

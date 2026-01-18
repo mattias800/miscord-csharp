@@ -192,7 +192,8 @@
             </controls:NoCommunityView>
 
             <!-- Station Stream Viewer (shown when connected to a station) -->
-            <controls:StationStreamView IsVisible="{Binding IsViewingStationStream}"
+            <controls:StationStreamView x:Name="StationStream"
+                                        IsVisible="{Binding IsViewingStationStream}"
                                         StationId="{Binding ConnectedStationId}"
                                         StationName="{Binding ConnectedStationName}"
                                         ConnectionStatus="{Binding StationConnectionStatus}"

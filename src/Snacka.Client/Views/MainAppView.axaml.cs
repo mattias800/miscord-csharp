@@ -44,6 +44,10 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         // Handle emoji picker popup closed (for light dismiss)
         EmojiPickerPopup.Closed += OnEmojiPickerPopupClosed;
 
+        // Wire up station stream input events
+        StationStream.KeyboardInputReceived += OnStationKeyboardInput;
+        StationStream.MouseInputReceived += OnStationMouseInput;
+
         // Note: Autocomplete events are wired in XAML, not here
     }
 
@@ -1103,6 +1107,30 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         if (ViewModel != null)
         {
             await ViewModel.SearchUsersToInviteAsync(query);
+        }
+    }
+
+    // ==================== Station Input Handlers ====================
+
+    /// <summary>
+    /// Called when keyboard input is received from the station stream view.
+    /// </summary>
+    private async void OnStationKeyboardInput(StationKeyboardInput input)
+    {
+        if (ViewModel != null)
+        {
+            await ViewModel.SendStationKeyboardInputAsync(input);
+        }
+    }
+
+    /// <summary>
+    /// Called when mouse input is received from the station stream view.
+    /// </summary>
+    private async void OnStationMouseInput(StationMouseInput input)
+    {
+        if (ViewModel != null)
+        {
+            await ViewModel.SendStationMouseInputAsync(input);
         }
     }
 }

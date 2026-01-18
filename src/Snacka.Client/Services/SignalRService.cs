@@ -158,6 +158,25 @@ public interface ISignalRService : IAsyncDisposable
     event Action<ControllerAccessStoppedEvent>? ControllerAccessStopped;
     event Action<ControllerStateReceivedEvent>? ControllerStateReceived;
     event Action<ControllerRumbleReceivedEvent>? ControllerRumbleReceived;
+
+    // Gaming Station methods
+    Task<StationSessionUserResponse?> ConnectToStationAsync(Guid stationId, StationInputMode inputMode);
+    Task DisconnectFromStationAsync(Guid stationId);
+    Task SendStationAnswerAsync(Guid stationId, string sdp);
+    Task SendStationIceCandidateAsync(Guid stationId, Guid? targetUserId, string candidate, string? sdpMid, int? sdpMLineIndex);
+    Task SendStationKeyboardInputAsync(StationKeyboardInput input);
+    Task SendStationMouseInputAsync(StationMouseInput input);
+    Task SendStationControllerInputAsync(StationControllerInput input);
+
+    // Gaming Station events
+    event Action<StationOnlineEvent>? StationOnline;
+    event Action<StationOfflineEvent>? StationOffline;
+    event Action<StationWebRtcOffer>? StationOfferReceived;
+    event Action<StationIceCandidate>? StationIceCandidateReceived;
+    event Action<UserConnectedToStationEvent>? UserConnectedToStation;
+    event Action<UserDisconnectedFromStationEvent>? UserDisconnectedFromStation;
+    event Action<StationAccessGrantedEvent>? StationAccessGranted;
+    event Action<StationAccessRevokedEvent>? StationAccessRevoked;
 }
 
 // Typing indicator event DTOs
@@ -638,6 +657,62 @@ public class SignalRService : ISignalRService
         // No logging for high-frequency rumble updates
     }
 
+    // Gaming Station methods
+    public async Task<StationSessionUserResponse?> ConnectToStationAsync(Guid stationId, StationInputMode inputMode)
+    {
+        if (_hubConnection is null || !IsConnected) return null;
+        var result = await _hubConnection.InvokeAsync<StationSessionUserResponse?>("ConnectToStation", stationId, inputMode);
+        Console.WriteLine($"SignalR: Connected to station {stationId} with input mode {inputMode}");
+        return result;
+    }
+
+    public async Task DisconnectFromStationAsync(Guid stationId)
+    {
+        if (_hubConnection is null || !IsConnected) return;
+        await _hubConnection.InvokeAsync("DisconnectFromStation", stationId);
+        Console.WriteLine($"SignalR: Disconnected from station {stationId}");
+    }
+
+    public async Task SendStationAnswerAsync(Guid stationId, string sdp)
+    {
+        if (_hubConnection is null || !IsConnected) return;
+        await _hubConnection.InvokeAsync("SendStationAnswer", stationId, sdp);
+    }
+
+    public async Task SendStationIceCandidateAsync(Guid stationId, Guid? targetUserId, string candidate, string? sdpMid, int? sdpMLineIndex)
+    {
+        if (_hubConnection is null || !IsConnected) return;
+        await _hubConnection.InvokeAsync("SendStationIceCandidate", stationId, targetUserId, candidate, sdpMid, sdpMLineIndex);
+    }
+
+    public async Task SendStationKeyboardInputAsync(StationKeyboardInput input)
+    {
+        if (_hubConnection is null || !IsConnected) return;
+        await _hubConnection.InvokeAsync("SendStationKeyboardInput", input);
+    }
+
+    public async Task SendStationMouseInputAsync(StationMouseInput input)
+    {
+        if (_hubConnection is null || !IsConnected) return;
+        await _hubConnection.InvokeAsync("SendStationMouseInput", input);
+    }
+
+    public async Task SendStationControllerInputAsync(StationControllerInput input)
+    {
+        if (_hubConnection is null || !IsConnected) return;
+        await _hubConnection.InvokeAsync("SendStationControllerInput", input);
+    }
+
+    // Gaming Station events
+    public event Action<StationOnlineEvent>? StationOnline;
+    public event Action<StationOfflineEvent>? StationOffline;
+    public event Action<StationWebRtcOffer>? StationOfferReceived;
+    public event Action<StationIceCandidate>? StationIceCandidateReceived;
+    public event Action<UserConnectedToStationEvent>? UserConnectedToStation;
+    public event Action<UserDisconnectedFromStationEvent>? UserDisconnectedFromStation;
+    public event Action<StationAccessGrantedEvent>? StationAccessGranted;
+    public event Action<StationAccessRevokedEvent>? StationAccessRevoked;
+
     private void RegisterHandlers()
     {
         if (_hubConnection is null) return;
@@ -975,6 +1050,55 @@ public class SignalRService : ISignalRService
             var rumble = e.Rumble;
             Console.WriteLine($"Rumble received: Slot {rumble.ControllerSlot} Large:{rumble.LargeMotor} Small:{rumble.SmallMotor}");
             ControllerRumbleReceived?.Invoke(e);
+        });
+
+        // Gaming Station events
+        _hubConnection.On<StationOnlineEvent>("StationOnline", e =>
+        {
+            Console.WriteLine($"SignalR: StationOnline - station {e.StationId} is now online");
+            StationOnline?.Invoke(e);
+        });
+
+        _hubConnection.On<StationOfflineEvent>("StationOffline", e =>
+        {
+            Console.WriteLine($"SignalR: StationOffline - station {e.StationId} is now offline");
+            StationOffline?.Invoke(e);
+        });
+
+        _hubConnection.On<StationWebRtcOffer>("StationOffer", e =>
+        {
+            Console.WriteLine($"SignalR: StationOffer - received WebRTC offer from station {e.StationId}");
+            StationOfferReceived?.Invoke(e);
+        });
+
+        _hubConnection.On<StationIceCandidate>("StationIceCandidate", e =>
+        {
+            Console.WriteLine($"SignalR: StationIceCandidate - received from station {e.StationId}");
+            StationIceCandidateReceived?.Invoke(e);
+        });
+
+        _hubConnection.On<UserConnectedToStationEvent>("UserConnectedToStation", e =>
+        {
+            Console.WriteLine($"SignalR: UserConnectedToStation - {e.Username} connected to station {e.StationId} as player {e.PlayerSlot}");
+            UserConnectedToStation?.Invoke(e);
+        });
+
+        _hubConnection.On<UserDisconnectedFromStationEvent>("UserDisconnectedFromStation", e =>
+        {
+            Console.WriteLine($"SignalR: UserDisconnectedFromStation - user {e.UserId} left station {e.StationId}");
+            UserDisconnectedFromStation?.Invoke(e);
+        });
+
+        _hubConnection.On<StationAccessGrantedEvent>("StationAccessGranted", e =>
+        {
+            Console.WriteLine($"SignalR: StationAccessGranted - user {e.UserId} granted {e.Permission} access to station {e.StationId}");
+            StationAccessGranted?.Invoke(e);
+        });
+
+        _hubConnection.On<StationAccessRevokedEvent>("StationAccessRevoked", e =>
+        {
+            Console.WriteLine($"SignalR: StationAccessRevoked - user {e.UserId} access revoked from station {e.StationId}");
+            StationAccessRevoked?.Invoke(e);
         });
 
         _hubConnection.Reconnecting += error =>
