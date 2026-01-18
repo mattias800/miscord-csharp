@@ -26,19 +26,22 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="services:CommunityMemberResponse">
                         <Panel HorizontalAlignment="Stretch">
-                            <!-- Current user (with context menu for nickname) -->
-                            <Border Classes="member-item"
+                            <!-- Current user section (with gaming stations) -->
+                            <StackPanel HorizontalAlignment="Stretch">
+                                <StackPanel.IsVisible>
+                                    <MultiBinding Converter="{x:Static conv:GuidEqualsConverter.Instance}">
+                                        <Binding Path="UserId"/>
+                                        <Binding Path="ViewModel.CurrentUserId" RelativeSource="{RelativeSource AncestorType=controls:MembersListView}"/>
+                                    </MultiBinding>
+                                </StackPanel.IsVisible>
+
+                                <!-- Current user entry -->
+                                <Border Classes="member-item"
                                         Padding="10,6"
                                         Margin="0,2"
                                         Cursor="Hand"
                                         HorizontalAlignment="Stretch"
                                         Tag="{Binding}">
-                                    <Border.IsVisible>
-                                        <MultiBinding Converter="{x:Static conv:GuidEqualsConverter.Instance}">
-                                            <Binding Path="UserId"/>
-                                            <Binding Path="ViewModel.CurrentUserId" RelativeSource="{RelativeSource AncestorType=controls:MembersListView}"/>
-                                        </MultiBinding>
-                                    </Border.IsVisible>
                                     <Border.ContextMenu>
                                         <ContextMenu>
                                             <MenuItem Header="Change Nickname"
@@ -89,6 +92,81 @@
                                         </StackPanel>
                                     </Grid>
                                 </Border>
+
+                                <!-- Gaming Stations under current user -->
+                                <ItemsControl ItemsSource="{Binding ViewModel.MyGamingStations, RelativeSource={RelativeSource AncestorType=controls:MembersListView}}"
+                                              IsVisible="{Binding ViewModel.HasGamingStations, RelativeSource={RelativeSource AncestorType=controls:MembersListView}}"
+                                              Margin="20,0,0,0">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:MyGamingStationInfo">
+                                            <Border Classes="member-item"
+                                                    Padding="8,4"
+                                                    Margin="0,1"
+                                                    Cursor="Hand"
+                                                    HorizontalAlignment="Stretch"
+                                                    Tag="{Binding}">
+                                                <Border.ContextMenu>
+                                                    <ContextMenu Opened="OnGamingStationContextMenuOpened">
+                                                        <MenuItem Header="Add to voice channel"
+                                                                  x:Name="AddToChannelItem"
+                                                                  Click="OnAddStationToChannelClick"/>
+                                                    </ContextMenu>
+                                                </Border.ContextMenu>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <!-- Gaming Station Icon -->
+                                                    <Grid Grid.Column="0" Margin="0,0,8,0">
+                                                        <Border Width="24" Height="24"
+                                                                CornerRadius="4"
+                                                                Background="{StaticResource Content2Brush}">
+                                                            <ui:SymbolIcon Symbol="XboxConsole"
+                                                                           FontSize="14"
+                                                                           Foreground="{StaticResource AccentBrush}"/>
+                                                        </Border>
+                                                        <!-- Online indicator -->
+                                                        <Ellipse Width="10" Height="10"
+                                                                 Fill="{StaticResource SuccessBrush}"
+                                                                 Stroke="{StaticResource Content1Brush}"
+                                                                 StrokeThickness="2"
+                                                                 HorizontalAlignment="Right"
+                                                                 VerticalAlignment="Bottom"
+                                                                 IsVisible="{Binding IsAvailable}"/>
+                                                    </Grid>
+
+                                                    <!-- Station Name and Status -->
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding DisplayName}"
+                                                                   Classes="text-body"
+                                                                   FontSize="12"/>
+                                                        <TextBlock Classes="text-muted"
+                                                                   FontSize="10"
+                                                                   Margin="0,-1,0,0">
+                                                            <TextBlock.Text>
+                                                                <MultiBinding StringFormat="{}{0}">
+                                                                    <Binding Path="." Converter="{x:Static conv:GamingStationStatusConverter.Instance}"/>
+                                                                </MultiBinding>
+                                                            </TextBlock.Text>
+                                                        </TextBlock>
+                                                    </StackPanel>
+
+                                                    <!-- "This device" indicator -->
+                                                    <TextBlock Grid.Column="2"
+                                                               Text="(This device)"
+                                                               Classes="text-muted"
+                                                               FontSize="10"
+                                                               VerticalAlignment="Center"
+                                                               IsVisible="{Binding IsCurrentMachine}"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
 
                                 <!-- Other members (clickable) -->
                                 <Border Classes="member-item"

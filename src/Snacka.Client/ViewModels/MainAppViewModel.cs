@@ -91,11 +91,16 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private bool _isGpuFullscreenActive;
     private IHardwareVideoDecoder? _fullscreenHardwareDecoder;
 
-    // Gaming stations state
+    // Gaming stations state (old architecture - to be replaced)
     private bool _isViewingGamingStations;
     private bool _isLoadingStations;
     private ObservableCollection<GamingStationResponse> _myStations = new();
     private ObservableCollection<GamingStationResponse> _sharedStations = new();
+
+    // Gaming stations state (new architecture)
+    // Tracks all gaming stations owned by the current user (on all their devices)
+    private readonly ObservableCollection<MyGamingStationInfo> _myGamingStations = new();
+    private string _currentMachineId = "";  // Unique ID for this machine
 
     // Station stream state
     private bool _isViewingStationStream;
@@ -213,6 +218,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         _isMuted = _settingsStore.Settings.IsMuted;
         _isDeafened = _settingsStore.Settings.IsDeafened;
 
+        // Generate unique machine ID for gaming station feature
+        _currentMachineId = GetOrCreateMachineId();
+
         // Set local user ID for WebRTC
         if (_webRtc is WebRtcService webRtcService)
         {
@@ -295,9 +303,12 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             apiClient,
             auth.UserId,
             Members,
+            _myGamingStations,
             () => SelectedCommunity?.Id ?? Guid.Empty,
             member => StartDMWithMember(member),
             userId => RecentDms.FirstOrDefault(c => c.UserId == userId)?.UnreadCount ?? 0,
+            () => Task.FromResult(_currentVoiceChannel is not null),
+            machineId => CommandStationJoinCurrentChannelAsync(machineId),
             error => ErrorMessage = error);
 
         // Create the activity feed ViewModel
@@ -488,6 +499,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         try
         {
             await _signalR.ConnectAsync(_baseUrl, _auth.AccessToken);
+
+            // Report gaming station status if enabled
+            await ReportGamingStationStatusAsync();
         }
         catch (Exception ex)
         {
@@ -1130,7 +1144,45 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         _signalR.GamingStationStatusChanged += e => Dispatcher.UIThread.Post(() =>
         {
             Console.WriteLine($"EVENT GamingStationStatusChanged: user {e.Username} station {e.MachineId} available={e.IsAvailable}");
-            // TODO: Update member list to show/hide gaming station under user
+
+            // Only track stations that belong to the current user
+            if (e.UserId != _auth.UserId) return;
+
+            var existingIndex = -1;
+            for (int i = 0; i < _myGamingStations.Count; i++)
+            {
+                if (_myGamingStations[i].MachineId == e.MachineId)
+                {
+                    existingIndex = i;
+                    break;
+                }
+            }
+
+            if (e.IsAvailable)
+            {
+                var stationInfo = new MyGamingStationInfo(
+                    MachineId: e.MachineId,
+                    DisplayName: e.DisplayName,
+                    IsAvailable: e.IsAvailable,
+                    IsInVoiceChannel: e.IsInVoiceChannel,
+                    CurrentChannelId: e.CurrentChannelId,
+                    IsScreenSharing: e.IsScreenSharing,
+                    IsCurrentMachine: e.MachineId == _currentMachineId
+                );
+
+                if (existingIndex >= 0)
+                    _myGamingStations[existingIndex] = stationInfo;
+                else
+                    _myGamingStations.Add(stationInfo);
+            }
+            else
+            {
+                // Station went offline - remove from list
+                if (existingIndex >= 0)
+                    _myGamingStations.RemoveAt(existingIndex);
+            }
+
+            this.RaisePropertyChanged(nameof(MyGamingStations));
         });
 
         // Gaming Station command events (this client is a gaming station receiving commands)
@@ -1236,6 +1288,21 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public ObservableCollection<ChannelResponse> Channels { get; }
     public ObservableCollection<MessageResponse> Messages { get; }
     public ObservableCollection<CommunityMemberResponse> Members { get; }
+
+    /// <summary>
+    /// Gaming stations owned by the current user, across all their devices.
+    /// </summary>
+    public ObservableCollection<MyGamingStationInfo> MyGamingStations => _myGamingStations;
+
+    /// <summary>
+    /// The unique machine ID for this device.
+    /// </summary>
+    public string CurrentMachineId => _currentMachineId;
+
+    /// <summary>
+    /// Whether this client has gaming station mode enabled.
+    /// </summary>
+    public bool IsGamingStationEnabled => _settingsStore.Settings.IsGamingStationEnabled;
 
     /// <summary>
     /// Recent DM conversations for the sidebar, sorted by last message time.
@@ -4671,6 +4738,88 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         }
     }
 
+    // ==================== Gaming Station Helpers ====================
+
+    /// <summary>
+    /// Gets or creates a unique machine ID for this device.
+    /// Uses the machine name combined with a hash for uniqueness.
+    /// </summary>
+    private string GetOrCreateMachineId()
+    {
+        // Use machine name + a stable hash to create unique ID
+        var machineName = Environment.MachineName;
+        var userName = Environment.UserName;
+        var combined = $"{machineName}-{userName}";
+
+        // Create a simple hash to make the ID more unique while keeping it readable
+        var hash = combined.GetHashCode().ToString("X8");
+        return $"{machineName}-{hash}";
+    }
+
+    /// <summary>
+    /// Reports this client's gaming station status to the server.
+    /// Call this on connect if gaming station mode is enabled.
+    /// </summary>
+    public async Task ReportGamingStationStatusAsync()
+    {
+        if (!_settingsStore.Settings.IsGamingStationEnabled)
+        {
+            Console.WriteLine("Gaming station mode not enabled, not reporting status");
+            return;
+        }
+
+        var displayName = string.IsNullOrWhiteSpace(_settingsStore.Settings.GamingStationDisplayName)
+            ? null
+            : _settingsStore.Settings.GamingStationDisplayName;
+
+        Console.WriteLine($"Reporting gaming station status: enabled, machineId={_currentMachineId}, displayName={displayName ?? "(default)"}");
+
+        try
+        {
+            await _signalR.SetGamingStationAvailableAsync(true, displayName, _currentMachineId);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to report gaming station status: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Commands a gaming station to join the current voice channel.
+    /// </summary>
+    public async Task CommandStationJoinCurrentChannelAsync(string machineId)
+    {
+        if (CurrentVoiceChannel is null)
+        {
+            Console.WriteLine("Cannot command station to join - not in a voice channel");
+            return;
+        }
+
+        try
+        {
+            await _signalR.CommandStationJoinChannelAsync(machineId, CurrentVoiceChannel.Id);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to command station to join channel: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Commands a gaming station to leave its current voice channel.
+    /// </summary>
+    public async Task CommandStationLeaveChannelAsync(string machineId)
+    {
+        try
+        {
+            await _signalR.CommandStationLeaveChannelAsync(machineId);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to command station to leave channel: {ex.Message}");
+        }
+    }
+
     public void Dispose()
     {
         HideSharerAnnotationOverlay();
@@ -4683,6 +4832,19 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 /// Represents a user who is currently typing.
 /// </summary>
 public record TypingUser(Guid UserId, string Username, DateTime LastTypingAt);
+
+/// <summary>
+/// Represents a gaming station owned by the current user.
+/// </summary>
+public record MyGamingStationInfo(
+    string MachineId,
+    string DisplayName,
+    bool IsAvailable,
+    bool IsInVoiceChannel,
+    Guid? CurrentChannelId,
+    bool IsScreenSharing,
+    bool IsCurrentMachine  // True if this is the machine we're running on
+);
 
 /// <summary>
 /// Represents a file pending upload with a message.

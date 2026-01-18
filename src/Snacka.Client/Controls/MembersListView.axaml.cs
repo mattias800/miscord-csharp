@@ -112,4 +112,33 @@ public partial class MembersListView : UserControl
             ViewModel?.TransferOwnershipCommand?.Execute(member);
         }
     }
+
+    // Gaming station context menu handlers
+    private void OnGamingStationContextMenuOpened(object? sender, RoutedEventArgs e)
+    {
+        if (sender is ContextMenu menu)
+        {
+            // Find the station from the context menu's DataContext
+            var station = menu.DataContext as MyGamingStationInfo;
+            if (station is null) return;
+
+            // Find the "Add to channel" menu item and update its enabled state
+            foreach (var item in menu.Items)
+            {
+                if (item is MenuItem menuItem && menuItem.Name == "AddToChannelItem")
+                {
+                    // Disable if: station is current machine, station is offline, or already in channel
+                    menuItem.IsEnabled = !station.IsCurrentMachine && station.IsAvailable && !station.IsInVoiceChannel;
+                }
+            }
+        }
+    }
+
+    private void OnAddStationToChannelClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem menuItem && menuItem.DataContext is MyGamingStationInfo station)
+        {
+            ViewModel?.AddStationToChannelCommand?.Execute(station);
+        }
+    }
 }

@@ -18,9 +18,14 @@ public class MembersListViewModel : ViewModelBase
     private readonly Action<string?> _onError;
     private readonly Action<CommunityMemberResponse> _onStartDM;
     private readonly Func<Guid, int> _getDmUnreadCount;
+    private readonly Func<Task<bool>> _isInVoiceChannel;
+    private readonly Func<string, Task> _onAddStationToChannel;
 
     // Shared members collection (owned by MainAppViewModel)
     private readonly ObservableCollection<CommunityMemberResponse> _members;
+
+    // Gaming stations collection (owned by MainAppViewModel)
+    private readonly ObservableCollection<MyGamingStationInfo> _myGamingStations;
 
     private bool _isLoading;
     private UserRole? _currentUserRole;
@@ -34,17 +39,23 @@ public class MembersListViewModel : ViewModelBase
         IApiClient apiClient,
         Guid currentUserId,
         ObservableCollection<CommunityMemberResponse> members,
+        ObservableCollection<MyGamingStationInfo> myGamingStations,
         Func<Guid> getSelectedCommunityId,
         Action<CommunityMemberResponse> onStartDM,
         Func<Guid, int> getDmUnreadCount,
+        Func<Task<bool>> isInVoiceChannel,
+        Func<string, Task> onAddStationToChannel,
         Action<string?> onError)
     {
         _apiClient = apiClient;
         _currentUserId = currentUserId;
         _members = members;
+        _myGamingStations = myGamingStations;
         _getSelectedCommunityId = getSelectedCommunityId;
         _onStartDM = onStartDM;
         _getDmUnreadCount = getDmUnreadCount;
+        _isInVoiceChannel = isInVoiceChannel;
+        _onAddStationToChannel = onAddStationToChannel;
         _onError = onError;
 
         // Nickname commands
@@ -60,6 +71,9 @@ public class MembersListViewModel : ViewModelBase
 
         // Start DM command - delegates to parent
         StartDMCommand = ReactiveCommand.Create<CommunityMemberResponse>(member => _onStartDM(member));
+
+        // Gaming station command
+        AddStationToChannelCommand = ReactiveCommand.CreateFromTask<MyGamingStationInfo>(AddStationToChannelAsync);
     }
 
     // Properties
@@ -107,6 +121,10 @@ public class MembersListViewModel : ViewModelBase
 
     public bool IsEditingMyNickname => IsEditingNickname && EditingNicknameMember?.UserId == _currentUserId;
 
+    // Gaming stations
+    public ObservableCollection<MyGamingStationInfo> MyGamingStations => _myGamingStations;
+    public bool HasGamingStations => _myGamingStations.Count > 0;
+
     // Commands
     public ReactiveCommand<Unit, Unit> ChangeMyNicknameCommand { get; }
     public ReactiveCommand<CommunityMemberResponse, Unit> ChangeMemberNicknameCommand { get; }
@@ -116,6 +134,7 @@ public class MembersListViewModel : ViewModelBase
     public ReactiveCommand<CommunityMemberResponse, Unit> DemoteToMemberCommand { get; }
     public ReactiveCommand<CommunityMemberResponse, Unit> TransferOwnershipCommand { get; }
     public ReactiveCommand<CommunityMemberResponse, Unit> StartDMCommand { get; }
+    public ReactiveCommand<MyGamingStationInfo, Unit> AddStationToChannelCommand { get; }
 
     /// <summary>
     /// Updates the current user's role. Called when community selection changes.
@@ -309,5 +328,41 @@ public class MembersListViewModel : ViewModelBase
         {
             IsLoading = false;
         }
+    }
+
+    // Gaming station methods
+    private async Task AddStationToChannelAsync(MyGamingStationInfo station)
+    {
+        // Check if we're in a voice channel
+        if (!await _isInVoiceChannel())
+        {
+            _onError("You must be in a voice channel to add a gaming station");
+            return;
+        }
+
+        // Can't add station that's the current machine
+        if (station.IsCurrentMachine)
+        {
+            _onError("You cannot add your current device as a gaming station");
+            return;
+        }
+
+        // Can't add station that's already in a voice channel
+        if (station.IsInVoiceChannel)
+        {
+            _onError("This gaming station is already in a voice channel");
+            return;
+        }
+
+        await _onAddStationToChannel(station.MachineId);
+    }
+
+    /// <summary>
+    /// Notifies the view that the gaming stations collection has changed.
+    /// </summary>
+    public void NotifyGamingStationsChanged()
+    {
+        this.RaisePropertyChanged(nameof(MyGamingStations));
+        this.RaisePropertyChanged(nameof(HasGamingStations));
     }
 }
