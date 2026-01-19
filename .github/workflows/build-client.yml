@@ -255,7 +255,16 @@ jobs:
             libgles2-mesa-dev \
             libx11-dev \
             libxfixes-dev \
-            libdrm-dev
+            libdrm-dev \
+            libxext-dev \
+            libxrandr-dev \
+            libpulse-dev
+
+      - name: Build SnackaCaptureLinux
+        run: |
+          cd src/SnackaCaptureLinux
+          cmake -B build
+          cmake --build build --config Release
 
       - name: Build SnackaLinuxRenderer
         run: |
@@ -269,6 +278,10 @@ jobs:
             --self-contained \
             -p:Version=${{ needs.version.outputs.version }} \
             -o publish
+
+      - name: Copy SnackaCaptureLinux
+        run: |
+          cp src/SnackaCaptureLinux/build/bin/SnackaCaptureLinux publish/ 2>/dev/null || true
 
       - name: Copy SnackaLinuxRenderer
         run: |
