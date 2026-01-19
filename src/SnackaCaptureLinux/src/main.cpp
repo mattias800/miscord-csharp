@@ -33,10 +33,12 @@ SnackaCaptureLinux - Screen and camera capture tool for Linux with VAAPI encodin
 
 USAGE:
     SnackaCaptureLinux list [--json]
+    SnackaCaptureLinux validate [--json]
     SnackaCaptureLinux [OPTIONS]
 
 COMMANDS:
     list              List available capture sources (displays, windows, cameras)
+    validate          Check hardware encoding capabilities and system compatibility
 
 OPTIONS:
     --display <index>   Display index to capture (default: 0)
@@ -72,6 +74,161 @@ int ListSources(bool asJson) {
         SourceLister::PrintSources(sources);
     }
 
+    return 0;
+}
+
+// Helper to escape JSON strings
+std::string EscapeJsonString(const std::string& s) {
+    std::string result;
+    for (char c : s) {
+        switch (c) {
+            case '"': result += "\\\""; break;
+            case '\\': result += "\\\\"; break;
+            case '\b': result += "\\b"; break;
+            case '\f': result += "\\f"; break;
+            case '\n': result += "\\n"; break;
+            case '\r': result += "\\r"; break;
+            case '\t': result += "\\t"; break;
+            default:
+                if (c < 0x20) {
+                    char buf[8];
+                    snprintf(buf, sizeof(buf), "\\u%04x", static_cast<unsigned char>(c));
+                    result += buf;
+                } else {
+                    result += c;
+                }
+        }
+    }
+    return result;
+}
+
+int ValidateEnvironment(bool asJson) {
+    auto result = VaapiEncoder::Validate();
+
+    if (asJson) {
+        // Output as JSON
+        std::cout << "{\n";
+        std::cout << "  \"platform\": \"" << EscapeJsonString(result.platform) << "\",\n";
+        std::cout << "  \"gpuVendor\": \"" << EscapeJsonString(result.gpuVendor) << "\",\n";
+        std::cout << "  \"gpuModel\": \"" << EscapeJsonString(result.gpuModel) << "\",\n";
+        std::cout << "  \"driverName\": \"" << EscapeJsonString(result.driverName) << "\",\n";
+        std::cout << "  \"capabilities\": {\n";
+        std::cout << "    \"h264Encode\": " << (result.capabilities.h264Encode ? "true" : "false") << ",\n";
+        std::cout << "    \"h264Decode\": " << (result.capabilities.h264Decode ? "true" : "false") << ",\n";
+        std::cout << "    \"hevcEncode\": " << (result.capabilities.hevcEncode ? "true" : "false") << ",\n";
+        std::cout << "    \"hevcDecode\": " << (result.capabilities.hevcDecode ? "true" : "false") << "\n";
+        std::cout << "  },\n";
+        std::cout << "  \"canCapture\": " << (result.canCapture ? "true" : "false") << ",\n";
+        std::cout << "  \"canEncodeH264\": " << (result.canEncodeH264 ? "true" : "false") << ",\n";
+
+        // Issues array
+        std::cout << "  \"issues\": [\n";
+        for (size_t i = 0; i < result.issues.size(); i++) {
+            const auto& issue = result.issues[i];
+            std::string severity;
+            switch (issue.severity) {
+                case IssueSeverity::Info: severity = "info"; break;
+                case IssueSeverity::Warning: severity = "warning"; break;
+                case IssueSeverity::Error: severity = "error"; break;
+            }
+
+            std::cout << "    {\n";
+            std::cout << "      \"severity\": \"" << severity << "\",\n";
+            std::cout << "      \"code\": \"" << EscapeJsonString(issue.code) << "\",\n";
+            std::cout << "      \"title\": \"" << EscapeJsonString(issue.title) << "\",\n";
+            std::cout << "      \"description\": \"" << EscapeJsonString(issue.description) << "\",\n";
+            std::cout << "      \"suggestions\": [\n";
+            for (size_t j = 0; j < issue.suggestions.size(); j++) {
+                std::cout << "        \"" << EscapeJsonString(issue.suggestions[j]) << "\"";
+                if (j < issue.suggestions.size() - 1) std::cout << ",";
+                std::cout << "\n";
+            }
+            std::cout << "      ]\n";
+            std::cout << "    }";
+            if (i < result.issues.size() - 1) std::cout << ",";
+            std::cout << "\n";
+        }
+        std::cout << "  ],\n";
+
+        // Info section
+        std::cout << "  \"info\": {\n";
+        std::cout << "    \"drmDevice\": \"" << EscapeJsonString(result.drmDevice) << "\",\n";
+
+        std::cout << "    \"h264Profiles\": [";
+        for (size_t i = 0; i < result.h264Profiles.size(); i++) {
+            std::cout << "\"" << EscapeJsonString(result.h264Profiles[i]) << "\"";
+            if (i < result.h264Profiles.size() - 1) std::cout << ", ";
+        }
+        std::cout << "],\n";
+
+        std::cout << "    \"h264Entrypoints\": [";
+        for (size_t i = 0; i < result.h264Entrypoints.size(); i++) {
+            std::cout << "\"" << EscapeJsonString(result.h264Entrypoints[i]) << "\"";
+            if (i < result.h264Entrypoints.size() - 1) std::cout << ", ";
+        }
+        std::cout << "]\n";
+
+        std::cout << "  }\n";
+        std::cout << "}\n";
+    } else {
+        // Human-readable output
+        std::cerr << "=== Capture Environment Validation ===\n\n";
+        std::cerr << "Platform: " << result.platform << "\n";
+        std::cerr << "GPU Vendor: " << result.gpuVendor << "\n";
+        std::cerr << "GPU/Driver: " << result.driverName << "\n";
+        std::cerr << "DRM Device: " << result.drmDevice << "\n";
+        std::cerr << "\n";
+
+        std::cerr << "Capabilities:\n";
+        std::cerr << "  H.264 Encode: " << (result.capabilities.h264Encode ? "Yes" : "No") << "\n";
+        std::cerr << "  H.264 Decode: " << (result.capabilities.h264Decode ? "Yes" : "No") << "\n";
+        std::cerr << "\n";
+
+        std::cerr << "Can Capture: " << (result.canCapture ? "Yes" : "No") << "\n";
+        std::cerr << "Can Encode H.264: " << (result.canEncodeH264 ? "Yes" : "No") << "\n";
+        std::cerr << "\n";
+
+        if (!result.issues.empty()) {
+            std::cerr << "Issues:\n";
+            for (const auto& issue : result.issues) {
+                std::string severityIcon;
+                switch (issue.severity) {
+                    case IssueSeverity::Info: severityIcon = "[INFO]"; break;
+                    case IssueSeverity::Warning: severityIcon = "[WARNING]"; break;
+                    case IssueSeverity::Error: severityIcon = "[ERROR]"; break;
+                }
+                std::cerr << "\n" << severityIcon << " " << issue.title << "\n";
+                std::cerr << "  " << issue.description << "\n";
+                if (!issue.suggestions.empty()) {
+                    std::cerr << "  Suggestions:\n";
+                    for (const auto& suggestion : issue.suggestions) {
+                        std::cerr << "    - " << suggestion << "\n";
+                    }
+                }
+            }
+        }
+
+        std::cerr << "\nH.264 Profiles: ";
+        for (size_t i = 0; i < result.h264Profiles.size(); i++) {
+            std::cerr << result.h264Profiles[i];
+            if (i < result.h264Profiles.size() - 1) std::cerr << ", ";
+        }
+        std::cerr << "\n";
+
+        std::cerr << "H.264 Entrypoints: ";
+        for (size_t i = 0; i < result.h264Entrypoints.size(); i++) {
+            std::cerr << result.h264Entrypoints[i];
+            if (i < result.h264Entrypoints.size() - 1) std::cerr << ", ";
+        }
+        std::cerr << "\n";
+    }
+
+    // Return non-zero if there are errors
+    for (const auto& issue : result.issues) {
+        if (issue.severity == IssueSeverity::Error && issue.code != "NO_H264_ENCODE") {
+            return 1;  // Critical error
+        }
+    }
     return 0;
 }
 
@@ -298,6 +455,17 @@ int main(int argc, char* argv[]) {
             }
         }
         return ListSources(asJson);
+    }
+
+    // Check for 'validate' command
+    if (args.size() >= 2 && args[1] == "validate") {
+        bool asJson = false;
+        for (size_t i = 2; i < args.size(); i++) {
+            if (args[i] == "--json") {
+                asJson = true;
+            }
+        }
+        return ValidateEnvironment(asJson);
     }
 
     // Parse capture options

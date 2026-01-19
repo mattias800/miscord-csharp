@@ -127,6 +127,46 @@
             </Grid>
         </Border>
 
+        <!-- Capability Warning Banner (hardware encoding issues) -->
+        <Border Grid.Row="0" Grid.ColumnSpan="6"
+                Background="#1af59e0b"
+                Padding="12,8"
+                IsVisible="{Binding HasCapabilityWarnings}">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <!-- Left: Icon and warning text -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <ui:SymbolIcon Symbol="Important" FontSize="16" Foreground="#f59e0b"/>
+                    <TextBlock Text="{Binding CapabilityWarningTitle}"
+                               Foreground="#fbbf24"
+                               FontWeight="SemiBold"
+                               FontSize="13"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Right: Action buttons -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button Padding="8,4"
+                            Background="#30f59e0b"
+                            BorderThickness="0"
+                            CornerRadius="6"
+                            Cursor="Hand"
+                            Command="{Binding ShowCapabilityDetailsCommand}"
+                            ToolTip.Tip="View details and suggestions">
+                        <TextBlock Text="Learn More" Foreground="#fbbf24" FontSize="11" VerticalAlignment="Center"/>
+                    </Button>
+                    <Button Padding="8,4"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            CornerRadius="6"
+                            Cursor="Hand"
+                            Command="{Binding DismissCapabilityWarningCommand}"
+                            ToolTip.Tip="Dismiss this warning">
+                        <ui:SymbolIcon Symbol="Dismiss" FontSize="14" Foreground="#a0a0a0"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
         <!-- Main Content Grid (Row 1) -->
         <Grid x:Name="MainContentGrid" Grid.Row="1" Grid.ColumnSpan="6">
             <Grid.ColumnDefinitions>
@@ -1110,6 +1150,103 @@
                                CreateCommunityCommand="{Binding WelcomeCreateCommunityCommand}"
                                HorizontalAlignment="Stretch"
                                VerticalAlignment="Stretch"/>
+
+        <!-- Capability Details Modal (hardware encoding info) -->
+        <Border Grid.ColumnSpan="6"
+                Background="#80000000"
+                IsVisible="{Binding IsCapabilityDetailsOpen}"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch">
+            <Border Background="{StaticResource BackgroundBrush}"
+                    CornerRadius="12"
+                    Padding="24"
+                    MaxWidth="550"
+                    MaxHeight="500"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    BoxShadow="0 8 32 0 #40000000">
+                <Grid RowDefinitions="Auto,*,Auto">
+                    <!-- Header -->
+                    <StackPanel Grid.Row="0" Spacing="8" Margin="0,0,0,16">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <ui:SymbolIcon Symbol="Important" FontSize="20" Foreground="#f59e0b"/>
+                            <TextBlock Text="Hardware Encoding Status"
+                                       FontSize="18"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource ForegroundBrush}"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding CapabilityValidationResult.GpuVendor, StringFormat='GPU: {0}'}"
+                                   Foreground="{StaticResource SecondaryForegroundBrush}"
+                                   FontSize="12"
+                                   IsVisible="{Binding CapabilityValidationResult.GpuVendor, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                        <TextBlock Text="{Binding CapabilityValidationResult.DriverName}"
+                                   Foreground="{StaticResource SecondaryForegroundBrush}"
+                                   FontSize="11"
+                                   TextWrapping="Wrap"
+                                   MaxWidth="500"
+                                   IsVisible="{Binding CapabilityValidationResult.DriverName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    </StackPanel>
+
+                    <!-- Issues List -->
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding CapabilityValidationResult.Issues}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{StaticResource SurfaceBrush}"
+                                            CornerRadius="8"
+                                            Padding="16"
+                                            Margin="0,0,0,12">
+                                        <StackPanel Spacing="8">
+                                            <!-- Issue Title -->
+                                            <TextBlock Text="{Binding Title}"
+                                                       FontWeight="SemiBold"
+                                                       FontSize="14"
+                                                       Foreground="{StaticResource ForegroundBrush}"
+                                                       TextWrapping="Wrap"/>
+
+                                            <!-- Issue Description -->
+                                            <TextBlock Text="{Binding Description}"
+                                                       FontSize="12"
+                                                       Foreground="{StaticResource SecondaryForegroundBrush}"
+                                                       TextWrapping="Wrap"/>
+
+                                            <!-- Suggestions -->
+                                            <ItemsControl ItemsSource="{Binding Suggestions}"
+                                                          Margin="0,8,0,0"
+                                                          IsVisible="{Binding Suggestions.Count}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                                                            <TextBlock Text="•"
+                                                                       Foreground="{StaticResource SecondaryForegroundBrush}"
+                                                                       FontSize="11"/>
+                                                            <TextBlock Text="{Binding}"
+                                                                       FontSize="11"
+                                                                       Foreground="{StaticResource SecondaryForegroundBrush}"
+                                                                       TextWrapping="Wrap"
+                                                                       MaxWidth="450"/>
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <!-- Close Button -->
+                    <Button Grid.Row="2"
+                            Content="Close"
+                            HorizontalAlignment="Right"
+                            Margin="0,16,0,0"
+                            Padding="24,8"
+                            Command="{Binding CloseCapabilityDetailsCommand}"
+                            Classes="accent"/>
+                </Grid>
+            </Border>
+        </Border>
         </Grid>
     </Grid>
 </UserControl>

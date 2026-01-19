@@ -234,6 +234,23 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // Create voice channel content view model for video grid
         _voiceChannelContent = new VoiceChannelContentViewModel(_webRtc, _signalR, auth.UserId);
 
+        // Initialize capability warning commands
+        DismissCapabilityWarningCommand = ReactiveCommand.Create(() =>
+        {
+            Program.CapabilityService?.DismissValidationWarning();
+            this.RaisePropertyChanged(nameof(HasCapabilityWarnings));
+        });
+
+        ShowCapabilityDetailsCommand = ReactiveCommand.Create(() =>
+        {
+            IsCapabilityDetailsOpen = true;
+        });
+
+        CloseCapabilityDetailsCommand = ReactiveCommand.Create(() =>
+        {
+            IsCapabilityDetailsOpen = false;
+        });
+
         // Wire up gaming station remote control callbacks
         _voiceChannelContent.OnGamingStationShareScreen = async machineId =>
         {
@@ -1740,6 +1757,50 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     {
         get => _errorMessage;
         set => this.RaiseAndSetIfChanged(ref _errorMessage, value);
+    }
+
+    // Capability warning properties (for hardware encoding validation)
+    /// <summary>
+    /// Gets whether there are capability validation issues that should be shown to the user.
+    /// </summary>
+    public bool HasCapabilityWarnings =>
+        OperatingSystem.IsLinux() &&
+        Program.CapabilityService?.HasValidationIssues == true &&
+        Program.CapabilityService?.IsValidationWarningDismissed != true;
+
+    /// <summary>
+    /// Gets the title of the first capability issue (for banner display).
+    /// </summary>
+    public string? CapabilityWarningTitle =>
+        Program.CapabilityService?.ValidationResult?.Issues
+            .FirstOrDefault(i => i.IsError || i.IsWarning)?.Title;
+
+    /// <summary>
+    /// Gets the full validation result for detailed display.
+    /// </summary>
+    public CaptureValidationResult? CapabilityValidationResult =>
+        Program.CapabilityService?.ValidationResult;
+
+    /// <summary>
+    /// Command to dismiss the capability warning banner.
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> DismissCapabilityWarningCommand { get; }
+
+    /// <summary>
+    /// Command to show capability warning details.
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> ShowCapabilityDetailsCommand { get; }
+
+    /// <summary>
+    /// Command to close the capability details modal.
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> CloseCapabilityDetailsCommand { get; }
+
+    private bool _isCapabilityDetailsOpen;
+    public bool IsCapabilityDetailsOpen
+    {
+        get => _isCapabilityDetailsOpen;
+        set => this.RaiseAndSetIfChanged(ref _isCapabilityDetailsOpen, value);
     }
 
     // Connection state properties

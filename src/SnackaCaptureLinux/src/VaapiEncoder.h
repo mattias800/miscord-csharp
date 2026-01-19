@@ -12,6 +12,45 @@
 
 namespace snacka {
 
+/// Issue severity levels
+enum class IssueSeverity {
+    Info,
+    Warning,
+    Error
+};
+
+/// A validation issue or informational message
+struct ValidationIssue {
+    IssueSeverity severity;
+    std::string code;
+    std::string title;
+    std::string description;
+    std::vector<std::string> suggestions;
+};
+
+/// Codec capability info
+struct CodecCapabilities {
+    bool h264Encode = false;
+    bool h264Decode = false;
+    bool hevcEncode = false;
+    bool hevcDecode = false;
+};
+
+/// Result from environment validation
+struct ValidationResult {
+    std::string platform = "linux";
+    std::string gpuVendor;
+    std::string gpuModel;
+    std::string driverName;
+    std::string drmDevice;
+    CodecCapabilities capabilities;
+    bool canCapture = false;
+    bool canEncodeH264 = false;
+    std::vector<ValidationIssue> issues;
+    std::vector<std::string> h264Profiles;
+    std::vector<std::string> h264Entrypoints;
+};
+
 /// Callback for encoded H.264 data
 /// @param data Pointer to encoded NAL unit data (AVCC format with 4-byte length prefix)
 /// @param size Size of the data
@@ -48,6 +87,9 @@ public:
 
     /// Check if a hardware H.264 encoder is available on this system
     static bool IsHardwareEncoderAvailable();
+
+    /// Validate the capture environment and return detailed diagnostics
+    static ValidationResult Validate();
 
     /// Get the name of the encoder being used
     const char* GetEncoderName() const { return m_encoderName.c_str(); }

@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <cstring>
 #include <iostream>
+#include <fstream>
 #include <arpa/inet.h>  // For htonl
 
 namespace snacka {
@@ -695,6 +696,231 @@ bool VaapiEncoder::IsHardwareEncoderAvailable() {
     }
 
     return false;
+}
+
+// Helper to get GPU vendor from PCI vendor ID
+static std::string GetVendorName(uint16_t vendorId) {
+    switch (vendorId) {
+        case 0x8086: return "Intel";
+        case 0x1002: return "AMD";
+        case 0x10de: return "NVIDIA";
+        default: return "Unknown";
+    }
+}
+
+// Helper to read GPU vendor ID from sysfs
+static uint16_t ReadGpuVendorId(const std::string& drmDevice) {
+    // Extract card number from path like /dev/dri/renderD128 or /dev/dri/card0
+    std::string cardPath;
+    if (drmDevice.find("renderD") != std::string::npos) {
+        // renderD128 corresponds to card0, renderD129 to card1, etc.
+        size_t pos = drmDevice.find("renderD");
+        if (pos != std::string::npos) {
+            int renderNum = std::stoi(drmDevice.substr(pos + 7));
+            int cardNum = renderNum - 128;
+            cardPath = "/sys/class/drm/card" + std::to_string(cardNum) + "/device/vendor";
+        }
+    } else if (drmDevice.find("card") != std::string::npos) {
+        size_t pos = drmDevice.find("card");
+        if (pos != std::string::npos) {
+            cardPath = "/sys/class/drm/" + drmDevice.substr(drmDevice.rfind('/') + 1) + "/device/vendor";
+        }
+    }
+
+    if (cardPath.empty()) {
+        return 0;
+    }
+
+    std::ifstream file(cardPath);
+    if (!file.is_open()) {
+        return 0;
+    }
+
+    std::string line;
+    std::getline(file, line);
+    if (line.empty()) {
+        return 0;
+    }
+
+    // Parse hex vendor ID (e.g., "0x8086")
+    return static_cast<uint16_t>(std::stoul(line, nullptr, 16));
+}
+
+// Helper to convert VAProfile to string
+static std::string ProfileToString(VAProfile profile) {
+    switch (profile) {
+        case VAProfileH264ConstrainedBaseline: return "H264ConstrainedBaseline";
+        case VAProfileH264Main: return "H264Main";
+        case VAProfileH264High: return "H264High";
+        default: return "Unknown";
+    }
+}
+
+// Helper to convert VAEntrypoint to string
+static std::string EntrypointToString(VAEntrypoint entrypoint) {
+    switch (entrypoint) {
+        case VAEntrypointVLD: return "VLD (Decode)";
+        case VAEntrypointEncSlice: return "EncSlice (Encode)";
+        case VAEntrypointEncSliceLP: return "EncSliceLP (Low-Power Encode)";
+        default: return "Unknown";
+    }
+}
+
+ValidationResult VaapiEncoder::Validate() {
+    ValidationResult result;
+    result.platform = "linux";
+    result.canCapture = true;  // X11/V4L2 capture generally available
+
+    const char* drmPaths[] = {
+        "/dev/dri/renderD128",
+        "/dev/dri/renderD129",
+        "/dev/dri/card0",
+    };
+
+    bool foundDevice = false;
+
+    for (const char* path : drmPaths) {
+        int fd = open(path, O_RDWR);
+        if (fd < 0) continue;
+
+        foundDevice = true;
+        result.drmDevice = path;
+
+        // Get GPU vendor from sysfs
+        uint16_t vendorId = ReadGpuVendorId(path);
+        result.gpuVendor = GetVendorName(vendorId);
+
+        VADisplay display = vaGetDisplayDRM(fd);
+        if (!display) {
+            close(fd);
+            continue;
+        }
+
+        int major, minor;
+        if (vaInitialize(display, &major, &minor) != VA_STATUS_SUCCESS) {
+            close(fd);
+
+            ValidationIssue issue;
+            issue.severity = IssueSeverity::Error;
+            issue.code = "VAAPI_INIT_FAILED";
+            issue.title = "VAAPI initialization failed";
+            issue.description = "Could not initialize the VA-API display. This may indicate driver issues.";
+            issue.suggestions.push_back("Ensure your GPU drivers are properly installed");
+            issue.suggestions.push_back("Check that libva is installed: apt install libva-dev");
+            result.issues.push_back(issue);
+            continue;
+        }
+
+        // Get driver name and GPU model from vendor string
+        const char* vendorStr = vaQueryVendorString(display);
+        if (vendorStr) {
+            result.driverName = vendorStr;
+            // Often contains GPU model info too
+            result.gpuModel = vendorStr;
+        }
+
+        // Query H.264 profiles and entrypoints
+        int numProfiles = vaMaxNumProfiles(display);
+        std::vector<VAProfile> profiles(numProfiles);
+        int actualProfiles = 0;
+        vaQueryConfigProfiles(display, profiles.data(), &actualProfiles);
+
+        bool hasH264Encode = false;
+        bool hasH264Decode = false;
+
+        for (int i = 0; i < actualProfiles; i++) {
+            if (profiles[i] == VAProfileH264ConstrainedBaseline ||
+                profiles[i] == VAProfileH264Main ||
+                profiles[i] == VAProfileH264High) {
+
+                result.h264Profiles.push_back(ProfileToString(profiles[i]));
+
+                // Check entrypoints for this profile
+                int numEntrypoints = vaMaxNumEntrypoints(display);
+                std::vector<VAEntrypoint> entrypoints(numEntrypoints);
+                int actualEntrypoints = 0;
+                vaQueryConfigEntrypoints(display, profiles[i], entrypoints.data(), &actualEntrypoints);
+
+                for (int j = 0; j < actualEntrypoints; j++) {
+                    result.h264Entrypoints.push_back(EntrypointToString(entrypoints[j]));
+
+                    if (entrypoints[j] == VAEntrypointVLD) {
+                        hasH264Decode = true;
+                    }
+                    if (entrypoints[j] == VAEntrypointEncSlice ||
+                        entrypoints[j] == VAEntrypointEncSliceLP) {
+                        hasH264Encode = true;
+                    }
+                }
+            }
+        }
+
+        result.capabilities.h264Encode = hasH264Encode;
+        result.capabilities.h264Decode = hasH264Decode;
+        result.canEncodeH264 = hasH264Encode;
+
+        vaTerminate(display);
+        close(fd);
+
+        // Generate issues based on findings
+        if (!hasH264Encode) {
+            ValidationIssue issue;
+            issue.severity = IssueSeverity::Error;
+            issue.code = "NO_H264_ENCODE";
+
+            if (vendorId == 0x1002) {  // AMD
+                issue.title = "AMD Mesa drivers don't support H.264 encoding";
+                issue.description = "Your " + result.gpuModel + " with Mesa drivers cannot hardware-encode H.264 video. "
+                                   "This is a known limitation of the open-source Mesa drivers for newer AMD GPUs.";
+                issue.suggestions.push_back("Screen sharing will use software encoding (higher CPU usage)");
+                issue.suggestions.push_back("For hardware encoding, you would need AMD's proprietary AMDGPU-PRO drivers with AMF support, but this is complex to set up and may cause system instability");
+                issue.suggestions.push_back("This limitation may be resolved in future Mesa versions");
+            } else if (vendorId == 0x10de) {  // NVIDIA
+                issue.title = "NVIDIA VAAPI has limited encoding support";
+                issue.description = "NVIDIA GPUs don't natively support VAAPI encoding. The nvidia-vaapi-driver only provides decoding.";
+                issue.suggestions.push_back("Screen sharing will use software encoding");
+                issue.suggestions.push_back("For best NVIDIA encoding support, applications need to use NVENC directly (not currently supported by this app)");
+                issue.suggestions.push_back("Install nvidia-vaapi-driver for VAAPI decode compatibility: apt install nvidia-vaapi-driver");
+            } else if (vendorId == 0x8086) {  // Intel
+                issue.title = "Intel H.264 encoding not available";
+                issue.description = "H.264 hardware encoding is not available on this Intel GPU. This may be due to missing drivers or an older GPU.";
+                issue.suggestions.push_back("Ensure Intel media driver is installed: apt install intel-media-va-driver");
+                issue.suggestions.push_back("For older Intel GPUs, try: apt install i965-va-driver");
+            } else {
+                issue.title = "H.264 hardware encoding not available";
+                issue.description = "Your GPU does not support H.264 hardware encoding via VAAPI.";
+                issue.suggestions.push_back("Screen sharing will use software encoding (higher CPU usage)");
+            }
+
+            result.issues.push_back(issue);
+        } else {
+            // Success - add info message
+            ValidationIssue info;
+            info.severity = IssueSeverity::Info;
+            info.code = "H264_ENCODE_OK";
+            info.title = "Hardware encoding available";
+            info.description = "Your " + result.gpuVendor + " GPU supports H.264 hardware encoding via VAAPI.";
+            result.issues.push_back(info);
+        }
+
+        break;  // Found a working device, stop searching
+    }
+
+    if (!foundDevice) {
+        result.canCapture = false;
+
+        ValidationIssue issue;
+        issue.severity = IssueSeverity::Error;
+        issue.code = "NO_DRM_DEVICE";
+        issue.title = "No GPU device found";
+        issue.description = "Could not open any DRM device (/dev/dri/renderD* or /dev/dri/card*).";
+        issue.suggestions.push_back("Ensure your GPU drivers are installed");
+        issue.suggestions.push_back("Check that you have permission to access /dev/dri devices");
+        issue.suggestions.push_back("Try adding your user to the 'video' and 'render' groups: sudo usermod -aG video,render $USER");
+        result.issues.push_back(issue);
+    }
+
+    return result;
 }
 
 }  // namespace snacka

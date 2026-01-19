@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using Snacka.Client.Services.HardwareVideo;
 using Snacka.Client.Services.WebRtc;
 
@@ -21,6 +22,13 @@ public sealed class SystemCapabilityService : ISystemCapabilityService
 
     private readonly List<string> _warnings = new();
     public IReadOnlyList<string> Warnings => _warnings;
+
+    public CaptureValidationResult? ValidationResult { get; private set; }
+    public bool HasValidationIssues => ValidationResult?.Issues.Any(i => i.IsError || i.IsWarning) == true;
+    public bool IsValidationWarningDismissed { get; private set; }
+
+    private const string ValidationDismissedKey = "validation_warning_dismissed";
+    private const string ValidationResultHashKey = "validation_result_hash";
 
     /// <summary>
     /// Runs all capability checks and outputs results to stdout.
@@ -373,5 +381,206 @@ public sealed class SystemCapabilityService : ISystemCapabilityService
         {
             return false;
         }
+    }
+
+    /// <summary>
+    /// Runs detailed validation using the native capture tool.
+    /// Currently only implemented for Linux.
+    /// </summary>
+    public async Task ValidateAsync()
+    {
+        // Only run validation on Linux for now
+        if (!OperatingSystem.IsLinux())
+        {
+            Console.WriteLine("SystemCapabilityService: Skipping validation (not Linux)");
+            return;
+        }
+
+        var locator = new NativeCaptureLocator();
+        var capturePath = locator.GetSnackaCaptureLinuxPath();
+
+        if (capturePath == null)
+        {
+            Console.WriteLine("SystemCapabilityService: Cannot validate - SnackaCaptureLinux not found");
+            ValidationResult = new CaptureValidationResult
+            {
+                Platform = "linux",
+                CanCapture = false,
+                CanEncodeH264 = false,
+                Issues = new List<CaptureValidationIssue>
+                {
+                    new()
+                    {
+                        Severity = "error",
+                        Code = "NATIVE_TOOL_MISSING",
+                        Title = "Native capture tool not found",
+                        Description = "SnackaCaptureLinux is not available. Screen sharing and camera features will not work.",
+                        Suggestions = new List<string>
+                        {
+                            "Ensure SnackaCaptureLinux is included in the application directory",
+                            "Try reinstalling the application"
+                        }
+                    }
+                }
+            };
+            return;
+        }
+
+        try
+        {
+            Console.WriteLine($"SystemCapabilityService: Running validation with {capturePath}");
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = capturePath,
+                Arguments = "validate --json",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var process = Process.Start(psi);
+            if (process == null)
+            {
+                Console.WriteLine("SystemCapabilityService: Failed to start validation process");
+                return;
+            }
+
+            var output = await process.StandardOutput.ReadToEndAsync();
+            var stderr = await process.StandardError.ReadToEndAsync();
+            await process.WaitForExitAsync();
+
+            if (!string.IsNullOrEmpty(stderr))
+            {
+                Console.WriteLine($"SystemCapabilityService: Validation stderr: {stderr}");
+            }
+
+            if (string.IsNullOrWhiteSpace(output))
+            {
+                Console.WriteLine("SystemCapabilityService: Validation returned no output");
+                return;
+            }
+
+            ValidationResult = JsonSerializer.Deserialize<CaptureValidationResult>(output);
+
+            if (ValidationResult != null)
+            {
+                Console.WriteLine($"SystemCapabilityService: Validation complete");
+                Console.WriteLine($"  GPU Vendor: {ValidationResult.GpuVendor}");
+                Console.WriteLine($"  Can Encode H.264: {ValidationResult.CanEncodeH264}");
+                Console.WriteLine($"  Issues: {ValidationResult.Issues.Count}");
+
+                foreach (var issue in ValidationResult.Issues)
+                {
+                    Console.WriteLine($"    [{issue.Severity.ToUpper()}] {issue.Code}: {issue.Title}");
+                }
+
+                // Check if dismissal is still valid (based on hash of result)
+                LoadDismissalState();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"SystemCapabilityService: Validation failed - {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Dismisses the validation warning banner. The dismissal is persisted.
+    /// </summary>
+    public void DismissValidationWarning()
+    {
+        IsValidationWarningDismissed = true;
+
+        // Persist dismissal with a hash of the current result
+        // so it reappears if the validation result changes
+        try
+        {
+            var hash = ComputeValidationHash();
+            var settingsPath = GetSettingsFilePath();
+
+            var settings = LoadSettings(settingsPath);
+            settings[ValidationDismissedKey] = "true";
+            settings[ValidationResultHashKey] = hash;
+            SaveSettings(settingsPath, settings);
+
+            Console.WriteLine("SystemCapabilityService: Validation warning dismissed");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"SystemCapabilityService: Failed to persist dismissal - {ex.Message}");
+        }
+    }
+
+    private void LoadDismissalState()
+    {
+        try
+        {
+            var settingsPath = GetSettingsFilePath();
+            if (!File.Exists(settingsPath))
+            {
+                IsValidationWarningDismissed = false;
+                return;
+            }
+
+            var settings = LoadSettings(settingsPath);
+
+            if (settings.TryGetValue(ValidationDismissedKey, out var dismissed) &&
+                dismissed == "true")
+            {
+                // Check if the hash matches
+                if (settings.TryGetValue(ValidationResultHashKey, out var savedHash))
+                {
+                    var currentHash = ComputeValidationHash();
+                    IsValidationWarningDismissed = savedHash == currentHash;
+
+                    if (!IsValidationWarningDismissed)
+                    {
+                        Console.WriteLine("SystemCapabilityService: Validation result changed, showing warning again");
+                    }
+                }
+                else
+                {
+                    IsValidationWarningDismissed = true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"SystemCapabilityService: Failed to load dismissal state - {ex.Message}");
+            IsValidationWarningDismissed = false;
+        }
+    }
+
+    private string ComputeValidationHash()
+    {
+        if (ValidationResult == null) return "";
+
+        // Simple hash based on key validation properties
+        var key = $"{ValidationResult.GpuVendor}|{ValidationResult.CanEncodeH264}|{ValidationResult.Issues.Count}";
+        return key.GetHashCode().ToString("X8");
+    }
+
+    private static string GetSettingsFilePath()
+    {
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        var snackaDir = Path.Combine(appData, "Snacka");
+        Directory.CreateDirectory(snackaDir);
+        return Path.Combine(snackaDir, "capability_settings.json");
+    }
+
+    private static Dictionary<string, string> LoadSettings(string path)
+    {
+        if (!File.Exists(path)) return new Dictionary<string, string>();
+
+        var json = File.ReadAllText(path);
+        return JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? new Dictionary<string, string>();
+    }
+
+    private static void SaveSettings(string path, Dictionary<string, string> settings)
+    {
+        var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+        File.WriteAllText(path, json);
     }
 }

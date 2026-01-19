@@ -51,6 +51,20 @@ public sealed class Program
         capabilityService.CheckCapabilities();
         CapabilityService = capabilityService;
 
+        // Run detailed validation (async, but we fire and forget at startup)
+        // The result will be available when the main app view loads
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await capabilityService.ValidateAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Program: Validation failed: {ex.Message}");
+            }
+        });
+
         // Check for audio test mode
         if (args.Contains("--audio-test"))
         {
