@@ -245,7 +245,7 @@
                                                         <ColumnDefinition Width="*"/>
                                                     </Grid.ColumnDefinitions>
 
-                                                    <!-- Icon -->
+                                                    <!-- Icon (with emoji font fallback for Linux) -->
                                                     <Border Grid.Column="0"
                                                             Width="32" Height="32"
                                                             CornerRadius="16"
@@ -255,6 +255,7 @@
                                                                    Foreground="White"
                                                                    FontSize="13"
                                                                    FontWeight="Bold"
+                                                                   FontFamily="avares://Snacka.Client/Assets/Fonts#OpenMoji Color, Noto Color Emoji, Apple Color Emoji, Segoe UI Emoji"
                                                                    HorizontalAlignment="Center"
                                                                    VerticalAlignment="Center"/>
                                                     </Border>

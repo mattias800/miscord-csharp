@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
@@ -206,6 +207,12 @@ public class MarkdownTextBlock : StackPanel
                     Foreground = TextForeground,
                     FontSize = FontSize
                 };
+
+                // On Linux, use OpenMoji font for proper color emoji rendering
+                if (EmojiRenderingService.IsLinux)
+                {
+                    textBlock.FontFamily = EmojiRenderingService.GetTextWithEmojiFontFamily();
+                }
 
                 var inlines = MarkdownParser.ParseInlines(block.Content);
                 foreach (var inline in inlines)

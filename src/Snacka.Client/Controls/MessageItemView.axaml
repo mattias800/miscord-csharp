@@ -139,7 +139,8 @@
                                         <SolidColorBrush Color="{Binding HasReacted, Converter={x:Static conv:ReactionBackgroundConverter.Instance}}"/>
                                     </Border.Background>
                                     <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <TextBlock Text="{Binding Emoji}" FontSize="14"/>
+                                        <TextBlock Text="{Binding Emoji}" FontSize="14"
+                                                   FontFamily="avares://Snacka.Client/Assets/Fonts#OpenMoji Color, Noto Color Emoji, Apple Color Emoji, Segoe UI Emoji"/>
                                         <TextBlock Text="{Binding Count}" Classes="text-body" FontSize="12" VerticalAlignment="Center"/>
                                     </StackPanel>
                                     <ToolTip.Tip>

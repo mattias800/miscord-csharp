@@ -241,10 +241,11 @@ public class EmojiAutocompleteSource : IAutocompleteSource
 
     public IEnumerable<IAutocompleteSuggestion> GetSuggestions(string filterText)
     {
-        // If filter is empty, show popular emojis
-        if (string.IsNullOrEmpty(filterText))
+        // Require at least 2 characters to avoid conflicts with emoticons like :D, :P, :)
+        // This prevents ":D" from showing autocomplete suggestions like ":dog:"
+        if (string.IsNullOrEmpty(filterText) || filterText.Length < 2)
         {
-            return GetPopularEmojis().Take(8);
+            return Enumerable.Empty<IAutocompleteSuggestion>();
         }
 
         // Filter by shortcode (without colons for easier matching)
