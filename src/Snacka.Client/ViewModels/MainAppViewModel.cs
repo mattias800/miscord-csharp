@@ -165,8 +165,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private string? _inviteStatusMessage;
     private bool _isInviteStatusError;
 
-    // Recent DMs state (shown in channel list sidebar)
-    private ObservableCollection<ConversationSummaryResponse> _recentDms = new();
+    // Centralized conversation state service (shared across ViewModels)
+    private readonly IConversationStateService _conversationStateService;
     private bool _isRecentDmsExpanded = true;
 
     // Activity feed state (right panel)
@@ -197,9 +197,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private string? _discoveryError;
     private Guid? _joiningCommunityId;
 
-    public MainAppViewModel(IApiClient apiClient, ISignalRService signalR, IWebRtcService webRtc, IScreenCaptureService screenCaptureService, ISettingsStore settingsStore, IAudioDeviceService audioDeviceService, IControllerStreamingService controllerStreamingService, IControllerHostService controllerHostService, string baseUrl, AuthResponse auth, Action onLogout, Action? onSwitchServer = null, Action? onOpenSettings = null, bool gifsEnabled = false)
+    public MainAppViewModel(IApiClient apiClient, ISignalRService signalR, IWebRtcService webRtc, IScreenCaptureService screenCaptureService, ISettingsStore settingsStore, IAudioDeviceService audioDeviceService, IControllerStreamingService controllerStreamingService, IControllerHostService controllerHostService, string baseUrl, AuthResponse auth, IConversationStateService conversationStateService, Action onLogout, Action? onSwitchServer = null, Action? onOpenSettings = null, bool gifsEnabled = false)
     {
         _apiClient = apiClient;
+        _conversationStateService = conversationStateService;
         _isGifsEnabled = gifsEnabled;
         _screenCaptureService = screenCaptureService;
         _settingsStore = settingsStore;
@@ -331,6 +332,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         _dmContent = new DMContentViewModel(
             apiClient,
             signalR,
+            _conversationStateService,
             auth.UserId,
             error => ErrorMessage = error);
 
@@ -351,7 +353,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             _myGamingStations,
             () => SelectedCommunity?.Id ?? Guid.Empty,
             member => StartDMWithMember(member),
-            _ => 0, // Unread count per user not available in new conversation model
+            userId => _conversationStateService.GetUnreadCountForUser(userId),
             () => Task.FromResult(_currentVoiceChannel is not null),
             machineId => CommandStationJoinCurrentChannelAsync(machineId),
             error => ErrorMessage = error);
@@ -1192,10 +1194,44 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             }
         });
 
-        // Conversation message received - update recent DMs list
+        // Conversation message received - update via centralized state service
         _signalR.ConversationMessageReceived += message => Dispatcher.UIThread.Post(() =>
         {
-            UpdateRecentDmWithMessage(message);
+            _conversationStateService.OnMessageReceived(message);
+            this.RaisePropertyChanged(nameof(TotalDmUnreadCount));
+        });
+
+        // Conversation message updated - forward to state service
+        _signalR.ConversationMessageUpdated += message => Dispatcher.UIThread.Post(() =>
+        {
+            _conversationStateService.OnMessageUpdated(message);
+        });
+
+        // Conversation message deleted - forward to state service
+        _signalR.ConversationMessageDeleted += e => Dispatcher.UIThread.Post(() =>
+        {
+            _conversationStateService.OnMessageDeleted(e.ConversationId, e.MessageId);
+        });
+
+        // Conversation updated (name/icon) - forward to state service
+        _signalR.ConversationUpdated += conversation => Dispatcher.UIThread.Post(() =>
+        {
+            _conversationStateService.OnConversationUpdated(conversation);
+        });
+
+        // User added to conversation - reload conversations to get the new one
+        _signalR.AddedToConversation += conversationId => Dispatcher.UIThread.Post(async () =>
+        {
+            // Reload conversations from server to get the new conversation with full summary
+            await _conversationStateService.LoadConversationsAsync();
+            this.RaisePropertyChanged(nameof(TotalDmUnreadCount));
+        });
+
+        // User removed from conversation - forward to state service
+        _signalR.RemovedFromConversation += conversationId => Dispatcher.UIThread.Post(() =>
+        {
+            _conversationStateService.OnConversationRemoved(conversationId);
+            this.RaisePropertyChanged(nameof(TotalDmUnreadCount));
         });
 
         // Gaming Station events (new simplified architecture)
@@ -1471,8 +1507,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
     /// <summary>
     /// Recent DM conversations for the sidebar, sorted by last message time.
+    /// Uses the centralized ConversationStateService.
     /// </summary>
-    public ObservableCollection<ConversationSummaryResponse> RecentDms => _recentDms;
+    public ReadOnlyObservableCollection<ConversationSummaryResponse> RecentDms => _conversationStateService.Conversations;
 
     /// <summary>
     /// Whether the Recent DMs section in the sidebar is expanded.
@@ -1485,8 +1522,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
     /// <summary>
     /// Total unread count across all DM conversations.
+    /// Uses the centralized ConversationStateService.
     /// </summary>
-    public int TotalDmUnreadCount => _recentDms.Sum(c => c.UnreadCount);
+    public int TotalDmUnreadCount => _conversationStateService.Conversations.Sum(c => c.UnreadCount);
 
     /// <summary>
     /// The ViewModel for the inline DM content area.
@@ -4838,51 +4876,13 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     {
         try
         {
-            var result = await _apiClient.GetConversationSummariesAsync();
-            if (result.Success && result.Data is not null)
-            {
-                _recentDms.Clear();
-                // Sort by last message time descending (most recent first)
-                var sorted = result.Data
-                    .OrderByDescending(c => c.LastMessage?.CreatedAt ?? DateTime.MinValue)
-                    .Take(10); // Limit to 10 recent conversations in the sidebar
-
-                foreach (var conv in sorted)
-                    _recentDms.Add(conv);
-
-                this.RaisePropertyChanged(nameof(TotalDmUnreadCount));
-            }
+            await _conversationStateService.LoadConversationsAsync();
+            this.RaisePropertyChanged(nameof(TotalDmUnreadCount));
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error loading recent DMs: {ex.Message}");
         }
-    }
-
-    private void UpdateRecentDmWithMessage(ConversationMessageResponse message)
-    {
-        var existing = _recentDms.FirstOrDefault(c => c.Id == message.ConversationId);
-
-        if (existing is not null)
-        {
-            var index = _recentDms.IndexOf(existing);
-            var updated = existing with
-            {
-                LastMessage = message,
-                UnreadCount = message.SenderId != _auth.UserId
-                    ? existing.UnreadCount + 1
-                    : existing.UnreadCount
-            };
-            _recentDms.RemoveAt(index);
-            _recentDms.Insert(0, updated); // Move to top
-        }
-        else
-        {
-            // New conversation - reload the list from server to get full info
-            _ = LoadRecentDmsAsync();
-        }
-
-        this.RaisePropertyChanged(nameof(TotalDmUnreadCount));
     }
 
     private void SelectRecentDm(ConversationSummaryResponse conversation)
@@ -4894,11 +4894,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // Open the DM content view for this conversation
         _dmContent?.OpenConversationById(conversation.Id, conversation.DisplayName);
 
-        // Mark conversation as read in the list
-        var index = _recentDms.IndexOf(conversation);
-        if (index >= 0 && conversation.UnreadCount > 0)
+        // Mark conversation as read via the service (updates all subscribers)
+        if (conversation.UnreadCount > 0)
         {
-            _recentDms[index] = conversation with { UnreadCount = 0 };
+            _ = _conversationStateService.MarkConversationAsReadAsync(conversation.Id);
             this.RaisePropertyChanged(nameof(TotalDmUnreadCount));
         }
     }

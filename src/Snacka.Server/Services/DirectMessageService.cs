@@ -64,9 +64,10 @@ public sealed class DirectMessageService : IDirectMessageService
                 }
             }
 
-            // Determine display name and online status
+            // Determine display name, online status, and other participant (for 1:1)
             string displayName;
             bool isOnline;
+            Guid? otherParticipantId = null;
 
             if (conv.IsGroup)
             {
@@ -82,6 +83,7 @@ public sealed class DirectMessageService : IDirectMessageService
                 var otherParticipant = conv.Participants.FirstOrDefault(p => p.UserId != userId);
                 displayName = otherParticipant?.User?.EffectiveDisplayName ?? "Unknown";
                 isOnline = otherParticipant?.User?.IsOnline ?? false;
+                otherParticipantId = otherParticipant?.UserId;
             }
 
             return new ConversationSummaryResponse(
@@ -91,7 +93,8 @@ public sealed class DirectMessageService : IDirectMessageService
                 conv.IsGroup,
                 isOnline,
                 lastMessageResponse,
-                unreadCount
+                unreadCount,
+                otherParticipantId
             );
         }).ToList();
     }

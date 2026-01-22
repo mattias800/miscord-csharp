@@ -16,6 +16,7 @@ public class DMContentViewModel : ViewModelBase
 {
     private readonly IApiClient _apiClient;
     private readonly ISignalRService _signalR;
+    private readonly IConversationStateService _conversationStateService;
     private readonly Guid _currentUserId;
     private readonly Action<string?> _onError;
 
@@ -36,11 +37,13 @@ public class DMContentViewModel : ViewModelBase
     public DMContentViewModel(
         IApiClient apiClient,
         ISignalRService signalR,
+        IConversationStateService conversationStateService,
         Guid currentUserId,
         Action<string?> onError)
     {
         _apiClient = apiClient;
         _signalR = signalR;
+        _conversationStateService = conversationStateService;
         _currentUserId = currentUserId;
         _onError = onError;
 
@@ -421,8 +424,8 @@ public class DMContentViewModel : ViewModelBase
                     Messages.Add(message);
             }
 
-            // Mark conversation as read
-            await _apiClient.MarkConversationReadByIdAsync(ConversationId.Value);
+            // Mark conversation as read via state service (updates all UI components)
+            await _conversationStateService.MarkConversationAsReadAsync(ConversationId.Value);
         }
         finally
         {

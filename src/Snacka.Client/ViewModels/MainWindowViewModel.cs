@@ -19,6 +19,9 @@ public class MainWindowViewModel : ViewModelBase
     private readonly Services.IControllerStreamingService _controllerStreamingService;
     private readonly Services.IControllerHostService _controllerHostService;
     private readonly Services.IUpdateService _updateService;
+
+    // Centralized conversation state - created on auth success and shared across ViewModels
+    private IConversationStateService? _conversationStateService;
     private ViewModelBase _currentView;
     private AuthResponse? _currentUser;
     private ServerConnection? _currentServer;
@@ -534,7 +537,12 @@ public class MainWindowViewModel : ViewModelBase
             _connectionStore.Save(updatedServer);
         }
 
-        CurrentView = new MainAppViewModel(_apiClient, _signalR, _webRtc, _screenCaptureService, _settingsStore, _audioDeviceService, _controllerStreamingService, _controllerHostService, CurrentServer!.Url, auth, OnLogout, OnSwitchServer, OnOpenSettings, gifsEnabled: _currentServerInfo?.GifsEnabled ?? false);
+        // Create centralized conversation state service (shared across ViewModels)
+        // Dispose previous instance if re-logging in
+        (_conversationStateService as IDisposable)?.Dispose();
+        _conversationStateService = new ConversationStateService(_apiClient, auth.UserId);
+
+        CurrentView = new MainAppViewModel(_apiClient, _signalR, _webRtc, _screenCaptureService, _settingsStore, _audioDeviceService, _controllerStreamingService, _controllerHostService, CurrentServer!.Url, auth, _conversationStateService, OnLogout, OnSwitchServer, OnOpenSettings, gifsEnabled: _currentServerInfo?.GifsEnabled ?? false);
     }
 
     private void OnOpenSettings()

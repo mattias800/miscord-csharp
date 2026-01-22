@@ -26,7 +26,12 @@ public record ConversationSummaryResponse(
     bool IsGroup,
     bool IsOnline,
     ConversationMessageResponse? LastMessage,
-    int UnreadCount
+    int UnreadCount,
+    /// <summary>
+    /// For 1:1 conversations, the ID of the other participant.
+    /// Null for group conversations.
+    /// </summary>
+    Guid? OtherParticipantId
 );
 
 public record ParticipantInfo(
