@@ -152,18 +152,11 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private ObservableCollection<PendingAttachment> _pendingAttachments = new();
     private AttachmentResponse? _lightboxImage;
 
-    // Pinned messages state
-    private bool _isPinnedPopupOpen;
-    private ObservableCollection<MessageResponse> _pinnedMessages = new();
+    // Pinned messages popup (extracted ViewModel)
+    private PinnedMessagesPopupViewModel? _pinnedMessagesPopup;
 
-    // Invite user popup state
-    private bool _isInviteUserPopupOpen;
-    private string _inviteSearchQuery = string.Empty;
-    private bool _isSearchingUsersToInvite;
-    private ObservableCollection<UserSearchResult> _inviteSearchResults = new();
-    private bool _inviteHasNoResults;
-    private string? _inviteStatusMessage;
-    private bool _isInviteStatusError;
+    // Invite user popup (extracted ViewModel)
+    private InviteUserPopupViewModel? _inviteUserPopup;
 
     // Centralized conversation state service (shared across ViewModels)
     private readonly IConversationStateService _conversationStateService;
@@ -189,13 +182,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private ConnectionState _connectionState = ConnectionState.Connected;
     private int _reconnectSecondsRemaining;
 
-    // Community discovery state
+    // Community discovery (extracted ViewModel)
+    private CommunityDiscoveryViewModel? _communityDiscovery;
     private bool _isWelcomeModalOpen;
-    private bool _isCommunityDiscoveryOpen;
-    private bool _isLoadingDiscovery;
-    private ObservableCollection<CommunityResponse> _discoverableCommunities = new();
-    private string? _discoveryError;
-    private Guid? _joiningCommunityId;
 
     public MainAppViewModel(IApiClient apiClient, ISignalRService signalR, IWebRtcService webRtc, IScreenCaptureService screenCaptureService, ISettingsStore settingsStore, IAudioDeviceService audioDeviceService, IControllerStreamingService controllerStreamingService, IControllerHostService controllerHostService, string baseUrl, AuthResponse auth, IConversationStateService conversationStateService, Action onLogout, Action? onSwitchServer = null, Action? onOpenSettings = null, bool gifsEnabled = false)
     {
@@ -368,6 +357,19 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             LoadCommunitiesAsync,
             (userId, displayName) => OpenDmFromActivity(userId, displayName));
 
+        // Create extracted popup ViewModels
+        _pinnedMessagesPopup = new PinnedMessagesPopupViewModel(
+            apiClient,
+            () => SelectedChannel?.Id);
+
+        _inviteUserPopup = new InviteUserPopupViewModel(
+            apiClient,
+            () => SelectedCommunity?.Id);
+
+        _communityDiscovery = new CommunityDiscoveryViewModel(
+            apiClient,
+            LoadCommunitiesAsync);
+
         // Commands
         LogoutCommand = ReactiveCommand.Create(_onLogout);
         SwitchServerCommand = _onSwitchServer is not null
@@ -429,29 +431,29 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         ToggleReactionCommand = ReactiveCommand.CreateFromTask<(MessageResponse Message, string Emoji)>(ToggleReactionAsync);
         AddReactionCommand = ReactiveCommand.CreateFromTask<(MessageResponse Message, string Emoji)>(AddReactionAsync);
         TogglePinCommand = ReactiveCommand.CreateFromTask<MessageResponse>(TogglePinAsync);
-        ShowPinnedMessagesCommand = ReactiveCommand.CreateFromTask(ShowPinnedMessagesAsync);
-        ClosePinnedPopupCommand = ReactiveCommand.Create(() => { IsPinnedPopupOpen = false; });
+        ShowPinnedMessagesCommand = _pinnedMessagesPopup!.ShowCommand;
+        ClosePinnedPopupCommand = _pinnedMessagesPopup!.CloseCommand;
 
         // GIF preview commands
         SendGifPreviewCommand = ReactiveCommand.CreateFromTask(SendGifPreviewAsync);
         ShuffleGifPreviewCommand = ReactiveCommand.Create(ShuffleGifPreview);
         CancelGifPreviewCommand = ReactiveCommand.Create(CancelGifPreview);
 
-        // Invite user commands
-        OpenInviteUserPopupCommand = ReactiveCommand.Create(OpenInviteUserPopup);
-        CloseInviteUserPopupCommand = ReactiveCommand.Create(CloseInviteUserPopup);
-        InviteUserCommand = ReactiveCommand.CreateFromTask<UserSearchResult>(InviteUserAsync);
+        // Invite user commands (delegated to InviteUserPopupViewModel)
+        OpenInviteUserPopupCommand = _inviteUserPopup!.OpenCommand;
+        CloseInviteUserPopupCommand = _inviteUserPopup!.CloseCommand;
+        InviteUserCommand = _inviteUserPopup!.InviteUserCommand;
 
         // Recent DMs commands (sidebar section)
         SelectRecentDmCommand = ReactiveCommand.Create<ConversationSummaryResponse>(SelectRecentDm);
         ToggleRecentDmsExpandedCommand = ReactiveCommand.Create(() => { IsRecentDmsExpanded = !IsRecentDmsExpanded; });
 
-        // Community discovery commands
-        OpenCommunityDiscoveryCommand = ReactiveCommand.CreateFromTask(OpenCommunityDiscoveryAsync);
-        CloseCommunityDiscoveryCommand = ReactiveCommand.Create(() => { IsCommunityDiscoveryOpen = false; });
+        // Community discovery commands (delegated to CommunityDiscoveryViewModel)
+        OpenCommunityDiscoveryCommand = _communityDiscovery!.OpenCommand;
+        CloseCommunityDiscoveryCommand = _communityDiscovery!.CloseCommand;
         CloseWelcomeModalCommand = ReactiveCommand.Create(CloseWelcomeModal);
-        JoinCommunityCommand = ReactiveCommand.CreateFromTask<CommunityResponse>(JoinDiscoveredCommunityAsync);
-        RefreshDiscoverableCommunitiesCommand = ReactiveCommand.CreateFromTask(LoadDiscoverableCommunitiesAsync);
+        JoinCommunityCommand = _communityDiscovery!.JoinCommunityCommand;
+        RefreshDiscoverableCommunitiesCommand = _communityDiscovery!.OpenCommand;
         WelcomeBrowseCommunitiesCommand = ReactiveCommand.CreateFromTask(WelcomeBrowseCommunitiesAsync);
         WelcomeCreateCommunityCommand = ReactiveCommand.CreateFromTask(WelcomeCreateCommunityAsync);
 
@@ -866,22 +868,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 };
             }
 
-            // Update pinned messages list if popup is open
-            if (IsPinnedPopupOpen)
-            {
-                if (e.IsPinned)
-                {
-                    // Message was pinned - reload to get full message data
-                    _ = LoadPinnedMessagesAsync();
-                }
-                else
-                {
-                    // Message was unpinned - remove from list
-                    var pinnedIndex = PinnedMessages.ToList().FindIndex(m => m.Id == e.MessageId);
-                    if (pinnedIndex >= 0)
-                        PinnedMessages.RemoveAt(pinnedIndex);
-                }
-            }
+            // Update pinned messages popup if open
+            _pinnedMessagesPopup?.OnMessagePinStatusChanged(e.MessageId, e.IsPinned);
         });
 
         _signalR.UserOnline += e => Dispatcher.UIThread.Post(() =>
@@ -1621,64 +1609,19 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// </summary>
     public GifPickerViewModel? GifPicker => _gifPicker;
 
-    public bool IsPinnedPopupOpen
-    {
-        get => _isPinnedPopupOpen;
-        set => this.RaiseAndSetIfChanged(ref _isPinnedPopupOpen, value);
-    }
-
-    public ObservableCollection<MessageResponse> PinnedMessages
-    {
-        get => _pinnedMessages;
-        set => this.RaiseAndSetIfChanged(ref _pinnedMessages, value);
-    }
+    /// <summary>
+    /// Pinned messages popup ViewModel.
+    /// </summary>
+    public PinnedMessagesPopupViewModel? PinnedMessagesPopup => _pinnedMessagesPopup;
 
     public int PinnedCount => Messages.Count(m => m.IsPinned);
 
-    // Invite user popup properties
-    public bool IsInviteUserPopupOpen
-    {
-        get => _isInviteUserPopupOpen;
-        set => this.RaiseAndSetIfChanged(ref _isInviteUserPopupOpen, value);
-    }
+    /// <summary>
+    /// Invite user popup ViewModel.
+    /// </summary>
+    public InviteUserPopupViewModel? InviteUserPopup => _inviteUserPopup;
 
-    public string InviteSearchQuery
-    {
-        get => _inviteSearchQuery;
-        set => this.RaiseAndSetIfChanged(ref _inviteSearchQuery, value);
-    }
-
-    public bool IsSearchingUsersToInvite
-    {
-        get => _isSearchingUsersToInvite;
-        set => this.RaiseAndSetIfChanged(ref _isSearchingUsersToInvite, value);
-    }
-
-    public ObservableCollection<UserSearchResult> InviteSearchResults
-    {
-        get => _inviteSearchResults;
-        set => this.RaiseAndSetIfChanged(ref _inviteSearchResults, value);
-    }
-
-    public bool InviteHasNoResults
-    {
-        get => _inviteHasNoResults;
-        set => this.RaiseAndSetIfChanged(ref _inviteHasNoResults, value);
-    }
-
-    public string? InviteStatusMessage
-    {
-        get => _inviteStatusMessage;
-        set => this.RaiseAndSetIfChanged(ref _inviteStatusMessage, value);
-    }
-
-    public bool IsInviteStatusError
-    {
-        get => _isInviteStatusError;
-        set => this.RaiseAndSetIfChanged(ref _isInviteStatusError, value);
-    }
-
-    // Community discovery properties
+    // Community discovery
     /// <summary>
     /// Whether the user has no communities (used to show empty state).
     /// </summary>
@@ -1694,50 +1637,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Whether the community discovery modal is open.
+    /// Community discovery ViewModel.
     /// </summary>
-    public bool IsCommunityDiscoveryOpen
-    {
-        get => _isCommunityDiscoveryOpen;
-        set => this.RaiseAndSetIfChanged(ref _isCommunityDiscoveryOpen, value);
-    }
-
-    /// <summary>
-    /// Whether discoverable communities are being loaded.
-    /// </summary>
-    public bool IsLoadingDiscovery
-    {
-        get => _isLoadingDiscovery;
-        set => this.RaiseAndSetIfChanged(ref _isLoadingDiscovery, value);
-    }
-
-    /// <summary>
-    /// The list of discoverable communities.
-    /// </summary>
-    public ObservableCollection<CommunityResponse> DiscoverableCommunities => _discoverableCommunities;
-
-    /// <summary>
-    /// Whether there are no discoverable communities.
-    /// </summary>
-    public bool HasNoDiscoverableCommunities => _discoverableCommunities.Count == 0;
-
-    /// <summary>
-    /// Error message from loading discoverable communities.
-    /// </summary>
-    public string? DiscoveryError
-    {
-        get => _discoveryError;
-        set => this.RaiseAndSetIfChanged(ref _discoveryError, value);
-    }
-
-    /// <summary>
-    /// The community ID currently being joined (for showing loading state).
-    /// </summary>
-    public Guid? JoiningCommunityId
-    {
-        get => _joiningCommunityId;
-        set => this.RaiseAndSetIfChanged(ref _joiningCommunityId, value);
-    }
+    public CommunityDiscoveryViewModel? CommunityDiscovery => _communityDiscovery;
 
     // Controller access request properties
     public ObservableCollection<ControllerAccessRequest> PendingControllerRequests =>
@@ -3173,7 +3075,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private async Task WelcomeBrowseCommunitiesAsync()
     {
         CloseWelcomeModal();
-        await OpenCommunityDiscoveryAsync();
+        await _communityDiscovery!.OpenAsync();
     }
 
     private async Task WelcomeCreateCommunityAsync()
@@ -3182,81 +3084,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         await CreateCommunityAsync();
     }
 
-    private async Task OpenCommunityDiscoveryAsync()
-    {
-        IsCommunityDiscoveryOpen = true;
-        await LoadDiscoverableCommunitiesAsync();
-    }
-
-    private async Task LoadDiscoverableCommunitiesAsync()
-    {
-        IsLoadingDiscovery = true;
-        DiscoveryError = null;
-
-        try
-        {
-            var result = await _apiClient.DiscoverCommunitiesAsync();
-            if (result.Success && result.Data is not null)
-            {
-                _discoverableCommunities.Clear();
-                foreach (var community in result.Data)
-                    _discoverableCommunities.Add(community);
-
-                this.RaisePropertyChanged(nameof(HasNoDiscoverableCommunities));
-            }
-            else
-            {
-                DiscoveryError = result.Error ?? "Failed to load communities";
-            }
-        }
-        catch (Exception ex)
-        {
-            DiscoveryError = ex.Message;
-        }
-        finally
-        {
-            IsLoadingDiscovery = false;
-        }
-    }
-
-    private async Task JoinDiscoveredCommunityAsync(CommunityResponse community)
-    {
-        if (JoiningCommunityId is not null) return; // Already joining
-
-        JoiningCommunityId = community.Id;
-
-        try
-        {
-            var result = await _apiClient.JoinCommunityAsync(community.Id);
-            if (result.Success)
-            {
-                // Close the discovery modal
-                IsCommunityDiscoveryOpen = false;
-
-                // Reload communities
-                await LoadCommunitiesAsync();
-
-                // Select the joined community
-                var joinedCommunity = Communities.FirstOrDefault(c => c.Id == community.Id);
-                if (joinedCommunity is not null)
-                {
-                    SelectedCommunity = joinedCommunity;
-                }
-            }
-            else
-            {
-                DiscoveryError = result.Error ?? "Failed to join community";
-            }
-        }
-        catch (Exception ex)
-        {
-            DiscoveryError = ex.Message;
-        }
-        finally
-        {
-            JoiningCommunityId = null;
-        }
-    }
 
     private async Task LoadChannelsAsync()
     {
@@ -4755,120 +4582,13 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private async Task ShowPinnedMessagesAsync()
-    {
-        if (SelectedChannel is null) return;
-
-        await LoadPinnedMessagesAsync();
-        IsPinnedPopupOpen = true;
-    }
-
-    private async Task LoadPinnedMessagesAsync()
-    {
-        if (SelectedChannel is null) return;
-
-        var result = await _apiClient.GetPinnedMessagesAsync(SelectedChannel.Id);
-        if (result.Success && result.Data is not null)
-        {
-            PinnedMessages.Clear();
-            foreach (var message in result.Data)
-                PinnedMessages.Add(message);
-        }
-    }
-
-    // Invite user methods
-    private void OpenInviteUserPopup()
-    {
-        if (SelectedCommunity is null) return;
-
-        // Reset state
-        InviteSearchQuery = string.Empty;
-        InviteSearchResults.Clear();
-        InviteHasNoResults = false;
-        InviteStatusMessage = null;
-        IsInviteStatusError = false;
-
-        IsInviteUserPopupOpen = true;
-    }
-
-    private void CloseInviteUserPopup()
-    {
-        IsInviteUserPopupOpen = false;
-    }
-
     /// <summary>
     /// Searches for users that can be invited to the current community.
+    /// Called from XAML TextBox binding.
     /// </summary>
     public async Task SearchUsersToInviteAsync(string query)
     {
-        if (SelectedCommunity is null || string.IsNullOrWhiteSpace(query)) return;
-
-        IsSearchingUsersToInvite = true;
-        InviteHasNoResults = false;
-        InviteStatusMessage = null;
-
-        try
-        {
-            var result = await _apiClient.SearchUsersToInviteAsync(SelectedCommunity.Id, query);
-            if (result.Success && result.Data is not null)
-            {
-                InviteSearchResults.Clear();
-                foreach (var user in result.Data)
-                    InviteSearchResults.Add(user);
-
-                InviteHasNoResults = InviteSearchResults.Count == 0;
-            }
-            else
-            {
-                InviteStatusMessage = result.Error ?? "Failed to search users";
-                IsInviteStatusError = true;
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error searching users to invite: {ex.Message}");
-            InviteStatusMessage = "Failed to search users";
-            IsInviteStatusError = true;
-        }
-        finally
-        {
-            IsSearchingUsersToInvite = false;
-        }
-    }
-
-    private async Task InviteUserAsync(UserSearchResult user)
-    {
-        if (SelectedCommunity is null) return;
-
-        InviteStatusMessage = null;
-
-        try
-        {
-            var result = await _apiClient.CreateCommunityInviteAsync(SelectedCommunity.Id, user.Id);
-            if (result.Success)
-            {
-                InviteStatusMessage = $"Invite sent to {user.EffectiveDisplayName}";
-                IsInviteStatusError = false;
-
-                // Remove the user from search results since they now have a pending invite
-                var existingUser = InviteSearchResults.FirstOrDefault(u => u.Id == user.Id);
-                if (existingUser != null)
-                {
-                    InviteSearchResults.Remove(existingUser);
-                }
-            }
-            else
-            {
-                InviteStatusMessage = result.Error ?? "Failed to send invite";
-                IsInviteStatusError = true;
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error inviting user: {ex.Message}");
-            InviteStatusMessage = "Failed to send invite";
-            IsInviteStatusError = true;
-        }
+        await _inviteUserPopup!.SearchUsersAsync(query);
     }
 
     // Recent DMs Methods
