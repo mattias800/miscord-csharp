@@ -734,8 +734,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// </summary>
     private VoiceChannelViewModel CreateVoiceChannelViewModel(ChannelResponse channel)
     {
+        // Use the store-subscribing constructor for automatic participant updates
         return new VoiceChannelViewModel(
             channel,
+            _stores.VoiceStore,
             _auth.UserId,
             onVolumeChanged: (userId, volume) => _webRtc.SetUserVolume(userId, volume),
             getInitialVolume: userId => _webRtc.GetUserVolume(userId)
@@ -989,23 +991,16 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // CommunityMemberRemoved event is now handled by SignalREventDispatcher -> CommunityStore
         // StoreMembers auto-updates via DynamicData binding
 
-        // Voice channel events - update VoiceChannelViewModels, VoiceParticipants, and VoiceChannelContent
+        // Voice channel events - VoiceChannelViewModels now auto-update via VoiceStore subscription
+        // We still need to update VoiceParticipants and _voiceChannelContent (UI-specific)
         _signalR.VoiceParticipantJoined += e => Dispatcher.UIThread.Post(() =>
         {
             Console.WriteLine($"EVENT VoiceParticipantJoined: {e.Participant.Username} joined channel {e.ChannelId}");
 
-            // Update VoiceChannelViewModel
-            var voiceChannel = VoiceChannelViewModels.FirstOrDefault(v => v.Id == e.ChannelId);
-            if (voiceChannel is not null)
-            {
-                voiceChannel.AddParticipant(e.Participant);
-            }
-            else
-            {
-                Console.WriteLine($"WARNING: VoiceChannelViewModel for {e.ChannelId} not found!");
-            }
+            // VoiceChannelViewModel auto-updates via VoiceStore subscription
+            // VoiceStore is updated by SignalREventDispatcher
 
-            // Also update current VoiceParticipants if this is our channel
+            // Update current VoiceParticipants if this is our channel (for voice controls panel)
             if (CurrentVoiceChannel is not null && e.ChannelId == CurrentVoiceChannel.Id)
             {
                 if (!VoiceParticipants.Any(p => p.UserId == e.Participant.UserId))
@@ -1020,11 +1015,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         {
             Console.WriteLine($"EVENT VoiceParticipantLeft: User {e.UserId} left channel {e.ChannelId}");
 
-            // Update VoiceChannelViewModel
-            var voiceChannel = VoiceChannelViewModels.FirstOrDefault(v => v.Id == e.ChannelId);
-            voiceChannel?.RemoveParticipant(e.UserId);
+            // VoiceChannelViewModel auto-updates via VoiceStore subscription
 
-            // Also update current VoiceParticipants if this is our channel
+            // Update current VoiceParticipants if this is our channel (for voice controls panel)
             if (CurrentVoiceChannel is not null && e.ChannelId == CurrentVoiceChannel.Id)
             {
                 var participant = VoiceParticipants.FirstOrDefault(p => p.UserId == e.UserId);
@@ -1046,11 +1039,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         {
             Console.WriteLine($"EVENT VoiceStateChanged: User {e.UserId} in channel {e.ChannelId}");
 
-            // Update VoiceChannelViewModel
-            var voiceChannel = VoiceChannelViewModels.FirstOrDefault(v => v.Id == e.ChannelId);
-            voiceChannel?.UpdateParticipantState(e.UserId, e.State);
+            // VoiceChannelViewModel auto-updates via VoiceStore subscription
 
-            // Also update current VoiceParticipants if this is our channel
+            // Update current VoiceParticipants if this is our channel
             if (CurrentVoiceChannel is not null && e.ChannelId == CurrentVoiceChannel.Id)
             {
                 var index = VoiceParticipants.ToList().FindIndex(p => p.UserId == e.UserId);
@@ -1072,11 +1063,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         });
 
         // Speaking state from other users
+        // VoiceChannelViewModel auto-updates via VoiceStore subscription
         _signalR.SpeakingStateChanged += e => Dispatcher.UIThread.Post(() =>
         {
-            var voiceChannel = VoiceChannelViewModels.FirstOrDefault(v => v.Id == e.ChannelId);
-            voiceChannel?.UpdateSpeakingState(e.UserId, e.IsSpeaking);
-
             // Update video grid
             if (CurrentVoiceChannel is not null && e.ChannelId == CurrentVoiceChannel.Id)
             {
@@ -1110,9 +1099,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 // Leave WebRTC connections (but don't notify server - it already knows)
                 await _webRtc.LeaveVoiceChannelAsync();
 
-                // Remove ourselves from the VoiceChannelViewModel
+                // VoiceChannelViewModel auto-updates via VoiceStore subscription
+                // Get channel name before clearing state
                 var voiceChannelVm = VoiceChannelViewModels.FirstOrDefault(v => v.Id == e.ChannelId);
-                voiceChannelVm?.RemoveParticipant(_auth.UserId);
 
                 // Clear local state
                 CurrentVoiceChannel = null;
@@ -1141,12 +1130,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             var currentChannel = CurrentVoiceChannel;
             if (currentChannel is not null)
             {
-                // Broadcast to others
+                // Broadcast to others - VoiceStore will be updated via SignalR event response
                 await _signalR.UpdateSpeakingStateAsync(currentChannel.Id, isSpeaking);
 
-                // Update our own speaking state in the ViewModel
-                var voiceChannel = VoiceChannelViewModels.FirstOrDefault(v => v.Id == currentChannel.Id);
-                voiceChannel?.UpdateSpeakingState(_auth.UserId, isSpeaking);
+                // VoiceChannelViewModel auto-updates via VoiceStore subscription
 
                 // Update video grid
                 _voiceChannelContent?.UpdateSpeakingState(_auth.UserId, isSpeaking);
@@ -1158,9 +1145,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         {
             Console.WriteLine($"EVENT ServerVoiceStateChanged: User {e.TargetUserId} in channel {e.ChannelId}");
 
-            // Update VoiceChannelViewModel
-            var voiceChannel = VoiceChannelViewModels.FirstOrDefault(v => v.Id == e.ChannelId);
-            voiceChannel?.UpdateServerState(e.TargetUserId, e.IsServerMuted, e.IsServerDeafened);
+            // VoiceChannelViewModel auto-updates via VoiceStore subscription
 
             // If this is the current user being server-muted, update local state
             if (e.TargetUserId == _auth.UserId)
@@ -3245,11 +3230,12 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 {
                     var vm = CreateVoiceChannelViewModel(voiceChannel);
 
-                    // Load participants for this voice channel
+                    // Load participants for this voice channel into VoiceStore
+                    // VoiceChannelViewModel will receive updates via its subscription
                     Console.WriteLine($"LoadChannelsAsync: Loading participants for voice channel {voiceChannel.Name} ({voiceChannel.Id})");
                     var participants = await _signalR.GetVoiceParticipantsAsync(voiceChannel.Id);
                     Console.WriteLine($"LoadChannelsAsync: Got {participants.Count()} participants for {voiceChannel.Name}");
-                    vm.SetParticipants(participants);
+                    _stores.VoiceStore.SetParticipants(voiceChannel.Id, participants);
 
                     VoiceChannelViewModels.Add(vm);
                 }
@@ -4022,17 +4008,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 VoiceParticipants.Add(p);
             }
 
-            // Update VoiceChannelViewModel (for channel list display)
-            var voiceChannelVm = VoiceChannelViewModels.FirstOrDefault(v => v.Id == channel.Id);
-            if (voiceChannelVm is not null)
-            {
-                voiceChannelVm.SetParticipants(participants);
-                Console.WriteLine($"JoinVoiceChannelAsync: Updated VoiceChannelVM [{channel.Name}] with {participants.Count()} participants");
-            }
-            else
-            {
-                Console.WriteLine($"JoinVoiceChannelAsync: WARNING - VoiceChannelVM for {channel.Name} not found!");
-            }
+            // Update VoiceStore - VoiceChannelViewModel will receive updates via its subscription
+            _stores.VoiceStore.SetParticipants(channel.Id, participants);
+            Console.WriteLine($"JoinVoiceChannelAsync: Updated VoiceStore with {participants.Count()} participants for {channel.Name}");
 
             // Update VoiceChannelContent for video grid display (but don't auto-navigate to it)
             // User can open the video overlay manually via ShowVoiceVideoOverlayCommand
@@ -4075,13 +4053,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
         await _signalR.LeaveVoiceChannelAsync(channelId);
 
-        // Remove ourselves from the VoiceChannelViewModel
-        var voiceChannelVm = VoiceChannelViewModels.FirstOrDefault(v => v.Id == channelId);
-        if (voiceChannelVm is not null)
-        {
-            voiceChannelVm.RemoveParticipant(_auth.UserId);
-            Console.WriteLine($"LeaveVoiceChannelAsync: Removed self from VoiceChannelVM [{channelName}]");
-        }
+        // VoiceChannelViewModel will be updated via VoiceStore subscription when Clear() is called
 
         CurrentVoiceChannel = null;
         VoiceParticipants.Clear();
@@ -4129,10 +4101,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             _webRtc.SetMuted(IsMuted);
             await _signalR.UpdateVoiceStateAsync(CurrentVoiceChannel.Id, new VoiceStateUpdate(IsMuted: IsMuted));
 
-            // Update our own state in the local view models
+            // VoiceChannelViewModel auto-updates via VoiceStore subscription (server round-trip)
+            // Update video grid immediately for responsiveness
             var state = new VoiceStateUpdate(IsMuted: IsMuted);
-            var voiceChannel = VoiceChannelViewModels.FirstOrDefault(v => v.Id == CurrentVoiceChannel.Id);
-            voiceChannel?.UpdateParticipantState(_auth.UserId, state);
             _voiceChannelContent?.UpdateParticipantState(_auth.UserId, state);
         }
     }
@@ -4175,10 +4146,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             _webRtc.SetDeafened(IsDeafened);
             await _signalR.UpdateVoiceStateAsync(CurrentVoiceChannel.Id, new VoiceStateUpdate(IsMuted: IsMuted, IsDeafened: IsDeafened));
 
-            // Update our own state in the local view models
+            // VoiceChannelViewModel auto-updates via VoiceStore subscription (server round-trip)
+            // Update video grid immediately for responsiveness
             var state = new VoiceStateUpdate(IsMuted: IsMuted, IsDeafened: IsDeafened);
-            var voiceChannel = VoiceChannelViewModels.FirstOrDefault(v => v.Id == CurrentVoiceChannel.Id);
-            voiceChannel?.UpdateParticipantState(_auth.UserId, state);
             _voiceChannelContent?.UpdateParticipantState(_auth.UserId, state);
         }
     }
@@ -4194,10 +4164,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             IsCameraOn = newState;
             await _signalR.UpdateVoiceStateAsync(CurrentVoiceChannel.Id, new VoiceStateUpdate(IsCameraOn: IsCameraOn));
 
-            // Update our own state in the local view models (we don't receive our own VoiceStateChanged event)
+            // VoiceChannelViewModel auto-updates via VoiceStore subscription (server round-trip)
+            // Update video grid immediately for responsiveness
             var state = new VoiceStateUpdate(IsCameraOn: newState);
-            var voiceChannel = VoiceChannelViewModels.FirstOrDefault(v => v.Id == CurrentVoiceChannel.Id);
-            voiceChannel?.UpdateParticipantState(_auth.UserId, state);
             _voiceChannelContent?.UpdateParticipantState(_auth.UserId, state);
         }
         catch (Exception ex)
@@ -4242,9 +4211,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             IsScreenSharing = true;
             IsCameraOn = false;
             _currentScreenShareSettings = settings;
+            // VoiceChannelViewModel auto-updates via VoiceStore subscription (server round-trip)
+            // Update video grid immediately for responsiveness
             var state = new VoiceStateUpdate(IsScreenSharing: true, ScreenShareHasAudio: settings.IncludeAudio, IsCameraOn: false);
-            var voiceChannel = VoiceChannelViewModels.FirstOrDefault(v => v.Id == CurrentVoiceChannel.Id);
-            voiceChannel?.UpdateParticipantState(_auth.UserId, state);
             _voiceChannelContent?.UpdateParticipantState(_auth.UserId, state);
 
             // Now start the capture (hardware decoder will find the video stream)
@@ -4282,10 +4251,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
             await _signalR.UpdateVoiceStateAsync(CurrentVoiceChannel.Id, new VoiceStateUpdate(IsScreenSharing: false, ScreenShareHasAudio: false));
 
-            // Update our own state in the local view models
+            // VoiceChannelViewModel auto-updates via VoiceStore subscription (server round-trip)
+            // Update video grid immediately for responsiveness
             var state = new VoiceStateUpdate(IsScreenSharing: false, ScreenShareHasAudio: false);
-            var voiceChannel = VoiceChannelViewModels.FirstOrDefault(v => v.Id == CurrentVoiceChannel.Id);
-            voiceChannel?.UpdateParticipantState(_auth.UserId, state);
             _voiceChannelContent?.UpdateParticipantState(_auth.UserId, state);
 
             // Clear annotations for this screen share

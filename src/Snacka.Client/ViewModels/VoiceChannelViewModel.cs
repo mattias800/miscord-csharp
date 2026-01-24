@@ -1,5 +1,8 @@
 using System.Collections.ObjectModel;
+using System.Reactive.Disposables;
+using System.Reactive.Linq;
 using Snacka.Client.Services;
+using Snacka.Client.Stores;
 using ReactiveUI;
 
 namespace Snacka.Client.ViewModels;
@@ -113,23 +116,79 @@ public class VoiceParticipantViewModel : ReactiveObject
         this.RaisePropertyChanged(nameof(IsEffectivelyMuted));
         this.RaisePropertyChanged(nameof(IsEffectivelyDeafened));
     }
+
+    /// <summary>
+    /// Updates all state from a VoiceParticipantResponse (used when syncing from VoiceStore).
+    /// </summary>
+    public void UpdateFromState(VoiceParticipantResponse response)
+    {
+        if (response.UserId != UserId) return;
+
+        var changed = Participant.IsMuted != response.IsMuted ||
+                      Participant.IsDeafened != response.IsDeafened ||
+                      Participant.IsServerMuted != response.IsServerMuted ||
+                      Participant.IsServerDeafened != response.IsServerDeafened ||
+                      Participant.IsCameraOn != response.IsCameraOn ||
+                      Participant.IsScreenSharing != response.IsScreenSharing;
+
+        if (changed)
+        {
+            Participant = response;
+            this.RaisePropertyChanged(nameof(IsMuted));
+            this.RaisePropertyChanged(nameof(IsDeafened));
+            this.RaisePropertyChanged(nameof(IsServerMuted));
+            this.RaisePropertyChanged(nameof(IsServerDeafened));
+            this.RaisePropertyChanged(nameof(IsCameraOn));
+            this.RaisePropertyChanged(nameof(IsScreenSharing));
+            this.RaisePropertyChanged(nameof(IsEffectivelyMuted));
+            this.RaisePropertyChanged(nameof(IsEffectivelyDeafened));
+        }
+    }
 }
 
 /// <summary>
 /// Wrapper ViewModel for voice channels that provides reactive participant tracking.
-/// This ensures proper UI updates when participants join/leave.
+/// When provided with a VoiceStore, subscribes to store updates automatically.
+/// Otherwise, participants can be managed manually via Add/Remove methods.
 /// </summary>
-public class VoiceChannelViewModel : ReactiveObject
+public class VoiceChannelViewModel : ReactiveObject, IDisposable
 {
     private readonly ChannelResponse _channel;
     private readonly Guid _currentUserId;
     private readonly Action<Guid, float>? _onVolumeChanged;
     private readonly Func<Guid, float>? _getInitialVolume;
+    private readonly IVoiceStore? _voiceStore;
+    private readonly CompositeDisposable _subscriptions = new();
     private int _position;
     private bool _showGapAbove;
     private bool _showGapBelow;
     private bool _isDragSource;
 
+    /// <summary>
+    /// Creates a VoiceChannelViewModel that subscribes to VoiceStore for participant updates.
+    /// </summary>
+    public VoiceChannelViewModel(
+        ChannelResponse channel,
+        IVoiceStore voiceStore,
+        Guid currentUserId,
+        Action<Guid, float>? onVolumeChanged = null,
+        Func<Guid, float>? getInitialVolume = null)
+    {
+        _channel = channel;
+        _voiceStore = voiceStore;
+        _currentUserId = currentUserId;
+        _onVolumeChanged = onVolumeChanged;
+        _getInitialVolume = getInitialVolume;
+        _position = channel.Position;
+        Participants = new ObservableCollection<VoiceParticipantViewModel>();
+
+        // Subscribe to VoiceStore for this channel's participants
+        SubscribeToVoiceStore();
+    }
+
+    /// <summary>
+    /// Creates a VoiceChannelViewModel without store subscription (manual management).
+    /// </summary>
     public VoiceChannelViewModel(ChannelResponse channel, Guid currentUserId = default, Action<Guid, float>? onVolumeChanged = null, Func<Guid, float>? getInitialVolume = null)
     {
         _channel = channel;
@@ -139,6 +198,73 @@ public class VoiceChannelViewModel : ReactiveObject
         _position = channel.Position;
         Participants = new ObservableCollection<VoiceParticipantViewModel>();
     }
+
+    private void SubscribeToVoiceStore()
+    {
+        if (_voiceStore is null) return;
+
+        _voiceStore.GetParticipantsForChannelObservable(_channel.Id)
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(stateList =>
+            {
+                SyncParticipantsFromStore(stateList);
+            })
+            .DisposeWith(_subscriptions);
+    }
+
+    private void SyncParticipantsFromStore(IReadOnlyList<VoiceParticipantState> stateList)
+    {
+        // Build a set of current user IDs from the store
+        var storeUserIds = stateList.Select(s => s.UserId).ToHashSet();
+        var currentUserIds = Participants.Select(p => p.UserId).ToHashSet();
+
+        // Remove participants no longer in store
+        var toRemove = Participants.Where(p => !storeUserIds.Contains(p.UserId)).ToList();
+        foreach (var p in toRemove)
+        {
+            Participants.Remove(p);
+        }
+
+        // Add or update participants from store
+        foreach (var state in stateList)
+        {
+            var existing = Participants.FirstOrDefault(p => p.UserId == state.UserId);
+            if (existing is null)
+            {
+                // Add new participant
+                var response = StateToResponse(state);
+                var initialVolume = _getInitialVolume?.Invoke(state.UserId) ?? 1.0f;
+                var vm = new VoiceParticipantViewModel(response, _currentUserId, initialVolume, _onVolumeChanged);
+                vm.IsSpeaking = state.IsSpeaking;
+                Participants.Add(vm);
+            }
+            else
+            {
+                // Update existing participant state
+                existing.IsSpeaking = state.IsSpeaking;
+                var response = StateToResponse(state);
+                existing.UpdateFromState(response);
+            }
+        }
+    }
+
+    private static VoiceParticipantResponse StateToResponse(VoiceParticipantState state) =>
+        new(
+            Id: state.Id,
+            UserId: state.UserId,
+            Username: state.Username,
+            ChannelId: state.ChannelId,
+            IsMuted: state.IsMuted,
+            IsDeafened: state.IsDeafened,
+            IsServerMuted: state.IsServerMuted,
+            IsServerDeafened: state.IsServerDeafened,
+            IsScreenSharing: state.IsScreenSharing,
+            ScreenShareHasAudio: state.ScreenShareHasAudio,
+            IsCameraOn: state.IsCameraOn,
+            JoinedAt: state.JoinedAt,
+            IsGamingStation: state.IsGamingStation,
+            GamingStationMachineId: state.GamingStationMachineId
+        );
 
     public Guid Id => _channel.Id;
     public string Name => _channel.Name;
@@ -237,5 +363,10 @@ public class VoiceChannelViewModel : ReactiveObject
             var initialVolume = _getInitialVolume?.Invoke(p.UserId) ?? 1.0f;
             Participants.Add(new VoiceParticipantViewModel(p, _currentUserId, initialVolume, _onVolumeChanged));
         }
+    }
+
+    public void Dispose()
+    {
+        _subscriptions.Dispose();
     }
 }
