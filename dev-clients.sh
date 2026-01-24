@@ -59,7 +59,7 @@ dotnet run --project "$CLIENT_PROJECT" --no-build -- \
 CLIENT1_PID=$!
 echo "Client 1 PID: $CLIENT1_PID"
 
-sleep 3
+sleep 2
 
 # Start second client (Bob)
 echo "Starting client 2 (Bob)..."

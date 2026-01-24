@@ -65,14 +65,11 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private string? _voiceOnOtherDeviceChannelName;
 
     // Drag preview state
-    private List<VoiceChannelViewModel>? _originalVoiceChannelOrder;
-    private Guid? _currentPreviewDraggedId;
-
     // Track pending reorder to skip redundant SignalR updates
     private Guid? _pendingReorderCommunityId;
 
-    // Voice channels with participant tracking (robust reactive approach)
-    private ObservableCollection<VoiceChannelViewModel> _voiceChannelViewModels = new();
+    // Voice channels with participant tracking (managed by VoiceChannelViewModelManager)
+    private VoiceChannelViewModelManager? _voiceChannelManager;
 
     // Voice channel content view (for displaying video grid)
     private ChannelResponse? _selectedVoiceChannelForViewing;
@@ -243,6 +240,13 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
         // Create voice channel content view model for video grid
         _voiceChannelContent = new VoiceChannelContentViewModel(_webRtc, _signalR, auth.UserId);
+
+        // Create voice channel ViewModel manager
+        _voiceChannelManager = new VoiceChannelViewModelManager(
+            _stores.VoiceStore,
+            auth.UserId,
+            onVolumeChanged: (userId, volume) => _webRtc.SetUserVolume(userId, volume),
+            getInitialVolume: userId => _webRtc.GetUserVolume(userId));
 
         // Initialize capability warning commands
         DismissCapabilityWarningCommand = ReactiveCommand.Create(() =>
@@ -729,21 +733,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         await LoadRecentDmsAsync();
     }
 
-    /// <summary>
-    /// Creates a VoiceChannelViewModel with proper callbacks for per-user volume control.
-    /// </summary>
-    private VoiceChannelViewModel CreateVoiceChannelViewModel(ChannelResponse channel)
-    {
-        // Use the store-subscribing constructor for automatic participant updates
-        return new VoiceChannelViewModel(
-            channel,
-            _stores.VoiceStore,
-            _auth.UserId,
-            onVolumeChanged: (userId, volume) => _webRtc.SetUserVolume(userId, volume),
-            getInitialVolume: userId => _webRtc.GetUserVolume(userId)
-        );
-    }
-
     private void SetupSignalRHandlers()
     {
         _signalR.ChannelCreated += channel => Dispatcher.UIThread.Post(() =>
@@ -754,11 +743,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             if (SelectedCommunity is not null && channel.CommunityId == SelectedCommunity.Id)
             {
                 // Add VoiceChannelViewModel for voice channels (view-specific, not in store)
-                if (channel.Type == ChannelType.Voice && !VoiceChannelViewModels.Any(v => v.Id == channel.Id))
-                {
-                    var vm = CreateVoiceChannelViewModel(channel);
-                    VoiceChannelViewModels.Add(vm);
-                }
+                _voiceChannelManager?.AddChannel(channel);
             }
         });
 
@@ -775,11 +760,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             // Channel list updates handled by SignalREventDispatcher -> ChannelStore
 
             // Remove VoiceChannelViewModel if it was a voice channel (view-specific, not in store)
-            var voiceVm = VoiceChannelViewModels.FirstOrDefault(v => v.Id == e.ChannelId);
-            if (voiceVm is not null)
-            {
-                VoiceChannelViewModels.Remove(voiceVm);
-            }
+            _voiceChannelManager?.RemoveChannel(e.ChannelId);
 
             // Select a different channel if the deleted one was selected
             if (SelectedChannel?.Id == e.ChannelId && _storeTextChannels.Count > 0)
@@ -802,15 +783,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             // StoreTextChannels auto-updates via DynamicData binding
 
             // Update VoiceChannelViewModels positions and re-sort (view-specific, not in store)
-            foreach (var voiceVm in VoiceChannelViewModels)
-            {
-                var updatedChannel = e.Channels.FirstOrDefault(c => c.Id == voiceVm.Id);
-                if (updatedChannel is not null)
-                {
-                    voiceVm.Position = updatedChannel.Position;
-                }
-            }
-            SortVoiceChannelViewModelsByPosition();
+            _voiceChannelManager?.UpdatePositions(e.Channels);
         });
 
         // MessageReceived handled entirely by SignalREventDispatcher -> MessageStore, TypingStore, ChannelStore
@@ -1356,16 +1329,14 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     {
         var voiceChannels = _storeVoiceChannels.ToList();
 
-        VoiceChannelViewModels.Clear();
+        // Initialize the manager with voice channels
+        _voiceChannelManager?.Initialize(voiceChannels);
+
+        // Load participants for each voice channel into VoiceStore
         foreach (var voiceChannel in voiceChannels)
         {
-            var vm = CreateVoiceChannelViewModel(voiceChannel);
-
-            // Load participants for this voice channel into VoiceStore
             var participants = await _signalR.GetVoiceParticipantsAsync(voiceChannel.Id);
             _stores.VoiceStore.SetParticipants(voiceChannel.Id, participants);
-
-            VoiceChannelViewModels.Add(vm);
         }
     }
 
@@ -2413,12 +2384,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     // Now using store-backed collection for reactive updates
     public IEnumerable<ChannelResponse> TextChannels => _storeTextChannels;
 
-    // Voice channels with reactive participant tracking
-    public ObservableCollection<VoiceChannelViewModel> VoiceChannelViewModels
-    {
-        get => _voiceChannelViewModels;
-        set => this.RaiseAndSetIfChanged(ref _voiceChannelViewModels, value);
-    }
+    // Voice channels with reactive participant tracking (managed by VoiceChannelViewModelManager)
+    public ObservableCollection<VoiceChannelViewModel> VoiceChannelViewModels =>
+        _voiceChannelManager?.ViewModels ?? new ObservableCollection<VoiceChannelViewModel>();
 
     // Voice channel content view for video grid
     public VoiceChannelContentViewModel? VoiceChannelContent => _voiceChannelContent;
@@ -3385,7 +3353,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
         // Store original order for rollback
         var originalChannels = _storeAllChannels.ToList();
-        var originalVoiceOrder = VoiceChannelViewModels.ToList();
+        var originalVoiceOrder = _voiceChannelManager?.CaptureOrder() ?? new List<VoiceChannelViewModel>();
 
         // Apply optimistically - update UI immediately
         ApplyChannelOrder(channelIds);
@@ -3427,14 +3395,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         _stores.ChannelStore.ReorderChannels(updatedChannels);
 
         // Update VoiceChannelViewModels positions and re-sort
-        foreach (var voiceVm in VoiceChannelViewModels)
-        {
-            if (positionLookup.TryGetValue(voiceVm.Id, out var newPosition))
-            {
-                voiceVm.Position = newPosition;
-            }
-        }
-        SortVoiceChannelViewModelsByPosition();
+        _voiceChannelManager?.ApplyPositions(channelIds);
     }
 
     private void RollbackChannelOrder(List<ChannelResponse> originalChannels, List<VoiceChannelViewModel> originalVoiceOrder)
@@ -3443,80 +3404,15 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         _stores.ChannelStore.SetChannels(originalChannels);
 
         // Restore VoiceChannelViewModels
-        VoiceChannelViewModels.Clear();
-        foreach (var vm in originalVoiceOrder)
-        {
-            VoiceChannelViewModels.Add(vm);
-        }
-
-        this.RaisePropertyChanged(nameof(VoiceChannelViewModels));
+        _voiceChannelManager?.RestoreOrder(originalVoiceOrder);
     }
 
-    // Preview state for drag feedback - tracks gap position, not actual reorder
-    private Guid? _previewGapTargetId;
-    private bool _previewGapAbove;
+    private void PreviewReorder((Guid DraggedId, Guid TargetId, bool DropBefore) args) =>
+        _voiceChannelManager?.PreviewReorder(args.DraggedId, args.TargetId, args.DropBefore);
 
-    private void PreviewReorder((Guid DraggedId, Guid TargetId, bool DropBefore) args)
-    {
-        // Store original order on first preview call for this drag
-        if (_originalVoiceChannelOrder is null || _currentPreviewDraggedId != args.DraggedId)
-        {
-            _originalVoiceChannelOrder = VoiceChannelViewModels.ToList();
-            _currentPreviewDraggedId = args.DraggedId;
-        }
+    private void CancelPreview() => _voiceChannelManager?.CancelPreview();
 
-        // Just track where the gap should be - don't reorder yet
-        _previewGapTargetId = args.TargetId;
-        _previewGapAbove = args.DropBefore;
-
-        // Update gap visibility for all items
-        foreach (var vm in VoiceChannelViewModels)
-        {
-            if (vm.Id == args.TargetId)
-            {
-                vm.ShowGapAbove = args.DropBefore;
-                vm.ShowGapBelow = !args.DropBefore;
-            }
-            else
-            {
-                vm.ShowGapAbove = false;
-                vm.ShowGapBelow = false;
-            }
-
-            // Hide the dragged item
-            vm.IsDragSource = vm.Id == args.DraggedId;
-        }
-    }
-
-    private void CancelPreview()
-    {
-        // Clear gap visibility
-        foreach (var vm in VoiceChannelViewModels)
-        {
-            vm.ShowGapAbove = false;
-            vm.ShowGapBelow = false;
-            vm.IsDragSource = false;
-        }
-
-        _originalVoiceChannelOrder = null;
-        _currentPreviewDraggedId = null;
-        _previewGapTargetId = null;
-    }
-
-    // Call this after successful reorder to clear preview state
-    private void ClearPreviewState()
-    {
-        foreach (var vm in VoiceChannelViewModels)
-        {
-            vm.ShowGapAbove = false;
-            vm.ShowGapBelow = false;
-            vm.IsDragSource = false;
-        }
-
-        _originalVoiceChannelOrder = null;
-        _currentPreviewDraggedId = null;
-        _previewGapTargetId = null;
-    }
+    private void ClearPreviewState() => _voiceChannelManager?.ClearPreviewState();
 
     // Message edit/delete methods
     private void StartEditMessage(MessageResponse message)
@@ -3608,11 +3504,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             if (channel is not null)
             {
                 // Add to VoiceChannelViewModels (coordinator already updated store)
-                if (!VoiceChannelViewModels.Any(v => v.Id == channel.Id))
-                {
-                    var vm = CreateVoiceChannelViewModel(channel);
-                    VoiceChannelViewModels.Add(vm);
-                }
+                _voiceChannelManager?.AddChannel(channel);
             }
             else
             {
@@ -4501,19 +4393,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             JoinedAt: state.JoinedAt
         );
 
-    /// <summary>
-    /// Sorts VoiceChannelViewModels by position in place.
-    /// </summary>
-    private void SortVoiceChannelViewModelsByPosition()
-    {
-        var sorted = VoiceChannelViewModels.OrderBy(v => v.Position).ToList();
-        VoiceChannelViewModels.Clear();
-        foreach (var vm in sorted)
-        {
-            VoiceChannelViewModels.Add(vm);
-        }
-        this.RaisePropertyChanged(nameof(VoiceChannelViewModels));
-    }
+    private void SortVoiceChannelViewModelsByPosition() => _voiceChannelManager?.SortByPosition();
 
     #endregion
 }
