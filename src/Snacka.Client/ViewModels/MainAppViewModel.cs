@@ -102,6 +102,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     // Screen share ViewModel (encapsulates screen sharing state and commands)
     private ScreenShareViewModel? _screenShare;
 
+    // Message input ViewModel (encapsulates message composition, editing, reply, autocomplete)
+    private MessageInputViewModel? _messageInputVm;
+
     /// <summary>
     /// Fired when an NV12 frame should be rendered to GPU fullscreen view.
     /// Args: (width, height, nv12Data)
@@ -116,21 +119,15 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private Views.AnnotationToolbarWindow? _annotationToolbarWindow;
 
     // Typing indicator state - backed by TypingStore, subscriptions update when channel changes
-    private DateTime _lastTypingSent = DateTime.MinValue;
-    private const int TypingThrottleMs = 3000; // Send typing event every 3 seconds
     private bool _isAnyoneTyping;
     private string _typingIndicatorText = string.Empty;
     private IDisposable? _typingSubscription;
     private ScreenAnnotationViewModel? _screenAnnotationViewModel;
 
-    // Unified autocomplete for @ mentions and / commands
-    private readonly AutocompleteManager _autocomplete = new();
-    private bool _isSelectingAutocomplete;
-
     // Self-contained GIF picker (appears in message list)
     private GifPickerViewModel? _gifPicker;
 
-    // File attachment state
+    // File attachment state (legacy fallback, normally handled by MessageInputViewModel)
     private ObservableCollection<PendingAttachment> _pendingAttachments = new();
     private AttachmentResponse? _lightboxImage;
 
@@ -438,19 +435,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                     }
                 }));
 
-        // Initialize unified autocomplete with @ mentions, / commands, and :emojis
-        _autocomplete.RegisterSource(new MentionAutocompleteSource(() => _storeMembers, auth.UserId));
-        _autocomplete.RegisterSource(new SlashCommandAutocompleteSource(gifsEnabled: _isGifsEnabled));
-        _autocomplete.RegisterSource(new EmojiAutocompleteSource());
-
-        _autocomplete.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(AutocompleteManager.IsPopupOpen))
-                this.RaisePropertyChanged(nameof(IsAutocompletePopupOpen));
-            else if (e.PropertyName == nameof(AutocompleteManager.SelectedIndex))
-                this.RaisePropertyChanged(nameof(SelectedAutocompleteIndex));
-        };
-
         // Initialize GIF ViewModels (only if GIFs are enabled)
         if (_isGifsEnabled)
         {
@@ -627,6 +611,58 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         };
         _screenShare.ErrorOccurred += error => ErrorMessage = error;
 
+        // Create message input ViewModel
+        _messageInputVm = new MessageInputViewModel(
+            apiClient,
+            signalR,
+            _stores.MessageStore,
+            auth.UserId,
+            () => SelectedChannel?.Id,
+            () => SelectedChannel,
+            () => _storeMembers,
+            _isGifsEnabled);
+
+        // Sync MessageInputViewModel state with local fields
+        _messageInputVm.PropertyChanged += (_, e) =>
+        {
+            switch (e.PropertyName)
+            {
+                case nameof(MessageInputViewModel.MessageInput):
+                    _messageInput = _messageInputVm.MessageInput;
+                    this.RaisePropertyChanged(nameof(MessageInput));
+                    break;
+                case nameof(MessageInputViewModel.EditingMessage):
+                    _editingMessage = _messageInputVm.EditingMessage;
+                    this.RaisePropertyChanged(nameof(EditingMessage));
+                    break;
+                case nameof(MessageInputViewModel.EditingMessageContent):
+                    _editingMessageContent = _messageInputVm.EditingMessageContent;
+                    this.RaisePropertyChanged(nameof(EditingMessageContent));
+                    break;
+                case nameof(MessageInputViewModel.ReplyingToMessage):
+                    _replyingToMessage = _messageInputVm.ReplyingToMessage;
+                    this.RaisePropertyChanged(nameof(ReplyingToMessage));
+                    this.RaisePropertyChanged(nameof(IsReplying));
+                    break;
+                case nameof(MessageInputViewModel.IsLoading):
+                    IsMessagesLoading = _messageInputVm.IsLoading;
+                    break;
+                case nameof(MessageInputViewModel.IsAutocompletePopupOpen):
+                    this.RaisePropertyChanged(nameof(IsAutocompletePopupOpen));
+                    break;
+                case nameof(MessageInputViewModel.SelectedAutocompleteIndex):
+                    this.RaisePropertyChanged(nameof(SelectedAutocompleteIndex));
+                    break;
+                case nameof(MessageInputViewModel.HasPendingAttachments):
+                    this.RaisePropertyChanged(nameof(HasPendingAttachments));
+                    break;
+            }
+        };
+
+        // Wire up events
+        _messageInputVm.ErrorOccurred += error => ErrorMessage = error;
+        _messageInputVm.GifPreviewRequested += async query => await ShowGifPreviewAsync(query);
+
         // Commands
         LogoutCommand = ReactiveCommand.Create(_onLogout);
         SwitchServerCommand = _onSwitchServer is not null
@@ -676,13 +712,13 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         PreviewReorderCommand = ReactiveCommand.Create<(Guid DraggedId, Guid TargetId, bool DropBefore)>(PreviewReorder);
         CancelPreviewCommand = ReactiveCommand.Create(CancelPreview);
 
-        // Message commands
-        StartEditMessageCommand = ReactiveCommand.Create<MessageResponse>(StartEditMessage);
-        SaveMessageEditCommand = ReactiveCommand.CreateFromTask(SaveMessageEditAsync);
-        CancelEditMessageCommand = ReactiveCommand.Create(CancelEditMessage);
-        DeleteMessageCommand = ReactiveCommand.CreateFromTask<MessageResponse>(DeleteMessageAsync);
-        ReplyToMessageCommand = ReactiveCommand.Create<MessageResponse>(StartReplyToMessage);
-        CancelReplyCommand = ReactiveCommand.Create(CancelReply);
+        // Message commands (delegated to MessageInputViewModel)
+        StartEditMessageCommand = _messageInputVm.StartEditMessageCommand;
+        SaveMessageEditCommand = _messageInputVm.SaveMessageEditCommand;
+        CancelEditMessageCommand = _messageInputVm.CancelEditMessageCommand;
+        DeleteMessageCommand = _messageInputVm.DeleteMessageCommand;
+        ReplyToMessageCommand = _messageInputVm.ReplyToMessageCommand;
+        CancelReplyCommand = _messageInputVm.CancelReplyCommand;
         ToggleReactionCommand = ReactiveCommand.CreateFromTask<(MessageResponse Message, string Emoji)>(ToggleReactionAsync);
         AddReactionCommand = ReactiveCommand.CreateFromTask<(MessageResponse Message, string Emoji)>(AddReactionAsync);
         TogglePinCommand = ReactiveCommand.CreateFromTask<MessageResponse>(TogglePinAsync);
@@ -768,16 +804,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         ServerDeafenUserCommand = ReactiveCommand.CreateFromTask<VoiceParticipantViewModel>(ServerDeafenUserAsync);
         MoveUserToChannelCommand = ReactiveCommand.CreateFromTask<(VoiceParticipantViewModel, VoiceChannelViewModel)>(MoveUserToChannelAsync);
 
-        var canSendMessage = this.WhenAnyValue(
-            x => x.MessageInput,
-            x => x.SelectedChannel,
-            x => x.IsLoading,
-            (message, channel, isLoading) =>
-                !string.IsNullOrWhiteSpace(message) &&
-                channel is not null &&
-                !isLoading);
-
-        SendMessageCommand = ReactiveCommand.CreateFromTask(SendMessageAsync, canSendMessage);
+        // SendMessageCommand is delegated to MessageInputViewModel
+        SendMessageCommand = _messageInputVm.SendMessageCommand;
 
         // React to community selection changes
         this.WhenAnyValue(x => x.SelectedCommunity)
@@ -1423,24 +1451,13 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         get => _messageInput;
         set
         {
-            this.RaiseAndSetIfChanged(ref _messageInput, value);
-
-            // Handle unified autocomplete (@ mentions and / commands)
-            // Skip during autocomplete selection to avoid interfering with caret positioning
-            if (!_isSelectingAutocomplete)
+            if (_messageInputVm != null)
             {
-                _autocomplete.HandleTextChange(value);
+                _messageInputVm.MessageInput = value;
             }
-
-            // Send typing indicator (throttled)
-            if (!string.IsNullOrEmpty(value) && SelectedChannel is not null)
+            else
             {
-                var now = DateTime.UtcNow;
-                if ((now - _lastTypingSent).TotalMilliseconds > TypingThrottleMs)
-                {
-                    _lastTypingSent = now;
-                    _ = _signalR.SendTypingAsync(SelectedChannel.Id);
-                }
+                this.RaiseAndSetIfChanged(ref _messageInput, value);
             }
         }
     }
@@ -1450,15 +1467,20 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
     public string TypingIndicatorText => _typingIndicatorText;
 
-    // Unified autocomplete properties (for @ mentions and / commands)
-    public bool IsAutocompletePopupOpen => _autocomplete.IsPopupOpen;
+    // Unified autocomplete properties (delegated to MessageInputViewModel)
+    public bool IsAutocompletePopupOpen => _messageInputVm?.IsAutocompletePopupOpen ?? false;
 
-    public ObservableCollection<IAutocompleteSuggestion> AutocompleteSuggestions => _autocomplete.Suggestions;
+    public ObservableCollection<IAutocompleteSuggestion> AutocompleteSuggestions =>
+        _messageInputVm?.AutocompleteSuggestions ?? new ObservableCollection<IAutocompleteSuggestion>();
 
     public int SelectedAutocompleteIndex
     {
-        get => _autocomplete.SelectedIndex;
-        set => _autocomplete.SelectedIndex = value;
+        get => _messageInputVm?.SelectedAutocompleteIndex ?? -1;
+        set
+        {
+            if (_messageInputVm != null)
+                _messageInputVm.SelectedAutocompleteIndex = value;
+        }
     }
 
     /// <summary>
@@ -1735,7 +1757,17 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public string EditingMessageContent
     {
         get => _editingMessageContent;
-        set => this.RaiseAndSetIfChanged(ref _editingMessageContent, value);
+        set
+        {
+            if (_messageInputVm != null)
+            {
+                _messageInputVm.EditingMessageContent = value;
+            }
+            else
+            {
+                this.RaiseAndSetIfChanged(ref _editingMessageContent, value);
+            }
+        }
     }
 
     public MessageResponse? ReplyingToMessage
@@ -1746,9 +1778,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
     public bool IsReplying => ReplyingToMessage is not null;
 
-    // File attachment properties
-    public ObservableCollection<PendingAttachment> PendingAttachments => _pendingAttachments;
-    public bool HasPendingAttachments => _pendingAttachments.Count > 0;
+    // File attachment properties (delegated to MessageInputViewModel)
+    public ObservableCollection<PendingAttachment> PendingAttachments =>
+        _messageInputVm?.PendingAttachments ?? _pendingAttachments;
+    public bool HasPendingAttachments => _messageInputVm?.HasPendingAttachments ?? _pendingAttachments.Count > 0;
 
     public AttachmentResponse? LightboxImage
     {
@@ -1764,29 +1797,17 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
     public void AddPendingAttachment(string fileName, Stream stream, long size, string contentType)
     {
-        _pendingAttachments.Add(new PendingAttachment
-        {
-            FileName = fileName,
-            Stream = stream,
-            Size = size,
-            ContentType = contentType
-        });
-        this.RaisePropertyChanged(nameof(HasPendingAttachments));
+        _messageInputVm?.AddPendingAttachment(fileName, stream, size, contentType);
     }
 
     public void RemovePendingAttachment(PendingAttachment attachment)
     {
-        attachment.Dispose();
-        _pendingAttachments.Remove(attachment);
-        this.RaisePropertyChanged(nameof(HasPendingAttachments));
+        _messageInputVm?.RemovePendingAttachment(attachment);
     }
 
     public void ClearPendingAttachments()
     {
-        foreach (var attachment in _pendingAttachments)
-            attachment.Dispose();
-        _pendingAttachments.Clear();
-        this.RaisePropertyChanged(nameof(HasPendingAttachments));
+        _messageInputVm?.ClearPendingAttachments();
     }
 
     public void OpenLightbox(AttachmentResponse attachment)
@@ -1856,7 +1877,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             var result = await _apiClient.SendMessageAsync(SelectedChannel.Id, gif.Url, ReplyingToMessage?.Id);
             if (result.Success)
             {
-                CancelReply();
+                _messageInputVm?.CancelReply();
             }
         }
         catch
@@ -2603,90 +2624,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         await CreateCommunityAsync();
     }
 
-    private async Task SendMessageAsync()
-    {
-        if (SelectedChannel is null) return;
-
-        // Allow empty content if there are attachments
-        if (string.IsNullOrWhiteSpace(MessageInput) && !HasPendingAttachments) return;
-
-        var content = MessageInput.Trim();
-
-        // Check for /gif or /giphy command
-        if (content.StartsWith("/gif ", StringComparison.OrdinalIgnoreCase) ||
-            content.StartsWith("/giphy ", StringComparison.OrdinalIgnoreCase))
-        {
-            // Extract search query (everything after the command)
-            var spaceIndex = content.IndexOf(' ');
-            var query = content.Substring(spaceIndex + 1).Trim();
-
-            if (!string.IsNullOrWhiteSpace(query))
-            {
-                MessageInput = string.Empty;
-                await ShowGifPreviewAsync(query);
-                return;
-            }
-        }
-
-        // Process other slash commands
-        content = SlashCommandRegistry.ProcessContent(content);
-
-        // If content became empty after processing (e.g., just "/shrug" with no other text), that's fine
-        // But if there's nothing to send, return
-        if (string.IsNullOrWhiteSpace(content) && !HasPendingAttachments) return;
-
-        var replyToId = ReplyingToMessage?.Id;
-        MessageInput = string.Empty;
-        ReplyingToMessage = null;
-        this.RaisePropertyChanged(nameof(IsReplying));
-
-        ApiResult<MessageResponse> result;
-
-        if (HasPendingAttachments)
-        {
-            // Send with attachments
-            var files = _pendingAttachments.Select(a => new FileAttachment
-            {
-                FileName = a.FileName,
-                Stream = a.Stream,
-                ContentType = a.ContentType
-            }).ToList();
-
-            result = await _apiClient.SendMessageWithAttachmentsAsync(SelectedChannel.Id, content, replyToId, files);
-
-            // Clear pending attachments (streams are now consumed)
-            _pendingAttachments.Clear();
-            this.RaisePropertyChanged(nameof(HasPendingAttachments));
-        }
-        else
-        {
-            // Send text-only message
-            result = await _apiClient.SendMessageAsync(SelectedChannel.Id, content, replyToId);
-        }
-
-        if (result.Success && result.Data is not null)
-        {
-            _stores.MessageStore.AddMessage(result.Data);
-        }
-        else
-        {
-            ErrorMessage = result.Error;
-            MessageInput = content; // Restore message on failure
-        }
-    }
-
-    private void StartReplyToMessage(MessageResponse message)
-    {
-        ReplyingToMessage = message;
-        this.RaisePropertyChanged(nameof(IsReplying));
-    }
-
-    private void CancelReply()
-    {
-        ReplyingToMessage = null;
-        this.RaisePropertyChanged(nameof(IsReplying));
-    }
-
     // Gaming station input methods (delegate to GamingStationViewModel)
     public Task SendStationKeyboardInputAsync(StationKeyboardInput input) =>
         _gamingStation?.SendKeyboardInputAsync(input) ?? Task.CompletedTask;
@@ -2901,73 +2838,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private void CancelPreview() => _voiceChannelManager?.CancelPreview();
 
     private void ClearPreviewState() => _voiceChannelManager?.ClearPreviewState();
-
-    // Message edit/delete methods
-    private void StartEditMessage(MessageResponse message)
-    {
-        // Only allow editing own messages
-        if (message.AuthorId != UserId) return;
-
-        EditingMessage = message;
-        EditingMessageContent = message.Content;
-    }
-
-    private void CancelEditMessage()
-    {
-        EditingMessage = null;
-        EditingMessageContent = string.Empty;
-    }
-
-    private async Task SaveMessageEditAsync()
-    {
-        if (EditingMessage is null || SelectedChannel is null || string.IsNullOrWhiteSpace(EditingMessageContent))
-            return;
-
-        IsMessagesLoading = true;
-        try
-        {
-            var result = await _apiClient.UpdateMessageAsync(SelectedChannel.Id, EditingMessage.Id, EditingMessageContent.Trim());
-
-            if (result.Success && result.Data is not null)
-            {
-                _stores.MessageStore.UpdateMessage(result.Data);
-                EditingMessage = null;
-                EditingMessageContent = string.Empty;
-            }
-            else
-            {
-                ErrorMessage = result.Error;
-            }
-        }
-        finally
-        {
-            IsMessagesLoading = false;
-        }
-    }
-
-    private async Task DeleteMessageAsync(MessageResponse message)
-    {
-        if (SelectedChannel is null) return;
-
-        IsMessagesLoading = true;
-        try
-        {
-            var result = await _apiClient.DeleteMessageAsync(SelectedChannel.Id, message.Id);
-
-            if (result.Success)
-            {
-                _stores.MessageStore.DeleteMessage(message.Id);
-            }
-            else
-            {
-                ErrorMessage = result.Error;
-            }
-        }
-        finally
-        {
-            IsMessagesLoading = false;
-        }
-    }
 
     // Voice channel methods
     private async Task CreateVoiceChannelAsync()
@@ -3241,14 +3111,14 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         _screenShare?.OnAnnotationToolbarCloseRequested();
     }
 
-    // Unified autocomplete methods (for @ mentions and / commands)
+    // Unified autocomplete methods (delegated to MessageInputViewModel)
 
     /// <summary>
     /// Closes the autocomplete popup.
     /// </summary>
     public void CloseAutocompletePopup()
     {
-        _autocomplete.Close();
+        _messageInputVm?.CloseAutocompletePopup();
     }
 
     /// <summary>
@@ -3257,21 +3127,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// </summary>
     public int SelectAutocompleteSuggestion(IAutocompleteSuggestion suggestion)
     {
-        var result = _autocomplete.Select(suggestion, MessageInput);
-        if (result.HasValue)
-        {
-            _isSelectingAutocomplete = true;
-            try
-            {
-                MessageInput = result.Value.newText;
-                return result.Value.cursorPosition;
-            }
-            finally
-            {
-                _isSelectingAutocomplete = false;
-            }
-        }
-        return -1;
+        return _messageInputVm?.SelectAutocompleteSuggestion(suggestion) ?? -1;
     }
 
     /// <summary>
@@ -3280,7 +3136,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// </summary>
     public (string newText, int cursorPosition)? SelectAutocompleteSuggestionWithText(IAutocompleteSuggestion suggestion)
     {
-        return _autocomplete.Select(suggestion, MessageInput);
+        return _messageInputVm?.SelectAutocompleteSuggestionWithText(suggestion);
     }
 
     /// <summary>
@@ -3289,21 +3145,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// </summary>
     public int SelectCurrentAutocompleteSuggestion()
     {
-        var result = _autocomplete.SelectCurrent(MessageInput);
-        if (result.HasValue)
-        {
-            _isSelectingAutocomplete = true;
-            try
-            {
-                MessageInput = result.Value.newText;
-                return result.Value.cursorPosition;
-            }
-            finally
-            {
-                _isSelectingAutocomplete = false;
-            }
-        }
-        return -1;
+        return _messageInputVm?.SelectCurrentAutocompleteSuggestion() ?? -1;
     }
 
     /// <summary>
@@ -3313,7 +3155,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// </summary>
     public (string newText, int cursorPosition)? SelectCurrentAutocompleteSuggestionWithText()
     {
-        return _autocomplete.SelectCurrent(MessageInput);
+        return _messageInputVm?.SelectCurrentAutocompleteSuggestionWithText();
     }
 
     /// <summary>
@@ -3321,7 +3163,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// </summary>
     public void NavigateAutocompleteUp()
     {
-        _autocomplete.NavigateUp();
+        _messageInputVm?.NavigateAutocompleteUp();
     }
 
     /// <summary>
@@ -3329,7 +3171,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// </summary>
     public void NavigateAutocompleteDown()
     {
-        _autocomplete.NavigateDown();
+        _messageInputVm?.NavigateAutocompleteDown();
     }
 
     // Reaction methods
@@ -3536,6 +3378,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         HideSharerAnnotationOverlay();
+        _messageInputVm?.Dispose();
         _screenShare?.Dispose();
         _voiceControl?.Dispose();
         _videoFullscreen?.Dispose();
