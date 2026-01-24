@@ -810,16 +810,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                     voiceVm.Position = updatedChannel.Position;
                 }
             }
-
-            // Re-sort VoiceChannelViewModels by Position
-            var sortedVoiceChannels = VoiceChannelViewModels.OrderBy(v => v.Position).ToList();
-            VoiceChannelViewModels.Clear();
-            foreach (var vm in sortedVoiceChannels)
-            {
-                VoiceChannelViewModels.Add(vm);
-            }
-
-            this.RaisePropertyChanged(nameof(VoiceChannelViewModels));
+            SortVoiceChannelViewModelsByPosition();
         });
 
         // MessageReceived handled entirely by SignalREventDispatcher -> MessageStore, TypingStore, ChannelStore
@@ -3235,34 +3226,11 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         }
     }
 
-    // Gaming Station methods - new architecture uses voice channels
-    // These are placeholder methods that will be replaced when Phase 3+ is implemented
-
-    private async Task ConnectToStationAsync(GamingStationResponse station)
-    {
-        // Old architecture - keeping as placeholder for now
-        // In the new architecture, we use voice channels instead of direct station connections
-        // Use CommandStationJoinChannelAsync to add station to a voice channel
-        await Task.CompletedTask;
-    }
-
-    private async Task DisconnectFromStationAsync()
-    {
-        // Old architecture - keeping as placeholder for now
-        // In the new architecture, we command the station to leave the voice channel
-        // Use CommandStationLeaveChannelAsync to remove station from voice channel
-        await Task.CompletedTask;
-    }
-
-    private void ToggleStationFullscreen()
-    {
-        // TODO: Implement fullscreen toggle for station stream
-    }
-
-    private void ManageStation(GamingStationResponse station)
-    {
-        // TODO: Show station management modal
-    }
+    // Gaming Station methods - placeholders for Phase 3+ implementation
+    private Task ConnectToStationAsync(GamingStationResponse station) => Task.CompletedTask;
+    private Task DisconnectFromStationAsync() => Task.CompletedTask;
+    private void ToggleStationFullscreen() { }
+    private void ManageStation(GamingStationResponse station) { }
 
     /// <summary>
     /// Sends keyboard input to a gaming station in the current voice channel.
@@ -3300,34 +3268,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         }
     }
 
-    /// <summary>
-    /// Injects keyboard input into the local system (for gaming station mode).
-    /// This is called when the gaming station receives input from the remote owner.
-    /// </summary>
-    private void InjectKeyboardInput(StationKeyboardInput input)
-    {
-        // Platform-specific input injection
-        // For a full implementation, this would use:
-        // - Windows: SendInput API with KEYBDINPUT structure
-        // - macOS: CGEventPost with CGEventCreateKeyboardEvent
-        // - Linux: XTest extension or uinput virtual device
-        // TODO: Implement platform-specific input injection
-    }
-
-    /// <summary>
-    /// Injects mouse input into the local system (for gaming station mode).
-    /// This is called when the gaming station receives input from the remote owner.
-    /// </summary>
-    private void InjectMouseInput(StationMouseInput input)
-    {
-        // Platform-specific input injection
-        // For a full implementation, this would use:
-        // - Windows: SendInput API with MOUSEINPUT structure
-        // - macOS: CGEventPost with CGEventCreateMouseEvent
-        // - Linux: XTest extension or uinput virtual device
-        // The normalized coordinates (0-1) need to be scaled to screen dimensions
-        // TODO: Implement platform-specific input injection
-    }
+    // Platform-specific input injection stubs (Phase 3+ implementation)
+    private void InjectKeyboardInput(StationKeyboardInput input) { }
+    private void InjectMouseInput(StationMouseInput input) { }
 
     private async Task CreateCommunityAsync()
     {
@@ -3525,15 +3468,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 voiceVm.Position = newPosition;
             }
         }
-
-        var sortedVoiceChannels = VoiceChannelViewModels.OrderBy(v => v.Position).ToList();
-        VoiceChannelViewModels.Clear();
-        foreach (var vm in sortedVoiceChannels)
-        {
-            VoiceChannelViewModels.Add(vm);
-        }
-
-        this.RaisePropertyChanged(nameof(VoiceChannelViewModels));
+        SortVoiceChannelViewModelsByPosition();
     }
 
     private void RollbackChannelOrder(List<ChannelResponse> originalChannels, List<VoiceChannelViewModel> originalVoiceOrder)
@@ -4601,6 +4536,20 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             Role: state.Role,
             JoinedAt: state.JoinedAt
         );
+
+    /// <summary>
+    /// Sorts VoiceChannelViewModels by position in place.
+    /// </summary>
+    private void SortVoiceChannelViewModelsByPosition()
+    {
+        var sorted = VoiceChannelViewModels.OrderBy(v => v.Position).ToList();
+        VoiceChannelViewModels.Clear();
+        foreach (var vm in sorted)
+        {
+            VoiceChannelViewModels.Add(vm);
+        }
+        this.RaisePropertyChanged(nameof(VoiceChannelViewModels));
+    }
 
     #endregion
 }
