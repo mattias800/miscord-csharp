@@ -94,6 +94,11 @@ public interface IVoiceStore : IStore<VoiceParticipantState, Guid>
     /// </summary>
     VoiceParticipantState? GetLocalParticipant(Guid localUserId);
 
+    /// <summary>
+    /// Gets the current voice channel ID synchronously.
+    /// </summary>
+    Guid? GetCurrentChannelId();
+
     // Actions
     void SetCurrentChannel(Guid? channelId);
     void SetConnectionStatus(VoiceConnectionStatus status);
@@ -202,6 +207,8 @@ public sealed class VoiceStore : IVoiceStore, IDisposable
 
         return _participantCache.Items.FirstOrDefault(p => p.ChannelId == channelId.Value && p.UserId == localUserId);
     }
+
+    public Guid? GetCurrentChannelId() => _currentChannelId.Value;
 
     public void SetCurrentChannel(Guid? channelId)
     {

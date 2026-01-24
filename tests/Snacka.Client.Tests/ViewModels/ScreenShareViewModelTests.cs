@@ -1,5 +1,6 @@
 using Moq;
 using Snacka.Client.Services;
+using Snacka.Client.Stores;
 using Snacka.Client.ViewModels;
 using Xunit;
 
@@ -30,19 +31,21 @@ public class ScreenShareViewModelTests
             .Returns(new List<ScreenCaptureSource>());
     }
 
-    private ScreenShareViewModel CreateViewModel(
-        Func<Guid?>? getCurrentChannelId = null,
-        Action<Guid, VoiceStateUpdate>? onLocalStateChanged = null)
+    private (ScreenShareViewModel vm, Mock<IVoiceStore> voiceStoreMock) CreateViewModel(Guid? currentChannelId = null)
     {
-        return new ScreenShareViewModel(
+        var voiceStoreMock = new Mock<IVoiceStore>();
+        voiceStoreMock.Setup(x => x.GetCurrentChannelId()).Returns(currentChannelId);
+
+        var vm = new ScreenShareViewModel(
             _screenCaptureServiceMock.Object,
             _signalRMock.Object,
             _webRtcMock.Object,
             _annotationService,
+            voiceStoreMock.Object,
             _userId,
-            _username,
-            getCurrentChannelId ?? (() => null),
-            onLocalStateChanged);
+            _username);
+
+        return (vm, voiceStoreMock);
     }
 
     #region Initialization Tests
@@ -51,7 +54,7 @@ public class ScreenShareViewModelTests
     public void Constructor_InitializesWithDefaultState()
     {
         // Act
-        var vm = CreateViewModel();
+        var (vm, _) = CreateViewModel();
 
         // Assert
         Assert.False(vm.IsScreenSharing);
@@ -65,7 +68,7 @@ public class ScreenShareViewModelTests
     public void Constructor_InitializesCommand()
     {
         // Act
-        var vm = CreateViewModel();
+        var (vm, _) = CreateViewModel();
 
         // Assert
         Assert.NotNull(vm.ToggleScreenShareCommand);
@@ -79,7 +82,7 @@ public class ScreenShareViewModelTests
     public async Task ToggleScreenShareAsync_WhenNotInChannel_DoesNothing()
     {
         // Arrange
-        var vm = CreateViewModel(getCurrentChannelId: () => null);
+        var (vm, _) = CreateViewModel(currentChannelId: null);
 
         // Act
         await vm.ToggleScreenShareAsync();
@@ -94,7 +97,7 @@ public class ScreenShareViewModelTests
     {
         // Arrange
         var channelId = Guid.NewGuid();
-        var vm = CreateViewModel(getCurrentChannelId: () => channelId);
+        var (vm, _) = CreateViewModel(currentChannelId: channelId);
 
         // Act
         await vm.ToggleScreenShareAsync();
@@ -109,7 +112,7 @@ public class ScreenShareViewModelTests
     {
         // Arrange
         var channelId = Guid.NewGuid();
-        var vm = CreateViewModel(getCurrentChannelId: () => channelId);
+        var (vm, _) = CreateViewModel(currentChannelId: channelId);
 
         // Start sharing first
         var source = new ScreenCaptureSource(ScreenCaptureSourceType.Display, "1", "TestDisplay");
@@ -148,7 +151,7 @@ public class ScreenShareViewModelTests
     public async Task StartScreenShareWithSettingsAsync_WhenNotInChannel_DoesNothing()
     {
         // Arrange
-        var vm = CreateViewModel(getCurrentChannelId: () => null);
+        var (vm, _) = CreateViewModel(currentChannelId: null);
         var source = new ScreenCaptureSource(ScreenCaptureSourceType.Display, "1", "TestDisplay");
         var settings = new ScreenShareSettings(
             source,
@@ -170,7 +173,7 @@ public class ScreenShareViewModelTests
     {
         // Arrange
         var channelId = Guid.NewGuid();
-        var vm = CreateViewModel(getCurrentChannelId: () => channelId);
+        var (vm, _) = CreateViewModel(currentChannelId: channelId);
         var source = new ScreenCaptureSource(ScreenCaptureSourceType.Display, "1", "TestDisplay");
         var settings = new ScreenShareSettings(
             source,
@@ -196,20 +199,11 @@ public class ScreenShareViewModelTests
     }
 
     [Fact]
-    public async Task StartScreenShareWithSettingsAsync_CallsOnLocalStateChanged()
+    public async Task StartScreenShareWithSettingsAsync_UpdatesVoiceStore()
     {
         // Arrange
         var channelId = Guid.NewGuid();
-        VoiceStateUpdate? capturedState = null;
-        Guid capturedUserId = Guid.Empty;
-
-        var vm = CreateViewModel(
-            getCurrentChannelId: () => channelId,
-            onLocalStateChanged: (userId, state) =>
-            {
-                capturedUserId = userId;
-                capturedState = state;
-            });
+        var (vm, voiceStoreMock) = CreateViewModel(currentChannelId: channelId);
 
         var source = new ScreenCaptureSource(ScreenCaptureSourceType.Window, "1", "TestWindow");
         var settings = new ScreenShareSettings(
@@ -227,10 +221,10 @@ public class ScreenShareViewModelTests
         // Act
         await vm.StartScreenShareWithSettingsAsync(settings);
 
-        // Assert
-        Assert.Equal(_userId, capturedUserId);
-        Assert.NotNull(capturedState);
-        Assert.True(capturedState.IsScreenSharing);
+        // Assert - VoiceStore should be updated for immediate UI feedback
+        voiceStoreMock.Verify(x => x.SetLocalScreenSharing(true), Times.Once);
+        voiceStoreMock.Verify(x => x.UpdateVoiceState(channelId, _userId,
+            It.Is<VoiceStateUpdate>(u => u.IsScreenSharing == true)), Times.Once);
     }
 
     [Fact]
@@ -238,7 +232,7 @@ public class ScreenShareViewModelTests
     {
         // Arrange
         var channelId = Guid.NewGuid();
-        var vm = CreateViewModel(getCurrentChannelId: () => channelId);
+        var (vm, _) = CreateViewModel(currentChannelId: channelId);
 
         ScreenShareSettings? capturedSettings = null;
         ScreenAnnotationViewModel? capturedAnnotationVm = null;
@@ -276,7 +270,7 @@ public class ScreenShareViewModelTests
     {
         // Arrange
         var channelId = Guid.NewGuid();
-        var vm = CreateViewModel(getCurrentChannelId: () => channelId);
+        var (vm, _) = CreateViewModel(currentChannelId: channelId);
 
         var wasEventRaised = false;
         vm.ShowAnnotationOverlayRequested += (_, _) => wasEventRaised = true;
@@ -307,7 +301,7 @@ public class ScreenShareViewModelTests
     {
         // Arrange
         var channelId = Guid.NewGuid();
-        var vm = CreateViewModel(getCurrentChannelId: () => channelId);
+        var (vm, _) = CreateViewModel(currentChannelId: channelId);
 
         string? capturedError = null;
         vm.ErrorOccurred += err => capturedError = err;
@@ -341,7 +335,7 @@ public class ScreenShareViewModelTests
     public async Task StopScreenShareAsync_WhenNotInChannel_DoesNothing()
     {
         // Arrange
-        var vm = CreateViewModel(getCurrentChannelId: () => null);
+        var (vm, _) = CreateViewModel(currentChannelId: null);
 
         // Act
         await vm.StopScreenShareAsync();
@@ -355,7 +349,7 @@ public class ScreenShareViewModelTests
     {
         // Arrange
         var channelId = Guid.NewGuid();
-        var vm = CreateViewModel(getCurrentChannelId: () => channelId);
+        var (vm, _) = CreateViewModel(currentChannelId: channelId);
 
         // Start sharing first
         var source = new ScreenCaptureSource(ScreenCaptureSourceType.Display, "1", "TestDisplay");
@@ -392,7 +386,7 @@ public class ScreenShareViewModelTests
     {
         // Arrange
         var channelId = Guid.NewGuid();
-        var vm = CreateViewModel(getCurrentChannelId: () => channelId);
+        var (vm, _) = CreateViewModel(currentChannelId: channelId);
 
         var wasEventRaised = false;
         vm.HideAnnotationOverlayRequested += () => wasEventRaised = true;
@@ -427,7 +421,7 @@ public class ScreenShareViewModelTests
     {
         // Arrange
         var channelId = Guid.NewGuid();
-        var vm = CreateViewModel(getCurrentChannelId: () => channelId);
+        var (vm, _) = CreateViewModel(currentChannelId: channelId);
 
         // Start display sharing to create annotation VM
         var source = new ScreenCaptureSource(ScreenCaptureSourceType.Display, "1", "TestDisplay");
@@ -455,6 +449,40 @@ public class ScreenShareViewModelTests
         Assert.Null(vm.AnnotationViewModel);
     }
 
+    [Fact]
+    public async Task StopScreenShareAsync_UpdatesVoiceStore()
+    {
+        // Arrange
+        var channelId = Guid.NewGuid();
+        var (vm, voiceStoreMock) = CreateViewModel(currentChannelId: channelId);
+
+        // Start sharing first
+        var source = new ScreenCaptureSource(ScreenCaptureSourceType.Display, "1", "TestDisplay");
+        var settings = new ScreenShareSettings(
+            source,
+            ScreenShareResolution.HD720,
+            ScreenShareFramerate.Fps30,
+            ScreenShareQuality.Balanced,
+            false);
+
+        _webRtcMock.Setup(x => x.SetScreenSharingAsync(true, settings))
+            .Returns(Task.CompletedTask);
+        _webRtcMock.Setup(x => x.SetScreenSharingAsync(false, null))
+            .Returns(Task.CompletedTask);
+        _signalRMock.Setup(x => x.UpdateVoiceStateAsync(channelId, It.IsAny<VoiceStateUpdate>()))
+            .Returns(Task.CompletedTask);
+
+        await vm.StartScreenShareWithSettingsAsync(settings);
+
+        // Act
+        await vm.StopScreenShareAsync();
+
+        // Assert - VoiceStore should be updated for immediate UI feedback
+        voiceStoreMock.Verify(x => x.SetLocalScreenSharing(false), Times.Once);
+        voiceStoreMock.Verify(x => x.UpdateVoiceState(channelId, _userId,
+            It.Is<VoiceStateUpdate>(u => u.IsScreenSharing == false)), Times.Once);
+    }
+
     #endregion
 
     #region ForceStop Tests
@@ -464,7 +492,7 @@ public class ScreenShareViewModelTests
     {
         // Arrange
         var channelId = Guid.NewGuid();
-        var vm = CreateViewModel(getCurrentChannelId: () => channelId);
+        var (vm, _) = CreateViewModel(currentChannelId: channelId);
 
         var wasEventRaised = false;
         vm.HideAnnotationOverlayRequested += () => wasEventRaised = true;
@@ -499,7 +527,7 @@ public class ScreenShareViewModelTests
     public void ForceStop_WhenNotSharing_DoesNotRaiseEvent()
     {
         // Arrange
-        var vm = CreateViewModel();
+        var (vm, _) = CreateViewModel();
 
         var wasEventRaised = false;
         vm.HideAnnotationOverlayRequested += () => wasEventRaised = true;
@@ -520,7 +548,7 @@ public class ScreenShareViewModelTests
     {
         // Arrange
         var channelId = Guid.NewGuid();
-        var vm = CreateViewModel(getCurrentChannelId: () => channelId);
+        var (vm, _) = CreateViewModel(currentChannelId: channelId);
 
         // Start sharing
         var source = new ScreenCaptureSource(ScreenCaptureSourceType.Display, "1", "TestDisplay");
@@ -559,7 +587,7 @@ public class ScreenShareViewModelTests
     public async Task StartFromStationCommandAsync_WhenNotInChannel_DoesNothing()
     {
         // Arrange
-        var vm = CreateViewModel(getCurrentChannelId: () => null);
+        var (vm, _) = CreateViewModel(currentChannelId: null);
 
         // Act
         await vm.StartFromStationCommandAsync();
@@ -574,7 +602,7 @@ public class ScreenShareViewModelTests
     {
         // Arrange
         var channelId = Guid.NewGuid();
-        var vm = CreateViewModel(getCurrentChannelId: () => channelId);
+        var (vm, _) = CreateViewModel(currentChannelId: channelId);
         _screenCaptureServiceMock.Setup(x => x.GetDisplays())
             .Returns(new List<ScreenCaptureSource>());
 
@@ -590,7 +618,7 @@ public class ScreenShareViewModelTests
     {
         // Arrange
         var channelId = Guid.NewGuid();
-        var vm = CreateViewModel(getCurrentChannelId: () => channelId);
+        var (vm, _) = CreateViewModel(currentChannelId: channelId);
 
         var display = new ScreenCaptureSource(ScreenCaptureSourceType.Display, "1", "Main Display");
         _screenCaptureServiceMock.Setup(x => x.GetDisplays())
@@ -621,7 +649,7 @@ public class ScreenShareViewModelTests
     public void IsDrawingAllowedForViewers_WhenNoAnnotationViewModel_ReturnsFalse()
     {
         // Arrange
-        var vm = CreateViewModel();
+        var (vm, _) = CreateViewModel();
 
         // Assert
         Assert.False(vm.IsDrawingAllowedForViewers);
@@ -632,7 +660,7 @@ public class ScreenShareViewModelTests
     {
         // Arrange
         var channelId = Guid.NewGuid();
-        var vm = CreateViewModel(getCurrentChannelId: () => channelId);
+        var (vm, _) = CreateViewModel(currentChannelId: channelId);
 
         // Start display sharing to create annotation VM
         var source = new ScreenCaptureSource(ScreenCaptureSourceType.Display, "1", "TestDisplay");
@@ -667,7 +695,7 @@ public class ScreenShareViewModelTests
     public void Dispose_CleansUpResources()
     {
         // Arrange
-        var vm = CreateViewModel();
+        var (vm, _) = CreateViewModel();
 
         // Act - should not throw
         vm.Dispose();
@@ -681,7 +709,7 @@ public class ScreenShareViewModelTests
     {
         // Arrange
         var channelId = Guid.NewGuid();
-        var vm = CreateViewModel(getCurrentChannelId: () => channelId);
+        var (vm, _) = CreateViewModel(currentChannelId: channelId);
 
         // Start display sharing to create annotation VM
         var source = new ScreenCaptureSource(ScreenCaptureSourceType.Display, "1", "TestDisplay");

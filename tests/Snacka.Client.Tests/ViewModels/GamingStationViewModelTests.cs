@@ -5,6 +5,7 @@ using Moq;
 using ReactiveUI;
 using Snacka.Client.Models;
 using Snacka.Client.Services;
+using Snacka.Client.Stores;
 using Snacka.Client.ViewModels;
 using Snacka.Shared.Models;
 
@@ -15,6 +16,7 @@ public class GamingStationViewModelTests : IDisposable
     private readonly Mock<IApiClient> _mockApiClient;
     private readonly Mock<ISignalRService> _mockSignalR;
     private readonly Mock<ISettingsStore> _mockSettingsStore;
+    private readonly Mock<IVoiceStore> _mockVoiceStore;
     private readonly UserSettings _settings;
     private readonly ObservableCollection<MyGamingStationInfo> _myGamingStations;
     private readonly string _currentMachineId;
@@ -26,12 +28,16 @@ public class GamingStationViewModelTests : IDisposable
         _mockApiClient = new Mock<IApiClient>();
         _mockSignalR = new Mock<ISignalRService>();
         _mockSettingsStore = new Mock<ISettingsStore>();
+        _mockVoiceStore = new Mock<IVoiceStore>();
         _settings = new UserSettings();
         _mockSettingsStore.Setup(x => x.Settings).Returns(_settings);
         _myGamingStations = new ObservableCollection<MyGamingStationInfo>();
         _currentMachineId = "TEST-MACHINE-12345678";
         _currentUserId = Guid.NewGuid();
         _currentVoiceChannelId = null;
+
+        // Setup VoiceStore mock to return current channel ID
+        _mockVoiceStore.Setup(x => x.GetCurrentChannelId()).Returns(() => _currentVoiceChannelId);
     }
 
     public void Dispose()
@@ -45,9 +51,9 @@ public class GamingStationViewModelTests : IDisposable
             _mockApiClient.Object,
             _mockSignalR.Object,
             _mockSettingsStore.Object,
+            _mockVoiceStore.Object,
             _myGamingStations,
             _currentMachineId,
-            () => _currentVoiceChannelId,
             _currentUserId
         );
     }

@@ -1,12 +1,14 @@
 using System.Reactive;
 using ReactiveUI;
 using Snacka.Client.Services;
+using Snacka.Client.Stores;
 
 namespace Snacka.Client.ViewModels;
 
 /// <summary>
 /// ViewModel for screen sharing functionality.
 /// Encapsulates screen share state, picker, and annotation management.
+/// Reads current voice channel from VoiceStore (Redux-style).
 /// </summary>
 public class ScreenShareViewModel : ReactiveObject, IDisposable
 {
@@ -14,10 +16,9 @@ public class ScreenShareViewModel : ReactiveObject, IDisposable
     private readonly ISignalRService _signalR;
     private readonly IWebRtcService _webRtc;
     private readonly AnnotationService _annotationService;
+    private readonly IVoiceStore _voiceStore;
     private readonly Guid _userId;
     private readonly string _username;
-    private readonly Func<Guid?> _getCurrentChannelId;
-    private readonly Action<Guid, VoiceStateUpdate>? _onLocalStateChanged;
 
     private bool _isScreenSharePickerOpen;
     private ScreenSharePickerViewModel? _screenSharePicker;
@@ -51,22 +52,25 @@ public class ScreenShareViewModel : ReactiveObject, IDisposable
         ISignalRService signalR,
         IWebRtcService webRtc,
         AnnotationService annotationService,
+        IVoiceStore voiceStore,
         Guid userId,
-        string username,
-        Func<Guid?> getCurrentChannelId,
-        Action<Guid, VoiceStateUpdate>? onLocalStateChanged = null)
+        string username)
     {
         _screenCaptureService = screenCaptureService;
         _signalR = signalR;
         _webRtc = webRtc;
         _annotationService = annotationService;
+        _voiceStore = voiceStore;
         _userId = userId;
         _username = username;
-        _getCurrentChannelId = getCurrentChannelId;
-        _onLocalStateChanged = onLocalStateChanged;
 
         ToggleScreenShareCommand = ReactiveCommand.CreateFromTask(ToggleScreenShareAsync);
     }
+
+    /// <summary>
+    /// Gets the current voice channel ID from VoiceStore.
+    /// </summary>
+    private Guid? GetCurrentChannelId() => _voiceStore.GetCurrentChannelId();
 
     #region Properties
 
@@ -142,7 +146,7 @@ public class ScreenShareViewModel : ReactiveObject, IDisposable
     /// </summary>
     public async Task ToggleScreenShareAsync()
     {
-        var channelId = _getCurrentChannelId();
+        var channelId = GetCurrentChannelId();
         if (channelId is null) return;
 
         // If already sharing, stop sharing
@@ -171,7 +175,7 @@ public class ScreenShareViewModel : ReactiveObject, IDisposable
     /// </summary>
     public async Task StartScreenShareWithSettingsAsync(ScreenShareSettings settings)
     {
-        var channelId = _getCurrentChannelId();
+        var channelId = GetCurrentChannelId();
         if (channelId is null) return;
 
         try
@@ -181,9 +185,10 @@ public class ScreenShareViewModel : ReactiveObject, IDisposable
             IsScreenSharing = true;
             _currentScreenShareSettings = settings;
 
-            // Notify for immediate UI feedback
+            // Update VoiceStore for immediate UI feedback (Redux-style)
             var state = new VoiceStateUpdate(IsScreenSharing: true, ScreenShareHasAudio: settings.IncludeAudio, IsCameraOn: false);
-            _onLocalStateChanged?.Invoke(_userId, state);
+            _voiceStore.SetLocalScreenSharing(true);
+            _voiceStore.UpdateVoiceState(channelId.Value, _userId, state);
 
             // Now start the capture (hardware decoder will find the video stream)
             await _webRtc.SetScreenSharingAsync(true, settings);
@@ -215,7 +220,7 @@ public class ScreenShareViewModel : ReactiveObject, IDisposable
     /// </summary>
     public async Task StopScreenShareAsync()
     {
-        var channelId = _getCurrentChannelId();
+        var channelId = GetCurrentChannelId();
         if (channelId is null) return;
 
         try
@@ -228,11 +233,12 @@ public class ScreenShareViewModel : ReactiveObject, IDisposable
             IsScreenSharing = false;
             _currentScreenShareSettings = null;
 
-            await _signalR.UpdateVoiceStateAsync(channelId.Value, new VoiceStateUpdate(IsScreenSharing: false, ScreenShareHasAudio: false));
-
-            // Notify for immediate UI feedback
             var state = new VoiceStateUpdate(IsScreenSharing: false, ScreenShareHasAudio: false);
-            _onLocalStateChanged?.Invoke(_userId, state);
+            await _signalR.UpdateVoiceStateAsync(channelId.Value, state);
+
+            // Update VoiceStore for immediate UI feedback (Redux-style)
+            _voiceStore.SetLocalScreenSharing(false);
+            _voiceStore.UpdateVoiceState(channelId.Value, _userId, state);
 
             // Clear annotations for this screen share
             _annotationService.OnScreenShareEnded(_userId);
@@ -272,7 +278,7 @@ public class ScreenShareViewModel : ReactiveObject, IDisposable
     /// </summary>
     public async Task StartFromStationCommandAsync()
     {
-        var channelId = _getCurrentChannelId();
+        var channelId = GetCurrentChannelId();
         if (channelId is null) return;
 
         var displays = _screenCaptureService.GetDisplays();

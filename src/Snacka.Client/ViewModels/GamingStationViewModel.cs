@@ -4,6 +4,7 @@ using Avalonia.Threading;
 using ReactiveUI;
 using Snacka.Client.Models;
 using Snacka.Client.Services;
+using Snacka.Client.Stores;
 using Snacka.Shared.Models;
 
 namespace Snacka.Client.ViewModels;
@@ -12,13 +13,14 @@ namespace Snacka.Client.ViewModels;
 /// ViewModel for gaming station management and streaming.
 /// Handles station listing, registration, connection, and input streaming.
 /// Subscribes to SignalR events for real-time gaming station status updates.
+/// Reads current voice channel from VoiceStore (Redux-style).
 /// </summary>
 public class GamingStationViewModel : ReactiveObject
 {
     private readonly IApiClient _apiClient;
     private readonly ISignalRService _signalR;
     private readonly ISettingsStore _settingsStore;
-    private readonly Func<Guid?> _getCurrentVoiceChannelId;
+    private readonly IVoiceStore _voiceStore;
     private readonly Guid _currentUserId;
 
     // Station list state (old architecture)
@@ -57,17 +59,17 @@ public class GamingStationViewModel : ReactiveObject
         IApiClient apiClient,
         ISignalRService signalR,
         ISettingsStore settingsStore,
+        IVoiceStore voiceStore,
         ObservableCollection<MyGamingStationInfo> myGamingStations,
         string currentMachineId,
-        Func<Guid?> getCurrentVoiceChannelId,
         Guid currentUserId)
     {
         _apiClient = apiClient;
         _signalR = signalR;
         _settingsStore = settingsStore;
+        _voiceStore = voiceStore;
         _myGamingStations = myGamingStations;
         _currentMachineId = currentMachineId;
-        _getCurrentVoiceChannelId = getCurrentVoiceChannelId;
         _currentUserId = currentUserId;
 
         // Commands
@@ -295,11 +297,16 @@ public class GamingStationViewModel : ReactiveObject
     }
 
     /// <summary>
+    /// Gets the current voice channel ID from VoiceStore.
+    /// </summary>
+    private Guid? GetCurrentVoiceChannelId() => _voiceStore.GetCurrentChannelId();
+
+    /// <summary>
     /// Sends keyboard input to a gaming station in the current voice channel.
     /// </summary>
     public async Task SendKeyboardInputAsync(StationKeyboardInput input)
     {
-        var channelId = _getCurrentVoiceChannelId();
+        var channelId = GetCurrentVoiceChannelId();
         if (channelId is null) return;
 
         try
@@ -317,7 +324,7 @@ public class GamingStationViewModel : ReactiveObject
     /// </summary>
     public async Task SendMouseInputAsync(StationMouseInput input)
     {
-        var channelId = _getCurrentVoiceChannelId();
+        var channelId = GetCurrentVoiceChannelId();
         if (channelId is null) return;
 
         try
@@ -356,7 +363,7 @@ public class GamingStationViewModel : ReactiveObject
     /// </summary>
     public async Task CommandJoinCurrentChannelAsync(string machineId)
     {
-        var channelId = _getCurrentVoiceChannelId();
+        var channelId = GetCurrentVoiceChannelId();
         if (channelId is null) return;
 
         try

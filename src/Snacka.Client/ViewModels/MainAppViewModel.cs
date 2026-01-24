@@ -519,13 +519,14 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             LoadCommunitiesAsync);
 
         // Create gaming station ViewModel (handles its own SignalR status event subscription)
+        // Reads current voice channel from VoiceStore (Redux-style)
         _gamingStation = new GamingStationViewModel(
             apiClient,
             signalR,
             settingsStore,
+            _stores.VoiceStore,
             _myGamingStations,
             _currentMachineId,
-            () => CurrentVoiceChannel?.Id,
             auth.UserId);
         _gamingStation.ViewOpening += () =>
         {
@@ -581,16 +582,15 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         };
 
         // Create screen share ViewModel
-        // Note: VoiceChannelContentViewModel now updates reactively from VoiceStore, so no callback needed
+        // Reads current voice channel from VoiceStore (Redux-style)
         _screenShare = new ScreenShareViewModel(
             screenCaptureService,
             signalR,
             webRtc,
             _annotationService,
+            _stores.VoiceStore,
             auth.UserId,
-            auth.Username,
-            () => CurrentVoiceChannel?.Id,
-            (_, _) => { } /* VoiceChannelContentViewModel subscribes to VoiceStore directly */);
+            auth.Username);
 
         // Sync ScreenShareViewModel state with local fields
         _screenShare.PropertyChanged += (_, e) =>
