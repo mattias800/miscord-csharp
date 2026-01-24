@@ -107,6 +107,12 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     // Welcome modal ViewModel (encapsulates first-time user welcome flow)
     private WelcomeModalViewModel? _welcomeModal;
 
+    // Controller host ViewModel (encapsulates controller access requests and sessions)
+    private ControllerHostViewModel? _controllerHost;
+
+    // Thread panel ViewModel (encapsulates thread display and updates)
+    private ThreadPanelViewModel? _threadPanel;
+
     /// <summary>
     /// Fired when an NV12 frame should be rendered to GPU fullscreen view.
     /// Args: (width, height, nv12Data)
@@ -143,13 +149,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
     // Activity feed state (right panel)
     private ActivityFeedViewModel? _activityFeed;
-
-    // Controller access request state
-    private byte _selectedControllerSlot = 0;
-
-    // Thread state
-    private ThreadViewModel? _currentThread;
-    private double _threadPanelWidth = 400;
 
     // Members list ViewModel (encapsulates member operations and nickname editing)
     private MembersListViewModel? _membersListViewModel;
@@ -715,6 +714,14 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         _welcomeModal.BrowseCommunitiesRequested += async () => await _communityDiscovery!.OpenAsync();
         _welcomeModal.CreateCommunityRequested += async () => await CreateCommunityAsync();
 
+        // Create controller host ViewModel
+        _controllerHost = new ControllerHostViewModel(
+            _controllerHostService,
+            () => _currentVoiceChannel?.Id);
+
+        // Create thread panel ViewModel
+        _threadPanel = new ThreadPanelViewModel(_apiClient, _stores.MessageStore);
+
         // Commands
         LogoutCommand = ReactiveCommand.Create(_onLogout);
         SwitchServerCommand = _onSwitchServer is not null
@@ -799,30 +806,15 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         WelcomeBrowseCommunitiesCommand = _welcomeModal.BrowseCommunitiesCommand;
         WelcomeCreateCommunityCommand = _welcomeModal.CreateCommunityCommand;
 
-        // Controller access request commands
-        AcceptControllerRequestCommand = ReactiveCommand.CreateFromTask<ControllerAccessRequest>(AcceptControllerRequestAsync);
-        DeclineControllerRequestCommand = ReactiveCommand.CreateFromTask<ControllerAccessRequest>(DeclineControllerRequestAsync);
-        StopControllerSessionCommand = ReactiveCommand.CreateFromTask<ActiveControllerSession>(StopControllerSessionAsync);
-        ToggleMuteControllerSessionCommand = ReactiveCommand.Create<ActiveControllerSession>(ToggleMuteControllerSession);
+        // Controller access request commands (delegated to ControllerHostViewModel)
+        AcceptControllerRequestCommand = _controllerHost.AcceptRequestCommand;
+        DeclineControllerRequestCommand = _controllerHost.DeclineRequestCommand;
+        StopControllerSessionCommand = _controllerHost.StopSessionCommand;
+        ToggleMuteControllerSessionCommand = _controllerHost.ToggleMuteSessionCommand;
 
-        // Subscribe to controller host service events for UI updates
-        _controllerHostService.PendingRequests.CollectionChanged += (_, _) =>
-        {
-            Dispatcher.UIThread.Post(() => this.RaisePropertyChanged(nameof(HasPendingControllerRequests)));
-        };
-        _controllerHostService.ActiveSessions.CollectionChanged += (_, _) =>
-        {
-            Dispatcher.UIThread.Post(() => this.RaisePropertyChanged(nameof(HasActiveControllerSessions)));
-        };
-        _controllerHostService.MutedSessionsChanged += () =>
-        {
-            // Force UI update when mute state changes
-            Dispatcher.UIThread.Post(() => this.RaisePropertyChanged(nameof(ActiveControllerSessions)));
-        };
-
-        // Thread commands
-        OpenThreadCommand = ReactiveCommand.CreateFromTask<MessageResponse>(OpenThreadAsync);
-        CloseThreadCommand = ReactiveCommand.Create(CloseThread);
+        // Thread commands (delegated to ThreadPanelViewModel)
+        OpenThreadCommand = _threadPanel.OpenCommand;
+        CloseThreadCommand = _threadPanel.CloseCommand;
 
         // Voice commands
         CreateVoiceChannelCommand = ReactiveCommand.CreateFromTask(CreateVoiceChannelAsync, canCreateChannel);
@@ -955,29 +947,26 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         _signalR.MessageEdited += message => Dispatcher.UIThread.Post(() =>
         {
             // Update in thread replies if thread is open (view-specific state)
-            CurrentThread?.UpdateReply(message);
+            _threadPanel?.UpdateReply(message);
         });
 
         _signalR.MessageDeleted += e => Dispatcher.UIThread.Post(() =>
         {
             // Remove from thread if open (view-specific state; store update via SignalREventDispatcher)
-            CurrentThread?.RemoveReply(e.MessageId);
+            _threadPanel?.RemoveReply(e.MessageId);
         });
 
         // Thread events
         _signalR.ThreadReplyReceived += e => Dispatcher.UIThread.Post(() =>
         {
             // If this thread is currently open, add the reply (view-specific state)
-            if (CurrentThread?.ParentMessage?.Id == e.ParentMessageId)
-            {
-                CurrentThread.AddReply(e.Reply);
-            }
+            _threadPanel?.AddReplyIfMatches(e.ParentMessageId, e.Reply);
 
             // Update the parent message's reply count in the store
             var existingMessage = _stores.MessageStore.GetMessage(e.ParentMessageId);
             if (existingMessage is not null)
             {
-                _stores.MessageStore.UpdateThreadMetadata(
+                _threadPanel?.UpdateThreadMetadata(
                     e.ParentMessageId,
                     existingMessage.ReplyCount + 1,
                     e.Reply.CreatedAt);
@@ -989,7 +978,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         _signalR.ReactionUpdated += e => Dispatcher.UIThread.Post(() =>
         {
             // Update in thread replies if thread is open (view-specific; main list via SignalREventDispatcher)
-            CurrentThread?.UpdateReplyReaction(
+            _threadPanel?.UpdateReplyReaction(
                 e.MessageId, e.Emoji, e.Count, e.Added,
                 e.UserId, e.Username, e.EffectiveDisplayName, _auth.UserId);
         });
@@ -1578,37 +1567,33 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// </summary>
     public CommunityDiscoveryViewModel? CommunityDiscovery => _communityDiscovery;
 
-    // Controller access request properties
+    // Controller access request properties (delegated to ControllerHostViewModel)
     public ObservableCollection<ControllerAccessRequest> PendingControllerRequests =>
-        _controllerHostService.PendingRequests;
+        _controllerHost?.PendingRequests ?? new ObservableCollection<ControllerAccessRequest>();
 
     public ObservableCollection<ActiveControllerSession> ActiveControllerSessions =>
-        _controllerHostService.ActiveSessions;
+        _controllerHost?.ActiveSessions ?? new ObservableCollection<ActiveControllerSession>();
 
-    public bool HasPendingControllerRequests => PendingControllerRequests.Count > 0;
-    public bool HasActiveControllerSessions => ActiveControllerSessions.Count > 0;
+    public bool HasPendingControllerRequests => _controllerHost?.HasPendingRequests ?? false;
+    public bool HasActiveControllerSessions => _controllerHost?.HasActiveSessions ?? false;
 
     public byte SelectedControllerSlot
     {
-        get => _selectedControllerSlot;
-        set => this.RaiseAndSetIfChanged(ref _selectedControllerSlot, value);
+        get => _controllerHost?.SelectedControllerSlot ?? 0;
+        set { if (_controllerHost != null) _controllerHost.SelectedControllerSlot = value; }
     }
 
-    public byte[] AvailableControllerSlots => [0, 1, 2, 3];
+    public byte[] AvailableControllerSlots => _controllerHost?.AvailableSlots ?? [0, 1, 2, 3];
 
-    // Thread properties
-    public ThreadViewModel? CurrentThread
-    {
-        get => _currentThread;
-        set => this.RaiseAndSetIfChanged(ref _currentThread, value);
-    }
+    // Thread properties (delegated to ThreadPanelViewModel)
+    public ThreadViewModel? CurrentThread => _threadPanel?.CurrentThread;
 
-    public bool IsThreadOpen => CurrentThread != null;
+    public bool IsThreadOpen => _threadPanel?.IsOpen ?? false;
 
     public double ThreadPanelWidth
     {
-        get => _threadPanelWidth;
-        set => this.RaiseAndSetIfChanged(ref _threadPanelWidth, Math.Max(280, Math.Min(600, value)));
+        get => _threadPanel?.PanelWidth ?? 400;
+        set { if (_threadPanel != null) _threadPanel.PanelWidth = Math.Max(280, Math.Min(600, value)); }
     }
 
     public bool IsLoading
@@ -2978,91 +2963,13 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         }
     }
 
-    // Controller access request methods
-    private async Task AcceptControllerRequestAsync(ControllerAccessRequest request)
-    {
-        if (_currentVoiceChannel == null) return;
-
-        try
-        {
-            // Use the selected slot or auto-assign
-            var slot = _controllerHostService.GetNextAvailableSlot(_currentVoiceChannel.Id) ?? SelectedControllerSlot;
-            await _controllerHostService.AcceptRequestAsync(request.ChannelId, request.RequesterUserId, slot);
-        }
-        catch
-        {
-            // Controller request acceptance failure - ignore
-        }
-    }
-
-    private async Task DeclineControllerRequestAsync(ControllerAccessRequest request)
-    {
-        try
-        {
-            await _controllerHostService.DeclineRequestAsync(request.ChannelId, request.RequesterUserId);
-        }
-        catch
-        {
-            // Controller request decline failure - ignore
-        }
-    }
-
-    private async Task StopControllerSessionAsync(ActiveControllerSession session)
-    {
-        try
-        {
-            await _controllerHostService.StopSessionAsync(session.ChannelId, session.GuestUserId);
-        }
-        catch
-        {
-            // Controller session stop failure - ignore
-        }
-    }
-
-    private void ToggleMuteControllerSession(ActiveControllerSession session)
-    {
-        _controllerHostService.ToggleMuteSession(session.GuestUserId);
-    }
-
     /// <summary>
     /// Check if a controller session is muted.
+    /// Delegates to ControllerHostViewModel.
     /// </summary>
     public bool IsControllerSessionMuted(Guid guestUserId)
     {
-        return _controllerHostService.IsSessionMuted(guestUserId);
-    }
-
-    // Thread methods
-    private async Task OpenThreadAsync(MessageResponse parentMessage)
-    {
-        // Close any existing thread
-        CloseThread();
-
-        // Create new thread view model
-        CurrentThread = new ThreadViewModel(_apiClient, parentMessage, CloseThread);
-        await CurrentThread.LoadAsync();
-
-        // Notify that IsThreadOpen changed
-        this.RaisePropertyChanged(nameof(IsThreadOpen));
-    }
-
-    private void CloseThread()
-    {
-        if (CurrentThread != null)
-        {
-            CurrentThread.Dispose();
-            CurrentThread = null;
-            this.RaisePropertyChanged(nameof(IsThreadOpen));
-        }
-    }
-
-    /// <summary>
-    /// Updates thread metadata on a parent message when a new reply is added.
-    /// Called from SignalR event handler.
-    /// </summary>
-    public void UpdateThreadMetadata(Guid parentMessageId, int replyCount, DateTime? lastReplyAt)
-    {
-        _stores.MessageStore.UpdateThreadMetadata(parentMessageId, replyCount, lastReplyAt);
+        return _controllerHost?.IsSessionMuted(guestUserId) ?? false;
     }
 
     // ==================== Gaming Station Helpers ====================
@@ -3108,6 +3015,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         _screenShare?.Dispose();
         _voiceControl?.Dispose();
         _videoFullscreen?.Dispose();
+        _controllerHost?.Dispose();
+        _threadPanel?.Dispose();
         _typingSubscription?.Dispose();
         _storeSubscriptions.Dispose();
         _ = _signalR.DisposeAsync();
