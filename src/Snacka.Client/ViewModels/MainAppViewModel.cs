@@ -104,6 +104,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     // Channel management ViewModel (encapsulates channel editing, deletion, reordering)
     private ChannelManagementViewModel? _channelManagementVm;
 
+    // Welcome modal ViewModel (encapsulates first-time user welcome flow)
+    private WelcomeModalViewModel? _welcomeModal;
+
     /// <summary>
     /// Fired when an NV12 frame should be rendered to GPU fullscreen view.
     /// Args: (width, height, nv12Data)
@@ -698,6 +701,23 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         _channelManagementVm.ErrorOccurred += error => ErrorMessage = error;
         _channelManagementVm.LoadingChanged += loading => IsLoading = loading;
 
+        // Create welcome modal ViewModel
+        _welcomeModal = new WelcomeModalViewModel(_settingsStore);
+
+        // Sync WelcomeModalViewModel state with local field
+        _welcomeModal.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(WelcomeModalViewModel.IsOpen))
+            {
+                _isWelcomeModalOpen = _welcomeModal.IsOpen;
+                this.RaisePropertyChanged(nameof(IsWelcomeModalOpen));
+            }
+        };
+
+        // Wire up welcome modal events
+        _welcomeModal.BrowseCommunitiesRequested += async () => await _communityDiscovery!.OpenAsync();
+        _welcomeModal.CreateCommunityRequested += async () => await CreateCommunityAsync();
+
         // Commands
         LogoutCommand = ReactiveCommand.Create(_onLogout);
         SwitchServerCommand = _onSwitchServer is not null
@@ -774,11 +794,13 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // Community discovery commands (delegated to CommunityDiscoveryViewModel)
         OpenCommunityDiscoveryCommand = _communityDiscovery!.OpenCommand;
         CloseCommunityDiscoveryCommand = _communityDiscovery!.CloseCommand;
-        CloseWelcomeModalCommand = ReactiveCommand.Create(CloseWelcomeModal);
         JoinCommunityCommand = _communityDiscovery!.JoinCommunityCommand;
         RefreshDiscoverableCommunitiesCommand = _communityDiscovery!.OpenCommand;
-        WelcomeBrowseCommunitiesCommand = ReactiveCommand.CreateFromTask(WelcomeBrowseCommunitiesAsync);
-        WelcomeCreateCommunityCommand = ReactiveCommand.CreateFromTask(WelcomeCreateCommunityAsync);
+
+        // Welcome modal commands (delegated to WelcomeModalViewModel)
+        CloseWelcomeModalCommand = _welcomeModal.CloseCommand;
+        WelcomeBrowseCommunitiesCommand = _welcomeModal.BrowseCommunitiesCommand;
+        WelcomeCreateCommunityCommand = _welcomeModal.CreateCommunityCommand;
 
         // Controller access request commands
         AcceptControllerRequestCommand = ReactiveCommand.CreateFromTask<ControllerAccessRequest>(AcceptControllerRequestAsync);
@@ -1544,7 +1566,14 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public bool IsWelcomeModalOpen
     {
         get => _isWelcomeModalOpen;
-        set => this.RaiseAndSetIfChanged(ref _isWelcomeModalOpen, value);
+        set
+        {
+            if (_welcomeModal != null)
+            {
+                _welcomeModal.IsOpen = value;
+            }
+            this.RaiseAndSetIfChanged(ref _isWelcomeModalOpen, value);
+        }
     }
 
     /// <summary>
@@ -2576,9 +2605,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                     SelectedCommunity = _storeCommunities[0];
 
                 // Show welcome modal for first-time users with no communities
-                if (_storeCommunities.Count == 0 && !_settingsStore.Settings.HasSeenWelcome)
+                if (_storeCommunities.Count == 0)
                 {
-                    IsWelcomeModalOpen = true;
+                    _welcomeModal?.ShowIfFirstTime();
                 }
             }
             else
@@ -2590,25 +2619,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         {
             IsLoading = false;
         }
-    }
-
-    private void CloseWelcomeModal()
-    {
-        IsWelcomeModalOpen = false;
-        _settingsStore.Settings.HasSeenWelcome = true;
-        _settingsStore.Save();
-    }
-
-    private async Task WelcomeBrowseCommunitiesAsync()
-    {
-        CloseWelcomeModal();
-        await _communityDiscovery!.OpenAsync();
-    }
-
-    private async Task WelcomeCreateCommunityAsync()
-    {
-        CloseWelcomeModal();
-        await CreateCommunityAsync();
     }
 
     // Gaming station input methods (delegate to GamingStationViewModel)
