@@ -267,12 +267,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         {
             try
             {
-                Console.WriteLine($"MainAppVM: Sending share screen command to gaming station {machineId}");
                 await _signalR.CommandStationStartScreenShareAsync(machineId);
             }
-            catch (Exception ex)
+            catch
             {
-                Console.WriteLine($"MainAppVM: Failed to command gaming station share screen: {ex.Message}");
                 ErrorMessage = "Failed to start screen share on gaming station";
             }
         };
@@ -280,12 +278,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         {
             try
             {
-                Console.WriteLine($"MainAppVM: Sending stop share screen command to gaming station {machineId}");
                 await _signalR.CommandStationStopScreenShareAsync(machineId);
             }
-            catch (Exception ex)
+            catch
             {
-                Console.WriteLine($"MainAppVM: Failed to command gaming station stop screen share: {ex.Message}");
                 ErrorMessage = "Failed to stop screen share on gaming station";
             }
         };
@@ -677,7 +673,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             // Update UI
             this.RaisePropertyChanged(nameof(IsGamingStationEnabled));
             this.RaisePropertyChanged(nameof(ShowGamingStationBanner));
-            Console.WriteLine("Gaming station mode disabled locally");
         });
 
         // Admin voice commands
@@ -724,9 +719,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             // Report gaming station status if enabled
             await ReportGamingStationStatusAsync();
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"SignalR connection failed: {ex.Message}");
+            // SignalR connection failure handled gracefully
         }
 
         await LoadCommunitiesAsync();
@@ -764,7 +759,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 {
                     var vm = CreateVoiceChannelViewModel(channel);
                     VoiceChannelViewModels.Add(vm);
-                    Console.WriteLine($"SignalR ChannelCreated: Added VoiceChannelViewModel for {channel.Name}");
                 }
             }
         });
@@ -786,7 +780,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             if (voiceVm is not null)
             {
                 VoiceChannelViewModels.Remove(voiceVm);
-                Console.WriteLine($"SignalR ChannelDeleted: Removed VoiceChannelViewModel for {voiceVm.Name}");
             }
 
             // Select a different channel if the deleted one was selected
@@ -802,12 +795,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             // Skip if we just initiated this reorder (we already updated optimistically)
             if (_pendingReorderCommunityId == e.CommunityId)
             {
-                Console.WriteLine($"SignalR ChannelsReordered: Skipping (we initiated this reorder)");
                 _pendingReorderCommunityId = null;
                 return;
             }
-
-            Console.WriteLine($"SignalR ChannelsReordered: Received {e.Channels.Count} channels for community {e.CommunityId}");
 
             // Channel list updates handled by SignalREventDispatcher -> ChannelStore
             // StoreTextChannels auto-updates via DynamicData binding
@@ -943,13 +933,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
         _signalR.CommunityMemberAdded += e =>
         {
-            Console.WriteLine($"CommunityMemberAdded event received: communityId={e.CommunityId}, userId={e.UserId}");
-            Console.WriteLine($"SelectedCommunity: {SelectedCommunity?.Id} ({SelectedCommunity?.Name})");
-
             // If this is for the currently selected community, reload members into the store
             if (SelectedCommunity is not null && e.CommunityId == SelectedCommunity.Id)
             {
-                Console.WriteLine("Reloading members list...");
                 _ = Dispatcher.UIThread.InvokeAsync(async () =>
                 {
                     try
@@ -957,24 +943,15 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                         var result = await _apiClient.GetMembersAsync(SelectedCommunity.Id);
                         if (result.Success && result.Data is not null)
                         {
-                            Console.WriteLine($"Loaded {result.Data.Count()} members");
                             // Update the store - StoreMembers will auto-update via DynamicData
                             _stores.CommunityStore.SetMembers(SelectedCommunity.Id, result.Data);
                         }
-                        else
-                        {
-                            Console.WriteLine($"Failed to load members: {result.Error}");
-                        }
                     }
-                    catch (Exception ex)
+                    catch
                     {
-                        Console.WriteLine($"Exception while reloading members: {ex.Message}");
+                        // Silently ignore member reload failures
                     }
                 });
-            }
-            else
-            {
-                Console.WriteLine("Community doesn't match selected community, skipping reload");
             }
         };
 
@@ -985,7 +962,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // We still need to update VoiceParticipants and _voiceChannelContent (UI-specific)
         _signalR.VoiceParticipantJoined += e => Dispatcher.UIThread.Post(() =>
         {
-            Console.WriteLine($"EVENT VoiceParticipantJoined: {e.Participant.Username} joined channel {e.ChannelId}");
 
             // VoiceChannelViewModel auto-updates via VoiceStore subscription
             // VoiceStore is updated by SignalREventDispatcher
@@ -1003,7 +979,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
         _signalR.VoiceParticipantLeft += e => Dispatcher.UIThread.Post(() =>
         {
-            Console.WriteLine($"EVENT VoiceParticipantLeft: User {e.UserId} left channel {e.ChannelId}");
 
             // VoiceChannelViewModel auto-updates via VoiceStore subscription
 
@@ -1027,7 +1002,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
         _signalR.VoiceStateChanged += e => Dispatcher.UIThread.Post(() =>
         {
-            Console.WriteLine($"EVENT VoiceStateChanged: User {e.UserId} in channel {e.ChannelId}");
 
             // VoiceChannelViewModel auto-updates via VoiceStore subscription
 
@@ -1066,14 +1040,12 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // Multi-device voice events
         _signalR.VoiceSessionActiveOnOtherDevice += e => Dispatcher.UIThread.Post(() =>
         {
-            Console.WriteLine($"EVENT VoiceSessionActiveOnOtherDevice: In voice on another device (channel {e.ChannelId}, {e.ChannelName})");
             VoiceOnOtherDeviceChannelId = e.ChannelId;
             VoiceOnOtherDeviceChannelName = e.ChannelName;
         });
 
         _signalR.DisconnectedFromVoice += e => Dispatcher.UIThread.Post(async () =>
         {
-            Console.WriteLine($"EVENT DisconnectedFromVoice: {e.Reason}, channel {e.ChannelId}");
 
             if (CurrentVoiceChannel is not null && CurrentVoiceChannel.Id == e.ChannelId)
             {
@@ -1105,8 +1077,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 // Track that we're now in voice on another device
                 VoiceOnOtherDeviceChannelId = e.ChannelId;
                 VoiceOnOtherDeviceChannelName = voiceChannelVm?.Name;
-
-                Console.WriteLine("Disconnected from voice: joined from another device");
             }
         });
 
@@ -1133,7 +1103,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // Admin voice state changed (server mute/deafen)
         _signalR.ServerVoiceStateChanged += e => Dispatcher.UIThread.Post(() =>
         {
-            Console.WriteLine($"EVENT ServerVoiceStateChanged: User {e.TargetUserId} in channel {e.ChannelId}");
 
             // VoiceChannelViewModel auto-updates via VoiceStore subscription
 
@@ -1161,7 +1130,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // User moved by admin
         _signalR.UserMoved += e => Dispatcher.UIThread.Post(async () =>
         {
-            Console.WriteLine($"EVENT UserMoved: {e.Username} moved from {e.FromChannelId} to {e.ToChannelId} by {e.AdminUsername}");
 
             // If the current user was moved
             if (e.UserId == _auth.UserId)
@@ -1238,8 +1206,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // Gaming Station events (new simplified architecture)
         _signalR.GamingStationStatusChanged += e => Dispatcher.UIThread.Post(() =>
         {
-            Console.WriteLine($"EVENT GamingStationStatusChanged: user {e.Username} station {e.MachineId} available={e.IsAvailable}");
-
             // Only track stations that belong to the current user
             if (e.UserId != _auth.UserId) return;
 
@@ -1283,7 +1249,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // Gaming Station command events (this client is a gaming station receiving commands)
         _signalR.StationCommandJoinChannel += e => Dispatcher.UIThread.Post(async () =>
         {
-            Console.WriteLine($"EVENT StationCommandJoinChannel: commanded to join channel {e.ChannelId} ({e.ChannelName})");
 
             // Only execute if this client is a gaming station
             if (!IsGamingStationEnabled) return;
@@ -1306,23 +1271,19 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             }
 
             await JoinVoiceChannelAsync(channel);
-            Console.WriteLine($"Gaming station joined channel: {e.ChannelName}");
         });
 
         _signalR.StationCommandLeaveChannel += e => Dispatcher.UIThread.Post(async () =>
         {
-            Console.WriteLine($"EVENT StationCommandLeaveChannel: commanded to leave channel");
 
             // Only execute if this client is a gaming station
             if (!IsGamingStationEnabled) return;
 
             await LeaveVoiceChannelAsync();
-            Console.WriteLine($"Gaming station left voice channel");
         });
 
         _signalR.StationCommandStartScreenShare += e => Dispatcher.UIThread.Post(async () =>
         {
-            Console.WriteLine($"EVENT StationCommandStartScreenShare: commanded to start screen share");
 
             // Only execute if this client is a gaming station and in a voice channel
             if (!IsGamingStationEnabled || CurrentVoiceChannel is null) return;
@@ -1330,11 +1291,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             // Get primary display
             var displays = _screenCaptureService.GetDisplays();
             var primaryDisplay = displays.FirstOrDefault();
-            if (primaryDisplay is null)
-            {
-                Console.WriteLine("Gaming station: No display found for screen sharing");
-                return;
-            }
+            if (primaryDisplay is null) return;
 
             // Create screen share settings with gaming-optimized defaults
             var settings = new ScreenShareSettings(
@@ -1346,23 +1303,19 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             );
 
             await StartScreenShareWithSettingsAsync(settings);
-            Console.WriteLine($"Gaming station started screen sharing: {primaryDisplay.Name}");
         });
 
         _signalR.StationCommandStopScreenShare += e => Dispatcher.UIThread.Post(async () =>
         {
-            Console.WriteLine($"EVENT StationCommandStopScreenShare: commanded to stop screen share");
 
             // Only execute if this client is a gaming station
             if (!IsGamingStationEnabled) return;
 
             await StopScreenShareAsync();
-            Console.WriteLine($"Gaming station stopped screen sharing");
         });
 
         _signalR.StationCommandDisable += e => Dispatcher.UIThread.Post(async () =>
         {
-            Console.WriteLine($"EVENT StationCommandDisable: commanded to disable gaming station mode");
 
             // Disable gaming station mode in settings
             _settingsStore.Settings.IsGamingStationEnabled = false;
@@ -1372,7 +1325,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             await ReportGamingStationStatusAsync();
 
             this.RaisePropertyChanged(nameof(IsGamingStationEnabled));
-            Console.WriteLine($"Gaming station mode disabled remotely");
         });
 
         // Gaming Station input events (when this client is a gaming station receiving input from owner)
@@ -1381,8 +1333,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             if (!IsGamingStationEnabled) return;
 
             var input = e.Input;
-            Console.WriteLine($"Gaming station received keyboard input: key={input.Key}, down={input.IsDown}, ctrl={input.Ctrl}, alt={input.Alt}, shift={input.Shift}, meta={input.Meta}");
-
             // TODO: Inject keyboard input using platform-specific APIs
             // Windows: SendInput with KEYBDINPUT
             // macOS: CGEventPost with CGEventCreateKeyboardEvent
@@ -1395,8 +1345,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             if (!IsGamingStationEnabled) return;
 
             var input = e.Input;
-            Console.WriteLine($"Gaming station received mouse input: type={input.Type}, x={input.X:F3}, y={input.Y:F3}, button={input.Button}");
-
             // TODO: Inject mouse input using platform-specific APIs
             // Windows: SendInput with MOUSEINPUT
             // macOS: CGEventPost with CGEventCreateMouseEvent
@@ -1488,7 +1436,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private async Task SetupVoiceChannelViewModelsAsync()
     {
         var voiceChannels = _storeVoiceChannels.ToList();
-        Console.WriteLine($"SetupVoiceChannelViewModelsAsync: Found {voiceChannels.Count} voice channels");
 
         VoiceChannelViewModels.Clear();
         foreach (var voiceChannel in voiceChannels)
@@ -1496,14 +1443,11 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             var vm = CreateVoiceChannelViewModel(voiceChannel);
 
             // Load participants for this voice channel into VoiceStore
-            Console.WriteLine($"SetupVoiceChannelViewModelsAsync: Loading participants for voice channel {voiceChannel.Name} ({voiceChannel.Id})");
             var participants = await _signalR.GetVoiceParticipantsAsync(voiceChannel.Id);
-            Console.WriteLine($"SetupVoiceChannelViewModelsAsync: Got {participants.Count()} participants for {voiceChannel.Name}");
             _stores.VoiceStore.SetParticipants(voiceChannel.Id, participants);
 
             VoiceChannelViewModels.Add(vm);
         }
-        Console.WriteLine($"SetupVoiceChannelViewModelsAsync: Created {VoiceChannelViewModels.Count} VoiceChannelViewModels");
     }
 
     private async Task OnChannelSelectedAsync()
@@ -2081,9 +2025,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 _gifNextPos = result.Data.NextPos;
             }
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Failed to load trending GIFs: {ex.Message}");
+            // GIF loading failures are non-critical
         }
         finally
         {
@@ -2111,9 +2055,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 _gifNextPos = result.Data.NextPos;
             }
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Failed to search GIFs: {ex.Message}");
+            // GIF search failures are non-critical
         }
         finally
         {
@@ -2134,9 +2078,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 CancelReply();
             }
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Failed to send GIF: {ex.Message}");
+            // GIF send failures are non-critical
         }
     }
 
@@ -2378,9 +2322,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 level => Avalonia.Threading.Dispatcher.UIThread.Post(() => InputLevel = level)
             );
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"MainAppViewModel: Failed to start audio level monitoring - {ex.Message}");
+            // Audio monitoring startup failure is non-critical
         }
     }
 
@@ -2391,9 +2335,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             await _audioDeviceService.StopTestAsync();
             InputLevel = 0;
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"MainAppViewModel: Failed to stop audio level monitoring - {ex.Message}");
+            // Audio monitoring stop failure is non-critical
         }
     }
 
@@ -2766,20 +2710,17 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             // Hardware decoding: frames go directly to native view, no software path needed
             FullscreenHardwareDecoder = stream.HardwareDecoder;
             IsGpuFullscreenActive = false;
-            Console.WriteLine("MainApp: Hardware-accelerated fullscreen rendering (VideoToolbox/Metal)");
         }
         else if (_webRtc.IsGpuRenderingAvailable)
         {
             // Software decoding with GPU rendering
             IsGpuFullscreenActive = true;
             _webRtc.Nv12VideoFrameReceived += OnNv12VideoFrameForFullscreen;
-            Console.WriteLine("MainApp: Software GPU fullscreen rendering enabled");
         }
         else
         {
             // Pure software rendering (bitmap)
             IsGpuFullscreenActive = false;
-            Console.WriteLine("MainApp: Using software fullscreen rendering (bitmap)");
         }
 
         // Load existing strokes for this screen share
@@ -2787,9 +2728,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         this.RaisePropertyChanged(nameof(CurrentAnnotationStrokes));
 
         // Check if drawing is allowed for this screen share
-        var isDrawingAllowed = _annotationService.IsDrawingAllowed(stream.UserId);
-        Console.WriteLine($"OpenFullscreen: stream.UserId={stream.UserId}, IsDrawingAllowed={isDrawingAllowed}");
-        IsDrawingAllowedByHost = isDrawingAllowed;
+        IsDrawingAllowedByHost = _annotationService.IsDrawingAllowed(stream.UserId);
     }
 
     public void CloseFullscreen()
@@ -2799,7 +2738,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         {
             _webRtc.Nv12VideoFrameReceived -= OnNv12VideoFrameForFullscreen;
             IsGpuFullscreenActive = false;
-            Console.WriteLine("MainApp: GPU fullscreen rendering disabled");
         }
 
         // Store reference to stream before clearing
@@ -2814,11 +2752,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // so we need to explicitly detach it from the fullscreen parent first.
         if (stream != null && decoder != null)
         {
-            Console.WriteLine("MainApp: Clearing hardware decoder from stream before re-attachment");
             stream.HardwareDecoder = null;
 
             // Explicitly detach the native view from its current parent (fullscreen)
-            Console.WriteLine("MainApp: Detaching native view from fullscreen parent");
             decoder.DetachView();
 
             // Use a delay to ensure the native view is fully released from fullscreen
@@ -2828,9 +2764,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 await Task.Delay(150); // Give native view time to be fully released
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    Console.WriteLine("MainApp: Re-attaching hardware decoder to tile");
                     stream.HardwareDecoder = decoder;
-                    Console.WriteLine("MainApp: Hardware decoder re-attached to tile");
                 });
             });
         }
@@ -2850,33 +2784,17 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// </summary>
     public async Task ToggleControllerAccessAsync(VideoStreamViewModel stream)
     {
-        if (_currentVoiceChannel == null)
-        {
-            Console.WriteLine("MainApp: Cannot toggle controller access - not in voice channel");
-            return;
-        }
-
-        if (stream.StreamType != VideoStreamType.ScreenShare)
-        {
-            Console.WriteLine("MainApp: Cannot toggle controller access - not a screen share stream");
-            return;
-        }
-
-        if (stream.UserId == _auth.UserId)
-        {
-            Console.WriteLine("MainApp: Cannot toggle controller access for yourself");
-            return;
-        }
+        if (_currentVoiceChannel == null) return;
+        if (stream.StreamType != VideoStreamType.ScreenShare) return;
+        if (stream.UserId == _auth.UserId) return;
 
         // Check if already streaming to this host - if so, stop
         if (IsStreamingControllerTo(stream.UserId))
         {
-            Console.WriteLine($"MainApp: Stopping controller streaming to {stream.Username} ({stream.UserId})");
             await _controllerStreamingService.StopStreamingAsync();
             return;
         }
 
-        Console.WriteLine($"MainApp: Requesting controller access from {stream.Username} ({stream.UserId})");
         await _controllerStreamingService.RequestAccessAsync(_currentVoiceChannel.Id, stream.UserId);
     }
 
@@ -2885,12 +2803,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// </summary>
     public async Task ToggleFullscreenControllerAccessAsync()
     {
-        if (FullscreenStream == null)
-        {
-            Console.WriteLine("MainApp: Cannot toggle controller access - no fullscreen stream");
-            return;
-        }
-
+        if (FullscreenStream == null) return;
         await ToggleControllerAccessAsync(FullscreenStream);
     }
 
@@ -3376,8 +3289,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     {
         // Old architecture - keeping as placeholder for now
         // In the new architecture, we use voice channels instead of direct station connections
-        Console.WriteLine($"ConnectToStationAsync: Old architecture method called for station {station.Name}");
-        Console.WriteLine("In the new architecture, use CommandStationJoinChannelAsync to add station to a voice channel");
+        // Use CommandStationJoinChannelAsync to add station to a voice channel
         await Task.CompletedTask;
     }
 
@@ -3385,21 +3297,18 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     {
         // Old architecture - keeping as placeholder for now
         // In the new architecture, we command the station to leave the voice channel
-        Console.WriteLine("DisconnectFromStationAsync: Old architecture method called");
-        Console.WriteLine("In the new architecture, use CommandStationLeaveChannelAsync to remove station from voice channel");
+        // Use CommandStationLeaveChannelAsync to remove station from voice channel
         await Task.CompletedTask;
     }
 
     private void ToggleStationFullscreen()
     {
         // TODO: Implement fullscreen toggle for station stream
-        Console.WriteLine("Toggle station fullscreen");
     }
 
     private void ManageStation(GamingStationResponse station)
     {
         // TODO: Show station management modal
-        Console.WriteLine($"Managing station: {station.Name} (ID: {station.Id})");
     }
 
     /// <summary>
@@ -3414,9 +3323,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         {
             await _signalR.SendStationKeyboardInputAsync(CurrentVoiceChannel.Id, input);
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Failed to send keyboard input to station: {ex.Message}");
+            // Silently ignore station input failures
         }
     }
 
@@ -3432,9 +3341,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         {
             await _signalR.SendStationMouseInputAsync(CurrentVoiceChannel.Id, input);
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Failed to send mouse input to station: {ex.Message}");
+            // Silently ignore station input failures
         }
     }
 
@@ -3449,10 +3358,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // - Windows: SendInput API with KEYBDINPUT structure
         // - macOS: CGEventPost with CGEventCreateKeyboardEvent
         // - Linux: XTest extension or uinput virtual device
-
-        // For now, log that we would inject the input
-        // Actual injection requires platform-specific native code
-        Console.WriteLine($"[INJECT KEYBOARD] key={input.Key} down={input.IsDown} ctrl={input.Ctrl} alt={input.Alt} shift={input.Shift}");
+        // TODO: Implement platform-specific input injection
     }
 
     /// <summary>
@@ -3466,10 +3372,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // - Windows: SendInput API with MOUSEINPUT structure
         // - macOS: CGEventPost with CGEventCreateMouseEvent
         // - Linux: XTest extension or uinput virtual device
-
         // The normalized coordinates (0-1) need to be scaled to screen dimensions
-        // For now, log that we would inject the input
-        Console.WriteLine($"[INJECT MOUSE] type={input.Type} x={input.X:F3} y={input.Y:F3} button={input.Button}");
+        // TODO: Implement platform-specific input injection
     }
 
     private async Task CreateCommunityAsync()
@@ -3537,20 +3441,13 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
     private async Task SaveChannelNameAsync()
     {
-        Console.WriteLine($"SaveChannelNameAsync called. EditingChannel: {EditingChannel?.Name}, EditingChannelName: {EditingChannelName}");
-
         if (EditingChannel is null || SelectedCommunity is null || string.IsNullOrWhiteSpace(EditingChannelName))
-        {
-            Console.WriteLine("Early return - EditingChannel/SelectedServer is null or name is empty");
             return;
-        }
 
         IsLoading = true;
         try
         {
-            Console.WriteLine($"Calling UpdateChannelAsync for channel {EditingChannel.Id} on community {SelectedCommunity.Id}");
             var result = await _apiClient.UpdateChannelAsync(SelectedCommunity.Id, EditingChannel.Id, EditingChannelName.Trim(), null);
-            Console.WriteLine($"UpdateChannelAsync result: Success={result.Success}, Error={result.Error}");
 
             if (result.Success && result.Data is not null)
             {
@@ -3568,7 +3465,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             else
             {
                 ErrorMessage = result.Error;
-                Console.WriteLine($"Error: {result.Error}");
             }
         }
         finally
@@ -3602,8 +3498,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             var result = await _apiClient.DeleteChannelAsync(channel.Id);
             if (result.Success)
             {
-                Console.WriteLine($"Deleted channel: {channel.Name}");
-
                 _stores.ChannelStore.RemoveChannel(channel.Id);
 
                 // If the deleted channel was selected, select another one
@@ -3622,7 +3516,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             else
             {
                 ErrorMessage = result.Error;
-                Console.WriteLine($"Error deleting channel: {result.Error}");
             }
         }
         finally
@@ -3634,8 +3527,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private async Task ReorderChannelsAsync(List<Guid> channelIds)
     {
         if (SelectedCommunity is null) return;
-
-        Console.WriteLine($"Reordering {channelIds.Count} channels");
 
         // Store original order for rollback
         var originalChannels = _storeAllChannels.ToList();
@@ -3651,15 +3542,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         try
         {
             var result = await _apiClient.ReorderChannelsAsync(SelectedCommunity.Id, channelIds);
-            if (result.Success && result.Data is not null)
-            {
-                Console.WriteLine($"Successfully reordered channels");
-                // Server confirmed - nothing more to do (we already updated optimistically)
-            }
-            else
+            if (!result.Success || result.Data is null)
             {
                 // Server rejected - rollback to original order
-                Console.WriteLine($"Error reordering channels: {result.Error}");
                 ErrorMessage = result.Error ?? "Failed to reorder channels";
                 RollbackChannelOrder(originalChannels, originalVoiceOrder);
                 _pendingReorderCommunityId = null;
@@ -3668,7 +3553,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         catch (Exception ex)
         {
             // Network error - rollback to original order
-            Console.WriteLine($"Exception reordering channels: {ex}");
             ErrorMessage = $"Error reordering channels: {ex.Message}";
             RollbackChannelOrder(originalChannels, originalVoiceOrder);
             _pendingReorderCommunityId = null;
@@ -3708,8 +3592,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
     private void RollbackChannelOrder(List<ChannelResponse> originalChannels, List<VoiceChannelViewModel> originalVoiceOrder)
     {
-        Console.WriteLine("Rolling back channel order");
-
         // Restore channels in the store
         _stores.ChannelStore.SetChannels(originalChannels);
 
@@ -3878,8 +3760,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             var result = await _apiClient.CreateChannelAsync(SelectedCommunity.Id, channelName, null, ChannelType.Voice);
             if (result.Success && result.Data is not null)
             {
-                Console.WriteLine($"CreateVoiceChannelAsync: Created voice channel {result.Data.Name} ({result.Data.Id})");
-
                 // Add to store
                 _stores.ChannelStore.AddChannel(result.Data);
 
@@ -3888,7 +3768,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 {
                     var vm = CreateVoiceChannelViewModel(result.Data);
                     VoiceChannelViewModels.Add(vm);
-                    Console.WriteLine($"CreateVoiceChannelAsync: Added VoiceChannelViewModel for {result.Data.Name}");
                 }
             }
             else
@@ -3936,7 +3815,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
             // Load existing participants (includes ourselves)
             var participants = await _signalR.GetVoiceParticipantsAsync(channel.Id);
-            Console.WriteLine($"JoinVoiceChannelAsync: Got {participants.Count()} participants for {channel.Name}");
 
             // Update VoiceParticipants (for voice controls panel)
             VoiceParticipants.Clear();
@@ -3947,7 +3825,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
             // Update VoiceStore - VoiceChannelViewModel will receive updates via its subscription
             _stores.VoiceStore.SetParticipants(channel.Id, participants);
-            Console.WriteLine($"JoinVoiceChannelAsync: Updated VoiceStore with {participants.Count()} participants for {channel.Name}");
 
             // Update VoiceChannelContent for video grid display (but don't auto-navigate to it)
             // User can open the video overlay manually via ShowVoiceVideoOverlayCommand
@@ -3955,8 +3832,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
             // Start WebRTC connections to all existing participants
             await _webRtc.JoinVoiceChannelAsync(channel.Id, participants);
-
-            Console.WriteLine($"Joined voice channel: {channel.Name}");
         }
         else
         {
@@ -3965,7 +3840,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             VoiceConnectionStatus = VoiceConnectionStatus.Disconnected;
             // Also update voice store (for migration to Redux-style architecture)
             _stores.VoiceStore.SetConnectionStatus(VoiceConnectionStatus.Disconnected);
-            Console.WriteLine($"Failed to join voice channel: {channel.Name}");
         }
     }
 
@@ -4005,8 +3879,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         IsVoiceVideoOverlayOpen = false;
         SelectedVoiceChannelForViewing = null;
         _voiceChannelContent?.SetParticipants(Enumerable.Empty<VoiceParticipantResponse>());
-
-        Console.WriteLine("Left voice channel");
     }
 
     private async Task ToggleMuteAsync()
@@ -4016,11 +3888,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         {
             var voiceChannel = VoiceChannelViewModels.FirstOrDefault(v => v.Id == CurrentVoiceChannel.Id);
             var currentParticipant = voiceChannel?.Participants.FirstOrDefault(p => p.UserId == _auth.UserId);
-            if (currentParticipant?.IsServerMuted == true)
-            {
-                Console.WriteLine("Cannot unmute: user is server-muted");
-                return;
-            }
+            if (currentParticipant?.IsServerMuted == true) return;
         }
 
         IsMuted = !IsMuted;
@@ -4052,11 +3920,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         {
             var voiceChannel = VoiceChannelViewModels.FirstOrDefault(v => v.Id == CurrentVoiceChannel.Id);
             var currentParticipant = voiceChannel?.Participants.FirstOrDefault(p => p.UserId == _auth.UserId);
-            if (currentParticipant?.IsServerDeafened == true)
-            {
-                Console.WriteLine("Cannot undeafen: user is server-deafened");
-                return;
-            }
+            if (currentParticipant?.IsServerDeafened == true) return;
         }
 
         IsDeafened = !IsDeafened;
@@ -4106,9 +3970,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             var state = new VoiceStateUpdate(IsCameraOn: newState);
             _voiceChannelContent?.UpdateParticipantState(_auth.UserId, state);
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Failed to toggle camera: {ex.Message}");
+            // Camera toggle failure - ignore
         }
     }
 
@@ -4164,12 +4028,12 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             {
                 ShowSharerAnnotationOverlay(settings);
             }
-
-            Console.WriteLine($"Started screen share: {settings.Source.Name} @ {settings.Resolution.Label} {settings.Framerate.Label}");
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Failed to start screen share: {ex.Message}");
+            // Screen share start failure - reset state
+            IsScreenSharing = false;
+            _currentScreenShareSettings = null;
         }
     }
 
@@ -4195,12 +4059,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
             // Clear annotations for this screen share
             _annotationService.OnScreenShareEnded(_auth.UserId);
-
-            Console.WriteLine("Stopped screen share");
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Failed to stop screen share: {ex.Message}");
+            // Screen share stop failure - ignore
         }
     }
 
@@ -4216,11 +4078,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         {
             var newServerMuted = !participant.IsServerMuted;
             await _signalR.ServerMuteUserAsync(CurrentVoiceChannel.Id, participant.UserId, newServerMuted);
-            Console.WriteLine($"Server {(newServerMuted ? "muted" : "unmuted")} user {participant.Username}");
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Failed to server mute user: {ex.Message}");
+            // Server mute failure - ignore
         }
     }
 
@@ -4236,11 +4097,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         {
             var newServerDeafened = !participant.IsServerDeafened;
             await _signalR.ServerDeafenUserAsync(CurrentVoiceChannel.Id, participant.UserId, newServerDeafened);
-            Console.WriteLine($"Server {(newServerDeafened ? "deafened" : "undeafened")} user {participant.Username}");
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Failed to server deafen user: {ex.Message}");
+            // Server deafen failure - ignore
         }
     }
 
@@ -4255,11 +4115,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         try
         {
             await _signalR.MoveUserAsync(args.Participant.UserId, args.TargetChannel.Id);
-            Console.WriteLine($"Moved user {args.Participant.Username} to channel {args.TargetChannel.Name}");
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Failed to move user: {ex.Message}");
+            // Move user failure - ignore
         }
     }
 
@@ -4271,25 +4130,17 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     {
         if (CurrentVoiceChannel is null) return;
 
-        Console.WriteLine("ShowSharerAnnotationOverlay: Starting...");
-        var logFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "snacka-overlay-debug.log");
-        void Log(string msg) { System.IO.File.AppendAllText(logFile, $"{DateTime.Now:HH:mm:ss.fff} {msg}\n"); Console.WriteLine(msg); }
-        Log("ShowSharerAnnotationOverlay: Starting...");
-
         try
         {
-            // Step 1: Create the view model
-            Log("ShowSharerAnnotationOverlay: Step 1 - Creating ViewModel...");
+            // Create the view model
             _screenAnnotationViewModel = new ScreenAnnotationViewModel(
                 _annotationService,
                 CurrentVoiceChannel.Id,
                 _auth.UserId,
                 _auth.Username);
             this.RaisePropertyChanged(nameof(IsDrawingAllowedForViewers));
-            Log("ShowSharerAnnotationOverlay: Step 1 - ViewModel created");
 
-            // Step 2: Find the screen
-            Log("ShowSharerAnnotationOverlay: Step 2 - Finding screen...");
+            // Find the screen
             Avalonia.PixelRect? targetBounds = null;
 
             if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
@@ -4298,24 +4149,18 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 if (screensService != null && int.TryParse(settings.Source.Id, out var displayIndex))
                 {
                     var allScreens = screensService.All.ToList();
-                    Log($"ShowSharerAnnotationOverlay: Found {allScreens.Count} screens, target index: {displayIndex}");
                     if (displayIndex < allScreens.Count)
                     {
                         targetBounds = allScreens[displayIndex].Bounds;
-                        Log($"ShowSharerAnnotationOverlay: Target screen bounds: {targetBounds}");
                     }
                 }
             }
 
-            // Step 3: Create overlay window
-            Log("ShowSharerAnnotationOverlay: Step 3 - Creating overlay window...");
+            // Create overlay window
             _screenAnnotationWindow = new Views.ScreenAnnotationWindow();
-            Log("ShowSharerAnnotationOverlay: Step 3a - Window created, setting DataContext...");
             _screenAnnotationWindow.DataContext = _screenAnnotationViewModel;
-            Log("ShowSharerAnnotationOverlay: Step 3b - DataContext set");
 
-            // Step 4: Position the window
-            Log("ShowSharerAnnotationOverlay: Step 4 - Positioning window...");
+            // Position the window
             if (targetBounds.HasValue)
             {
                 _screenAnnotationWindow.Position = new Avalonia.PixelPoint(
@@ -4328,25 +4173,17 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             {
                 _screenAnnotationWindow.WindowState = Avalonia.Controls.WindowState.Maximized;
             }
-            Log("ShowSharerAnnotationOverlay: Step 4 - Window positioned");
 
-            // Step 5: Show the overlay window
+            // Show the overlay window
             // Window is shown on all platforms - input pass-through handles click behavior
-            Log("ShowSharerAnnotationOverlay: Step 5 - Showing overlay window...");
             _screenAnnotationWindow.Show();
-            Log("ShowSharerAnnotationOverlay: Step 5 - Overlay window shown");
 
-            // Step 6: Create toolbar window
-            Log("ShowSharerAnnotationOverlay: Step 6 - Creating toolbar window...");
+            // Create toolbar window
             _annotationToolbarWindow = new Views.AnnotationToolbarWindow();
-            Log("ShowSharerAnnotationOverlay: Step 6a - Toolbar created, setting DataContext...");
             _annotationToolbarWindow.DataContext = _screenAnnotationViewModel;
-            Log("ShowSharerAnnotationOverlay: Step 6b - Setting overlay reference...");
             _annotationToolbarWindow.SetOverlayWindow(_screenAnnotationWindow);
-            Log("ShowSharerAnnotationOverlay: Step 6 - Toolbar window created");
 
-            // Step 7: Position toolbar
-            Log("ShowSharerAnnotationOverlay: Step 7 - Positioning toolbar...");
+            // Position toolbar
             if (targetBounds.HasValue)
             {
                 var toolbarX = targetBounds.Value.X + (targetBounds.Value.Width - 380) / 2;
@@ -4357,22 +4194,16 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             {
                 _annotationToolbarWindow.Position = new Avalonia.PixelPoint(400, 700);
             }
-            Log("ShowSharerAnnotationOverlay: Step 7 - Toolbar positioned");
 
-            // Step 8: Setup toolbar event handler
+            // Setup toolbar event handler
             // Note: We don't call Show() here - the toolbar manages its own visibility
             // based on the IsDrawingAllowedForViewers subscription. It will show when
             // the host clicks "Allow Drawing" in the voice panel.
-            Log("ShowSharerAnnotationOverlay: Step 8 - Setting up toolbar event handler...");
             _annotationToolbarWindow.CloseRequested += OnAnnotationToolbarCloseRequested;
-            Log("ShowSharerAnnotationOverlay: Step 8 - Toolbar ready (visibility managed by subscription)");
-
-            Log($"ShowSharerAnnotationOverlay: Complete - overlay on {settings.Source.Name}");
         }
-        catch (Exception ex)
+        catch
         {
-            Log($"ShowSharerAnnotationOverlay: EXCEPTION: {ex.Message}");
-            Log($"ShowSharerAnnotationOverlay: Stack trace: {ex.StackTrace}");
+            // Annotation overlay creation failed - non-critical
         }
     }
 
@@ -4400,8 +4231,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             _screenAnnotationViewModel = null;
             this.RaisePropertyChanged(nameof(IsDrawingAllowedForViewers));
         }
-
-        Console.WriteLine("Closed annotation overlay");
     }
 
     private void OnAnnotationToolbarCloseRequested()
@@ -4558,9 +4387,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             await _conversationStateService.LoadConversationsAsync();
             this.RaisePropertyChanged(nameof(TotalDmUnreadCount));
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Error loading recent DMs: {ex.Message}");
+            // DM loading failure is non-critical
         }
     }
 
@@ -4591,11 +4420,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             // Use the selected slot or auto-assign
             var slot = _controllerHostService.GetNextAvailableSlot(_currentVoiceChannel.Id) ?? SelectedControllerSlot;
             await _controllerHostService.AcceptRequestAsync(request.ChannelId, request.RequesterUserId, slot);
-            Console.WriteLine($"Accepted controller request from {request.RequesterUsername} as Player {slot + 1}");
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Error accepting controller request: {ex.Message}");
+            // Controller request acceptance failure - ignore
         }
     }
 
@@ -4604,11 +4432,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         try
         {
             await _controllerHostService.DeclineRequestAsync(request.ChannelId, request.RequesterUserId);
-            Console.WriteLine($"Declined controller request from {request.RequesterUsername}");
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Error declining controller request: {ex.Message}");
+            // Controller request decline failure - ignore
         }
     }
 
@@ -4617,19 +4444,16 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         try
         {
             await _controllerHostService.StopSessionAsync(session.ChannelId, session.GuestUserId);
-            Console.WriteLine($"Stopped controller session with {session.GuestUsername}");
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Error stopping controller session: {ex.Message}");
+            // Controller session stop failure - ignore
         }
     }
 
     private void ToggleMuteControllerSession(ActiveControllerSession session)
     {
         _controllerHostService.ToggleMuteSession(session.GuestUserId);
-        var isMuted = _controllerHostService.IsSessionMuted(session.GuestUserId);
-        Console.WriteLine($"{(isMuted ? "Muted" : "Unmuted")} controller session with {session.GuestUsername}");
     }
 
     /// <summary>
@@ -4697,25 +4521,19 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// </summary>
     public async Task ReportGamingStationStatusAsync()
     {
-        if (!_settingsStore.Settings.IsGamingStationEnabled)
-        {
-            Console.WriteLine("Gaming station mode not enabled, not reporting status");
-            return;
-        }
+        if (!_settingsStore.Settings.IsGamingStationEnabled) return;
 
         var displayName = string.IsNullOrWhiteSpace(_settingsStore.Settings.GamingStationDisplayName)
             ? null
             : _settingsStore.Settings.GamingStationDisplayName;
 
-        Console.WriteLine($"Reporting gaming station status: enabled, machineId={_currentMachineId}, displayName={displayName ?? "(default)"}");
-
         try
         {
             await _signalR.SetGamingStationAvailableAsync(true, displayName, _currentMachineId);
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Failed to report gaming station status: {ex.Message}");
+            // Gaming station status report failure - ignore
         }
     }
 
@@ -4724,19 +4542,15 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// </summary>
     public async Task CommandStationJoinCurrentChannelAsync(string machineId)
     {
-        if (CurrentVoiceChannel is null)
-        {
-            Console.WriteLine("Cannot command station to join - not in a voice channel");
-            return;
-        }
+        if (CurrentVoiceChannel is null) return;
 
         try
         {
             await _signalR.CommandStationJoinChannelAsync(machineId, CurrentVoiceChannel.Id);
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Failed to command station to join channel: {ex.Message}");
+            // Station command failure - ignore
         }
     }
 
@@ -4749,9 +4563,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         {
             await _signalR.CommandStationLeaveChannelAsync(machineId);
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Failed to command station to leave channel: {ex.Message}");
+            // Station command failure - ignore
         }
     }
 
