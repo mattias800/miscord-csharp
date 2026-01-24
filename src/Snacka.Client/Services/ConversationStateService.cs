@@ -27,7 +27,7 @@ public sealed class ConversationStateService : IConversationStateService, IDispo
 
     private readonly IDisposable _cleanUp;
 
-    public ConversationStateService(IApiClient apiClient, Guid currentUserId)
+    public ConversationStateService(IApiClient apiClient, ISignalRService signalR, Guid currentUserId)
     {
         _apiClient = apiClient;
         _currentUserId = currentUserId;
@@ -44,6 +44,20 @@ public sealed class ConversationStateService : IConversationStateService, IDispo
             .Subscribe();
 
         _cleanUp = sortedConversations;
+
+        // Subscribe to SignalR events for conversation updates
+        signalR.ConversationMessageReceived += message =>
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => OnMessageReceived(message));
+        signalR.ConversationMessageUpdated += message =>
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => OnMessageUpdated(message));
+        signalR.ConversationMessageDeleted += e =>
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => OnMessageDeleted(e.ConversationId, e.MessageId));
+        signalR.ConversationUpdated += conversation =>
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => OnConversationUpdated(conversation));
+        signalR.AddedToConversation += _ =>
+            Avalonia.Threading.Dispatcher.UIThread.Post(async () => await LoadConversationsAsync());
+        signalR.RemovedFromConversation += conversationId =>
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => OnConversationRemoved(conversationId));
     }
 
     public IObservable<IChangeSet<ConversationSummaryResponse, Guid>> ConversationsChanges =>

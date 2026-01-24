@@ -546,7 +546,7 @@ public class MainWindowViewModel : ViewModelBase
         // Create centralized conversation state service (shared across ViewModels)
         // Dispose previous instance if re-logging in
         (_conversationStateService as IDisposable)?.Dispose();
-        _conversationStateService = new ConversationStateService(_apiClient, auth.UserId);
+        _conversationStateService = new ConversationStateService(_apiClient, _signalR, auth.UserId);
 
         // Initialize SignalR event dispatcher with stores and user ID
         _signalREventDispatcher.Initialize(

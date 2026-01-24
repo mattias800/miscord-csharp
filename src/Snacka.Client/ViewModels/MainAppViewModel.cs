@@ -1116,45 +1116,11 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // Typing indicator events now handled by SignalREventDispatcher -> TypingStore
         // UI subscribes to store via _typingSubscription (set up in SubscribeToTypingStore)
 
-        // Conversation message received - update via centralized state service
-        _signalR.ConversationMessageReceived += message => Dispatcher.UIThread.Post(() =>
-        {
-            _conversationStateService.OnMessageReceived(message);
-            this.RaisePropertyChanged(nameof(TotalDmUnreadCount));
-        });
-
-        // Conversation message updated - forward to state service
-        _signalR.ConversationMessageUpdated += message => Dispatcher.UIThread.Post(() =>
-        {
-            _conversationStateService.OnMessageUpdated(message);
-        });
-
-        // Conversation message deleted - forward to state service
-        _signalR.ConversationMessageDeleted += e => Dispatcher.UIThread.Post(() =>
-        {
-            _conversationStateService.OnMessageDeleted(e.ConversationId, e.MessageId);
-        });
-
-        // Conversation updated (name/icon) - forward to state service
-        _signalR.ConversationUpdated += conversation => Dispatcher.UIThread.Post(() =>
-        {
-            _conversationStateService.OnConversationUpdated(conversation);
-        });
-
-        // User added to conversation - reload conversations to get the new one
-        _signalR.AddedToConversation += conversationId => Dispatcher.UIThread.Post(async () =>
-        {
-            // Reload conversations from server to get the new conversation with full summary
-            await _conversationStateService.LoadConversationsAsync();
-            this.RaisePropertyChanged(nameof(TotalDmUnreadCount));
-        });
-
-        // User removed from conversation - forward to state service
-        _signalR.RemovedFromConversation += conversationId => Dispatcher.UIThread.Post(() =>
-        {
-            _conversationStateService.OnConversationRemoved(conversationId);
-            this.RaisePropertyChanged(nameof(TotalDmUnreadCount));
-        });
+        // Conversation events handled by ConversationStateService directly (subscribes to SignalR)
+        // Subscribe to unread count changes to update UI
+        _conversationStateService.TotalUnreadCount
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(TotalDmUnreadCount)));
 
         // Gaming Station events (new simplified architecture)
         _signalR.GamingStationStatusChanged += e => Dispatcher.UIThread.Post(() =>
