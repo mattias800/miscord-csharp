@@ -44,6 +44,12 @@ public interface ICommunityCoordinator
     /// Clears community selection.
     /// </summary>
     void ClearSelection();
+
+    /// <summary>
+    /// Reloads the members for a community.
+    /// Called when a member is added/removed.
+    /// </summary>
+    Task ReloadMembersAsync(Guid communityId);
 }
 
 public class CommunityCoordinator : ICommunityCoordinator
@@ -194,5 +200,21 @@ public class CommunityCoordinator : ICommunityCoordinator
         _communityStore.SelectCommunity(null);
         _channelStore.Clear();
         _messageStore.Clear();
+    }
+
+    public async Task ReloadMembersAsync(Guid communityId)
+    {
+        try
+        {
+            var result = await _apiClient.GetMembersAsync(communityId);
+            if (result.Success && result.Data is not null)
+            {
+                _communityStore.SetMembers(communityId, result.Data);
+            }
+        }
+        catch
+        {
+            // Silently ignore member reload failures
+        }
     }
 }

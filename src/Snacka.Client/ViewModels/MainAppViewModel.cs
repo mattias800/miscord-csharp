@@ -987,25 +987,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
         _signalR.CommunityMemberAdded += e =>
         {
-            // If this is for the currently selected community, reload members into the store
+            // If this is for the currently selected community, reload members via coordinator
             if (SelectedCommunity is not null && e.CommunityId == SelectedCommunity.Id)
             {
-                _ = Dispatcher.UIThread.InvokeAsync(async () =>
-                {
-                    try
-                    {
-                        var result = await _apiClient.GetMembersAsync(SelectedCommunity.Id);
-                        if (result.Success && result.Data is not null)
-                        {
-                            // Update the store - StoreMembers will auto-update via DynamicData
-                            _stores.CommunityStore.SetMembers(SelectedCommunity.Id, result.Data);
-                        }
-                    }
-                    catch
-                    {
-                        // Silently ignore member reload failures
-                    }
-                });
+                _ = _communityCoordinator.ReloadMembersAsync(SelectedCommunity.Id);
             }
         };
 
@@ -1082,26 +1067,18 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             }
         });
 
-        // User moved by admin
+        // User moved by admin - only handle current user (other users handled by VoiceParticipantLeft/Joined events)
         _signalR.UserMoved += e => Dispatcher.UIThread.Post(async () =>
         {
-
-            // If the current user was moved
             if (e.UserId == _auth.UserId)
             {
-                // Leave current channel and join new one
+                // Leave current channel and join new one (updates view state)
                 await LeaveVoiceChannelAsync();
                 var channel = _storeAllChannels.FirstOrDefault(c => c.Id == e.ToChannelId);
                 if (channel != null)
                 {
                     await JoinVoiceChannelAsync(channel);
                 }
-            }
-            else
-            {
-                // Update VoiceChannelViewModels - remove from old, add to new
-                var oldChannel = VoiceChannelViewModels.FirstOrDefault(v => v.Id == e.FromChannelId);
-                oldChannel?.RemoveParticipant(e.UserId);
             }
         });
 

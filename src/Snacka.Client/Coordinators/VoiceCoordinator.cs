@@ -105,6 +105,12 @@ public interface IVoiceCoordinator
     /// Loads participants for a voice channel.
     /// </summary>
     Task LoadVoiceParticipantsAsync(Guid channelId);
+
+    /// <summary>
+    /// Handles the current user being moved to a different voice channel by an admin.
+    /// Leaves current channel and joins the target channel.
+    /// </summary>
+    Task<bool> HandleCurrentUserMovedAsync(Guid targetChannelId);
 }
 
 public class VoiceCoordinator : IVoiceCoordinator
@@ -430,6 +436,16 @@ public class VoiceCoordinator : IVoiceCoordinator
         {
             // Failed to load participants
         }
+    }
+
+    public async Task<bool> HandleCurrentUserMovedAsync(Guid targetChannelId)
+    {
+        // Leave current channel first
+        await LeaveVoiceChannelAsync(stopScreenShare: true);
+
+        // Join the target channel
+        var result = await JoinVoiceChannelAsync(targetChannelId);
+        return result.Success;
     }
 
     private Guid? GetCurrentChannelId()
