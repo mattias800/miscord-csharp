@@ -1,5 +1,6 @@
 using System.Reactive;
 using Avalonia.Platform.Storage;
+using Snacka.Client.Coordinators;
 using Snacka.Client.Services;
 using Snacka.Client.Stores;
 using ReactiveUI;
@@ -559,7 +560,30 @@ public class MainWindowViewModel : ViewModelBase
             auth.UserId
         );
 
-        CurrentView = new MainAppViewModel(_apiClient, _signalR, _webRtc, _screenCaptureService, _settingsStore, _audioDeviceService, _controllerStreamingService, _controllerHostService, CurrentServer!.Url, auth, _conversationStateService, _stores, _signalREventDispatcher, OnLogout, OnSwitchServer, OnOpenSettings, gifsEnabled: _currentServerInfo?.GifsEnabled ?? false);
+        // Create coordinators for orchestrating multi-store operations
+        var channelCoordinator = new ChannelCoordinator(
+            _stores.ChannelStore,
+            _stores.MessageStore,
+            _apiClient,
+            _signalR);
+
+        var communityCoordinator = new CommunityCoordinator(
+            _stores.CommunityStore,
+            _stores.ChannelStore,
+            _stores.MessageStore,
+            _stores.VoiceStore,
+            _apiClient,
+            _signalR);
+
+        var voiceCoordinator = new VoiceCoordinator(
+            _stores.VoiceStore,
+            _stores.ChannelStore,
+            _apiClient,
+            _signalR,
+            _settingsStore,
+            auth.UserId);
+
+        CurrentView = new MainAppViewModel(_apiClient, _signalR, _webRtc, _screenCaptureService, _settingsStore, _audioDeviceService, _controllerStreamingService, _controllerHostService, CurrentServer!.Url, auth, _conversationStateService, _stores, _signalREventDispatcher, channelCoordinator, communityCoordinator, voiceCoordinator, OnLogout, OnSwitchServer, OnOpenSettings, gifsEnabled: _currentServerInfo?.GifsEnabled ?? false);
     }
 
     private void OnOpenSettings()

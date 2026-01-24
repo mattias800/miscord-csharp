@@ -6,6 +6,7 @@ using DynamicData;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using Snacka.Client.Controls;
+using Snacka.Client.Coordinators;
 using Snacka.Client.Models;
 using Snacka.Client.Services;
 using Snacka.Client.Services.Autocomplete;
@@ -28,6 +29,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private readonly IControllerHostService _controllerHostService;
     private readonly StoreContainer _stores;
     private readonly ISignalREventDispatcher _signalREventDispatcher;
+    private readonly IChannelCoordinator _channelCoordinator;
+    private readonly ICommunityCoordinator _communityCoordinator;
+    private readonly IVoiceCoordinator _voiceCoordinator;
     private readonly AuthResponse _auth;
     private readonly Action _onLogout;
     private readonly Action? _onSwitchServer;
@@ -203,7 +207,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private CommunityDiscoveryViewModel? _communityDiscovery;
     private bool _isWelcomeModalOpen;
 
-    public MainAppViewModel(IApiClient apiClient, ISignalRService signalR, IWebRtcService webRtc, IScreenCaptureService screenCaptureService, ISettingsStore settingsStore, IAudioDeviceService audioDeviceService, IControllerStreamingService controllerStreamingService, IControllerHostService controllerHostService, string baseUrl, AuthResponse auth, IConversationStateService conversationStateService, StoreContainer stores, ISignalREventDispatcher signalREventDispatcher, Action onLogout, Action? onSwitchServer = null, Action? onOpenSettings = null, bool gifsEnabled = false)
+    public MainAppViewModel(IApiClient apiClient, ISignalRService signalR, IWebRtcService webRtc, IScreenCaptureService screenCaptureService, ISettingsStore settingsStore, IAudioDeviceService audioDeviceService, IControllerStreamingService controllerStreamingService, IControllerHostService controllerHostService, string baseUrl, AuthResponse auth, IConversationStateService conversationStateService, StoreContainer stores, ISignalREventDispatcher signalREventDispatcher, IChannelCoordinator channelCoordinator, ICommunityCoordinator communityCoordinator, IVoiceCoordinator voiceCoordinator, Action onLogout, Action? onSwitchServer = null, Action? onOpenSettings = null, bool gifsEnabled = false)
     {
         _apiClient = apiClient;
         _conversationStateService = conversationStateService;
@@ -222,6 +226,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         _onOpenSettings = onOpenSettings;
         _stores = stores;
         _signalREventDispatcher = signalREventDispatcher;
+        _channelCoordinator = channelCoordinator;
+        _communityCoordinator = communityCoordinator;
+        _voiceCoordinator = voiceCoordinator;
 
         // Load persisted mute/deafen state
         _isMuted = _settingsStore.Settings.IsMuted;
