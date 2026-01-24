@@ -417,6 +417,36 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 .Bind(out _storeCommunities)
                 .Subscribe());
 
+        // Sync SelectedChannel from store to ViewModel (store → ViewModel)
+        _storeSubscriptions.Add(
+            _stores.ChannelStore.SelectedChannel
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(state =>
+                {
+                    var response = state is not null ? ToChannelResponse(state) : null;
+                    if (_selectedChannel?.Id != response?.Id)
+                    {
+                        _selectedChannel = response;
+                        this.RaisePropertyChanged(nameof(SelectedChannel));
+                    }
+                }));
+
+        // Sync SelectedCommunity from store to ViewModel (store → ViewModel)
+        _storeSubscriptions.Add(
+            _stores.CommunityStore.SelectedCommunity
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(state =>
+                {
+                    var response = state is not null ? ToCommunityResponse(state) : null;
+                    if (_selectedCommunity?.Id != response?.Id)
+                    {
+                        _selectedCommunity = response;
+                        this.RaisePropertyChanged(nameof(SelectedCommunity));
+                        this.RaisePropertyChanged(nameof(IsVoiceInDifferentCommunity));
+                        this.RaisePropertyChanged(nameof(VoiceCommunityName));
+                    }
+                }));
+
         // Initialize unified autocomplete with @ mentions, / commands, and :emojis
         _autocomplete.RegisterSource(new MentionAutocompleteSource(() => _storeMembers, auth.UserId));
         _autocomplete.RegisterSource(new SlashCommandAutocompleteSource(gifsEnabled: _isGifsEnabled));
@@ -1454,9 +1484,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     {
         if (SelectedCommunity is null) return;
 
-        // Update the community store with the selection (for migration to Redux-style architecture)
-        _stores.CommunityStore.SelectCommunity(SelectedCommunity.Id);
-
         // Join SignalR group for this community
         await _signalR.JoinServerAsync(SelectedCommunity.Id);
         await LoadChannelsAsync();
@@ -1471,9 +1498,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         if (SelectedChannel is not null && SelectedCommunity is not null)
         {
             _previousChannelId = SelectedChannel.Id;
-
-            // Update the channel store with the selection (for migration to Redux-style architecture)
-            _stores.ChannelStore.SelectChannel(SelectedChannel.Id);
 
             await _signalR.JoinChannelAsync(SelectedChannel.Id);
 
@@ -1568,16 +1592,31 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         get => _selectedCommunity;
         set
         {
+            var idChanged = _selectedCommunity?.Id != value?.Id;
             this.RaiseAndSetIfChanged(ref _selectedCommunity, value);
-            this.RaisePropertyChanged(nameof(IsVoiceInDifferentCommunity));
-            this.RaisePropertyChanged(nameof(VoiceCommunityName));
+            if (idChanged)
+            {
+                this.RaisePropertyChanged(nameof(IsVoiceInDifferentCommunity));
+                this.RaisePropertyChanged(nameof(VoiceCommunityName));
+                // Sync to store (store → ViewModel sync will skip due to ID check)
+                _stores.CommunityStore.SelectCommunity(value?.Id);
+            }
         }
     }
 
     public ChannelResponse? SelectedChannel
     {
         get => _selectedChannel;
-        set => this.RaiseAndSetIfChanged(ref _selectedChannel, value);
+        set
+        {
+            var idChanged = _selectedChannel?.Id != value?.Id;
+            this.RaiseAndSetIfChanged(ref _selectedChannel, value);
+            if (idChanged)
+            {
+                // Sync to store (store → ViewModel sync will skip due to ID check)
+                _stores.ChannelStore.SelectChannel(value?.Id);
+            }
+        }
     }
 
     public string MessageInput
