@@ -1,23 +1,45 @@
 using Snacka.Client.Services;
+using Snacka.Client.Services.WebRtc;
 using Snacka.Client.Stores;
+using Snacka.Shared.Models;
 
 namespace Snacka.Client.Coordinators;
 
 /// <summary>
+/// Result of joining a voice channel.
+/// </summary>
+public record VoiceJoinResult(
+    bool Success,
+    IReadOnlyList<VoiceParticipantResponse>? Participants = null);
+
+/// <summary>
 /// Coordinator for voice channel operations.
 /// Handles joining/leaving voice, mute/deafen, screen sharing, and camera.
+/// Also manages WebRTC connections for voice/video/screen share.
 /// </summary>
 public interface IVoiceCoordinator
 {
     /// <summary>
-    /// Joins a voice channel.
+    /// Joins a voice channel. Returns participants if successful.
+    /// Handles SignalR join, store updates, and WebRTC connections.
     /// </summary>
-    Task<bool> JoinVoiceChannelAsync(Guid channelId);
+    Task<VoiceJoinResult> JoinVoiceChannelAsync(Guid channelId);
+
+    /// <summary>
+    /// Joins a voice channel (simple overload for compatibility).
+    /// </summary>
+    Task<bool> JoinAsync(Guid channelId);
 
     /// <summary>
     /// Leaves the current voice channel.
+    /// Handles SignalR leave, store cleanup, and WebRTC disconnection.
     /// </summary>
     Task LeaveVoiceChannelAsync();
+
+    /// <summary>
+    /// Leaves the current voice channel, optionally stopping screen share first.
+    /// </summary>
+    Task LeaveVoiceChannelAsync(bool stopScreenShare);
 
     /// <summary>
     /// Toggles local mute state.
@@ -91,6 +113,7 @@ public class VoiceCoordinator : IVoiceCoordinator
     private readonly IChannelStore _channelStore;
     private readonly IApiClient _apiClient;
     private readonly ISignalRService _signalR;
+    private readonly IWebRtcService _webRtc;
     private readonly ISettingsStore _settingsStore;
     private readonly Guid _currentUserId;
 
@@ -101,6 +124,7 @@ public class VoiceCoordinator : IVoiceCoordinator
         IChannelStore channelStore,
         IApiClient apiClient,
         ISignalRService signalR,
+        IWebRtcService webRtc,
         ISettingsStore settingsStore,
         Guid currentUserId)
     {
@@ -108,6 +132,7 @@ public class VoiceCoordinator : IVoiceCoordinator
         _channelStore = channelStore;
         _apiClient = apiClient;
         _signalR = signalR;
+        _webRtc = webRtc;
         _settingsStore = settingsStore;
         _currentUserId = currentUserId;
 
@@ -116,11 +141,11 @@ public class VoiceCoordinator : IVoiceCoordinator
         _voiceStore.SetLocalDeafened(_settingsStore.Settings.IsDeafened);
     }
 
-    public async Task<bool> JoinVoiceChannelAsync(Guid channelId)
+    public async Task<VoiceJoinResult> JoinVoiceChannelAsync(Guid channelId)
     {
         var channel = _channelStore.GetChannel(channelId);
         if (channel is null)
-            return false;
+            return new VoiceJoinResult(false);
 
         try
         {
@@ -131,7 +156,7 @@ public class VoiceCoordinator : IVoiceCoordinator
             if (participant is null)
             {
                 _voiceStore.SetConnectionStatus(VoiceConnectionStatus.Disconnected);
-                return false;
+                return new VoiceJoinResult(false);
             }
 
             // Update store state
@@ -140,19 +165,32 @@ public class VoiceCoordinator : IVoiceCoordinator
             _voiceStore.AddParticipant(participant);
 
             // Load all participants
-            await LoadVoiceParticipantsAsync(channelId);
+            var participants = await _signalR.GetVoiceParticipantsAsync(channelId);
+            var participantList = participants.ToList();
+            _voiceStore.SetParticipants(channelId, participantList);
+
+            // Start WebRTC connections to all existing participants
+            await _webRtc.JoinVoiceChannelAsync(channelId, participantList);
 
             _voiceStore.SetConnectionStatus(VoiceConnectionStatus.Connected);
-            return true;
+            return new VoiceJoinResult(true, participantList);
         }
         catch
         {
             _voiceStore.SetConnectionStatus(VoiceConnectionStatus.Disconnected);
-            return false;
+            return new VoiceJoinResult(false);
         }
     }
 
-    public async Task LeaveVoiceChannelAsync()
+    public async Task<bool> JoinAsync(Guid channelId)
+    {
+        var result = await JoinVoiceChannelAsync(channelId);
+        return result.Success;
+    }
+
+    public Task LeaveVoiceChannelAsync() => LeaveVoiceChannelAsync(stopScreenShare: true);
+
+    public async Task LeaveVoiceChannelAsync(bool stopScreenShare)
     {
         var channelId = GetCurrentChannelId();
         if (channelId is null)
@@ -160,6 +198,16 @@ public class VoiceCoordinator : IVoiceCoordinator
 
         try
         {
+            // Stop screen sharing if requested
+            if (stopScreenShare)
+            {
+                await _webRtc.SetScreenSharingAsync(false);
+            }
+
+            // Leave WebRTC connections
+            await _webRtc.LeaveVoiceChannelAsync();
+
+            // Leave SignalR
             await _signalR.LeaveVoiceChannelAsync(channelId.Value);
         }
         catch

@@ -580,6 +580,7 @@ public class MainWindowViewModel : ViewModelBase
             _stores.ChannelStore,
             _apiClient,
             _signalR,
+            _webRtc,
             _settingsStore,
             auth.UserId);
 

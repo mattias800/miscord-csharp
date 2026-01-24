@@ -2710,11 +2710,11 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // Show connecting state immediately for better UX
         CurrentVoiceChannel = channel;
         VoiceConnectionStatus = VoiceConnectionStatus.Connecting;
-        // Also update voice store (for migration to Redux-style architecture)
-        _stores.VoiceStore.SetConnectionStatus(VoiceConnectionStatus.Connecting);
 
-        var participant = await _signalR.JoinVoiceChannelAsync(channel.Id);
-        if (participant is not null)
+        // Delegate to coordinator (handles SignalR, store, and WebRTC)
+        var result = await _voiceCoordinator.JoinVoiceChannelAsync(channel.Id);
+
+        if (result.Success && result.Participants is not null)
         {
             // Apply persisted mute/deafen state via VoiceControlViewModel
             if (_voiceControl is not null)
@@ -2722,25 +2722,14 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 await _voiceControl.ApplyPersistedStateAsync(channel.Id);
             }
 
-            // Load existing participants (includes ourselves)
-            var participants = await _signalR.GetVoiceParticipantsAsync(channel.Id);
-
-            // Update VoiceStore - VoiceChannelViewModel will receive updates via its subscription
-            _stores.VoiceStore.SetParticipants(channel.Id, participants);
-
             // Update VoiceChannelContent for video grid display
-            _voiceChannelContent?.SetParticipants(participants);
-
-            // Start WebRTC connections to all existing participants
-            await _webRtc.JoinVoiceChannelAsync(channel.Id, participants);
+            _voiceChannelContent?.SetParticipants(result.Participants);
         }
         else
         {
-            // Join failed - reset state
+            // Join failed - reset view state
             CurrentVoiceChannel = null;
             VoiceConnectionStatus = VoiceConnectionStatus.Disconnected;
-            // Also update voice store (for migration to Redux-style architecture)
-            _stores.VoiceStore.SetConnectionStatus(VoiceConnectionStatus.Disconnected);
         }
     }
 
@@ -2748,28 +2737,18 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     {
         if (CurrentVoiceChannel is null) return;
 
-        var channelId = CurrentVoiceChannel.Id;
-        var channelName = CurrentVoiceChannel.Name;
-
         // Stop screen sharing first (this closes the annotation overlay)
         _screenShare?.ForceStop();
-        await _webRtc.SetScreenSharingAsync(false);
 
-        // Leave WebRTC connections
-        await _webRtc.LeaveVoiceChannelAsync();
+        // Delegate to coordinator (handles SignalR, store, and WebRTC)
+        await _voiceCoordinator.LeaveVoiceChannelAsync(stopScreenShare: true);
 
-        await _signalR.LeaveVoiceChannelAsync(channelId);
-
-        // VoiceChannelViewModel will be updated via VoiceStore subscription when Clear() is called
-
+        // Update view state
         CurrentVoiceChannel = null;
 
         // Reset transient state via VoiceControlViewModel
         // Note: IsMuted and IsDeafened are persisted and NOT reset when leaving
         _voiceControl?.ResetTransientState();
-
-        // Clear voice store participants (for migration to Redux-style architecture)
-        _stores.VoiceStore.Clear();
 
         // Close voice video overlay and clear content view
         IsVoiceVideoOverlayOpen = false;
