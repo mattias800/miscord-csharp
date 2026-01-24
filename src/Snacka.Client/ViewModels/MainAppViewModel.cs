@@ -833,28 +833,17 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             this.RaisePropertyChanged(nameof(VoiceChannelViewModels));
         });
 
-        _signalR.MessageReceived += message => Dispatcher.UIThread.Post(() =>
-        {
-            // All message handling done by SignalREventDispatcher:
-            // - Message list updates -> MessageStore
-            // - Typing indicator cleared -> TypingStore
-            // - Unread count increment -> ChannelStore
-            // StoreMessages auto-updates via DynamicData binding
-        });
+        // MessageReceived handled entirely by SignalREventDispatcher -> MessageStore, TypingStore, ChannelStore
 
         _signalR.MessageEdited += message => Dispatcher.UIThread.Post(() =>
         {
-            // Message list updates handled by SignalREventDispatcher -> MessageStore
-
             // Update in thread replies if thread is open (view-specific state)
             CurrentThread?.UpdateReply(message);
         });
 
         _signalR.MessageDeleted += e => Dispatcher.UIThread.Post(() =>
         {
-            // Message list updates handled by SignalREventDispatcher -> MessageStore
-
-            // Also remove from thread if open (view-specific state)
+            // Remove from thread if open (view-specific state; store update via SignalREventDispatcher)
             CurrentThread?.RemoveReply(e.MessageId);
         });
 
@@ -882,9 +871,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
         _signalR.ReactionUpdated += e => Dispatcher.UIThread.Post(() =>
         {
-            // Main message list updates handled by SignalREventDispatcher -> MessageStore
-
-            // Update in thread replies if thread is open (view-specific state)
+            // Update in thread replies if thread is open (view-specific; main list via SignalREventDispatcher)
             if (CurrentThread != null)
             {
                 var replyIndex = CurrentThread.Replies.ToList().FindIndex(m => m.Id == e.MessageId);
@@ -948,14 +935,11 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
         _signalR.MessagePinned += e => Dispatcher.UIThread.Post(() =>
         {
-            // Message list updates handled by SignalREventDispatcher -> MessageStore
-
-            // Update pinned messages popup if open (view-specific state)
+            // Update pinned messages popup if open (view-specific; store update via SignalREventDispatcher)
             _pinnedMessagesPopup?.OnMessagePinStatusChanged(e.MessageId, e.IsPinned);
         });
 
-        // UserOnline/UserOffline events are now handled by SignalREventDispatcher -> CommunityStore
-        // StoreMembers auto-updates via DynamicData binding
+        // UserOnline/UserOffline handled by SignalREventDispatcher -> CommunityStore/PresenceStore
 
         _signalR.CommunityMemberAdded += e =>
         {
