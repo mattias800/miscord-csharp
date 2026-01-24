@@ -91,27 +91,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     // Video fullscreen ViewModel (encapsulates fullscreen state, annotations, and input capture)
     private VideoFullscreenViewModel? _videoFullscreen;
 
-    // Gaming stations state (old architecture - to be replaced)
-    private bool _isViewingGamingStations;
-    private bool _isLoadingStations;
-    private ObservableCollection<GamingStationResponse> _myStations = new();
-    private ObservableCollection<GamingStationResponse> _sharedStations = new();
-
-    // Gaming stations state (new architecture)
-    // Tracks all gaming stations owned by the current user (on all their devices)
+    // Gaming station ViewModel (encapsulates all gaming station state and logic)
+    private GamingStationViewModel? _gamingStation;
     private readonly ObservableCollection<MyGamingStationInfo> _myGamingStations = new();
     private string _currentMachineId = "";  // Unique ID for this machine
-
-    // Station stream state
-    private bool _isViewingStationStream;
-    private bool _isConnectingToStation;
-    private Guid? _connectedStationId;
-    private string _connectedStationName = "";
-    private string _stationConnectionStatus = "Disconnected";
-    private int _stationConnectedUserCount;
-    private int _stationLatency;
-    private string _stationResolution = "—";
-    private int? _stationPlayerSlot;
 
     /// <summary>
     /// Fired when an NV12 frame should be rendered to GPU fullscreen view.
@@ -533,6 +516,21 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             apiClient,
             LoadCommunitiesAsync);
 
+        // Create gaming station ViewModel
+        _gamingStation = new GamingStationViewModel(
+            apiClient,
+            signalR,
+            settingsStore,
+            _myGamingStations,
+            _currentMachineId,
+            () => CurrentVoiceChannel?.Id);
+        _gamingStation.ViewOpening += () =>
+        {
+            _dmContent?.Close();
+            SelectedVoiceChannelForViewing = null;
+        };
+        _gamingStation.ErrorOccurred += error => ErrorMessage = error;
+
         // Commands
         LogoutCommand = ReactiveCommand.Create(_onLogout);
         SwitchServerCommand = _onSwitchServer is not null
@@ -541,17 +539,17 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         OpenSettingsCommand = _onOpenSettings is not null
             ? ReactiveCommand.Create(_onOpenSettings)
             : null;
-        OpenGamingStationsCommand = ReactiveCommand.CreateFromTask(OpenGamingStationsAsync);
-        RegisterStationCommand = ReactiveCommand.CreateFromTask(RegisterStationAsync);
-        ConnectToStationCommand = ReactiveCommand.CreateFromTask<GamingStationResponse>(ConnectToStationAsync);
-        ManageStationCommand = ReactiveCommand.Create<GamingStationResponse>(ManageStation);
-        DisconnectFromStationCommand = ReactiveCommand.CreateFromTask(DisconnectFromStationAsync);
-        ToggleStationFullscreenCommand = ReactiveCommand.Create(ToggleStationFullscreen);
+        OpenGamingStationsCommand = _gamingStation.OpenCommand;
+        RegisterStationCommand = _gamingStation.RegisterCommand;
+        ConnectToStationCommand = _gamingStation.ConnectCommand;
+        ManageStationCommand = _gamingStation.ManageCommand;
+        DisconnectFromStationCommand = _gamingStation.DisconnectCommand;
+        ToggleStationFullscreenCommand = _gamingStation.ToggleFullscreenCommand;
         CreateCommunityCommand = ReactiveCommand.CreateFromTask(CreateCommunityAsync);
         RefreshCommunitiesCommand = ReactiveCommand.CreateFromTask(LoadCommunitiesAsync);
         SelectCommunityCommand = ReactiveCommand.Create<CommunityResponse>(community =>
         {
-            IsViewingGamingStations = false;
+            _gamingStation?.Close();
             SelectedCommunity = community;
         });
         SelectChannelCommand = ReactiveCommand.Create<ChannelResponse>(channel =>
@@ -561,9 +559,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             // Clear voice channel viewing when selecting a text channel
             SelectedVoiceChannelForViewing = null;
             // Close gaming stations view
-            IsViewingGamingStations = false;
-            // Close station stream view
-            IsViewingStationStream = false;
+            _gamingStation?.Close();
             SelectedChannel = channel;
         });
 
@@ -668,20 +664,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             IsVoiceVideoOverlayOpen = false;
         });
 
-        // Gaming station commands
-        DisableGamingStationCommand = ReactiveCommand.CreateFromTask(async () =>
-        {
-            // Disable gaming station mode locally
-            _settingsStore.Settings.IsGamingStationEnabled = false;
-            _settingsStore.Save();
-
-            // Report the status change to the server
-            await ReportGamingStationStatusAsync();
-
-            // Update UI
-            this.RaisePropertyChanged(nameof(IsGamingStationEnabled));
-            this.RaisePropertyChanged(nameof(ShowGamingStationBanner));
-        });
+        // Gaming station commands (delegate to GamingStationViewModel)
+        DisableGamingStationCommand = _gamingStation.DisableCommand;
 
         // Admin voice commands
         ServerMuteUserCommand = ReactiveCommand.CreateFromTask<VoiceParticipantViewModel>(ServerMuteUserAsync);
@@ -1044,47 +1028,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(_ => this.RaisePropertyChanged(nameof(TotalDmUnreadCount)));
 
-        // Gaming Station events (new simplified architecture)
+        // Gaming Station events (delegate to GamingStationViewModel)
         _signalR.GamingStationStatusChanged += e => Dispatcher.UIThread.Post(() =>
         {
-            // Only track stations that belong to the current user
-            if (e.UserId != _auth.UserId) return;
-
-            var existingIndex = -1;
-            for (int i = 0; i < _myGamingStations.Count; i++)
-            {
-                if (_myGamingStations[i].MachineId == e.MachineId)
-                {
-                    existingIndex = i;
-                    break;
-                }
-            }
-
-            if (e.IsAvailable)
-            {
-                var stationInfo = new MyGamingStationInfo(
-                    MachineId: e.MachineId,
-                    DisplayName: e.DisplayName,
-                    IsAvailable: e.IsAvailable,
-                    IsInVoiceChannel: e.IsInVoiceChannel,
-                    CurrentChannelId: e.CurrentChannelId,
-                    IsScreenSharing: e.IsScreenSharing,
-                    IsCurrentMachine: e.MachineId == _currentMachineId
-                );
-
-                if (existingIndex >= 0)
-                    _myGamingStations[existingIndex] = stationInfo;
-                else
-                    _myGamingStations.Add(stationInfo);
-            }
-            else
-            {
-                // Station went offline - remove from list
-                if (existingIndex >= 0)
-                    _myGamingStations.RemoveAt(existingIndex);
-            }
-
-            this.RaisePropertyChanged(nameof(MyGamingStations));
+            _gamingStation?.OnGamingStationStatusChanged(e, _auth.UserId);
         });
 
         // Gaming Station command events (this client is a gaming station receiving commands)
@@ -1172,25 +1119,15 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         _signalR.StationKeyboardInputReceived += e =>
         {
             if (!IsGamingStationEnabled) return;
-
-            var input = e.Input;
             // TODO: Inject keyboard input using platform-specific APIs
-            // Windows: SendInput with KEYBDINPUT
-            // macOS: CGEventPost with CGEventCreateKeyboardEvent
-            // Linux: XTest extension or uinput
-            InjectKeyboardInput(input);
+            // Phase 3+ implementation
         };
 
         _signalR.StationMouseInputReceived += e =>
         {
             if (!IsGamingStationEnabled) return;
-
-            var input = e.Input;
             // TODO: Inject mouse input using platform-specific APIs
-            // Windows: SendInput with MOUSEINPUT
-            // macOS: CGEventPost with CGEventCreateMouseEvent
-            // Linux: XTest extension or uinput
-            InjectMouseInput(input);
+            // Phase 3+ implementation
         };
 
         // Channel typing cleanup now handled by TypingStore
@@ -1321,23 +1258,23 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// <summary>
     /// Gaming stations owned by the current user, across all their devices.
     /// </summary>
-    public ObservableCollection<MyGamingStationInfo> MyGamingStations => _myGamingStations;
+    public ObservableCollection<MyGamingStationInfo> MyGamingStations => _gamingStation?.MyGamingStations ?? _myGamingStations;
 
     /// <summary>
     /// The unique machine ID for this device.
     /// </summary>
-    public string CurrentMachineId => _currentMachineId;
+    public string CurrentMachineId => _gamingStation?.CurrentMachineId ?? _currentMachineId;
 
     /// <summary>
     /// Whether this client has gaming station mode enabled.
     /// </summary>
-    public bool IsGamingStationEnabled => _settingsStore.Settings.IsGamingStationEnabled;
+    public bool IsGamingStationEnabled => _gamingStation?.IsGamingStationEnabled ?? false;
 
     /// <summary>
     /// Whether to show the gaming station status banner.
     /// Shows when gaming station mode is enabled.
     /// </summary>
-    public bool ShowGamingStationBanner => IsGamingStationEnabled;
+    public bool ShowGamingStationBanner => _gamingStation?.ShowGamingStationBanner ?? false;
 
     /// <summary>
     /// Status text for the gaming station banner showing current channel.
@@ -2163,90 +2100,27 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// </summary>
     public bool IsViewingDM => _dmContent?.IsOpen ?? false;
 
-    // Gaming Stations properties
-    public bool IsViewingGamingStations
-    {
-        get => _isViewingGamingStations;
-        set => this.RaiseAndSetIfChanged(ref _isViewingGamingStations, value);
-    }
+    // Gaming Stations properties (delegate to GamingStationViewModel)
+    public GamingStationViewModel? GamingStation => _gamingStation;
+    public bool IsViewingGamingStations => _gamingStation?.IsViewingGamingStations ?? false;
+    public bool IsLoadingStations => _gamingStation?.IsLoadingStations ?? false;
+    public ObservableCollection<GamingStationResponse> MyStations => _gamingStation?.MyStations ?? new ObservableCollection<GamingStationResponse>();
+    public ObservableCollection<GamingStationResponse> SharedStations => _gamingStation?.SharedStations ?? new ObservableCollection<GamingStationResponse>();
+    public bool HasNoStations => _gamingStation?.HasNoStations ?? true;
+    public bool HasMyStations => _gamingStation?.HasMyStations ?? false;
+    public bool HasSharedStations => _gamingStation?.HasSharedStations ?? false;
+    public bool IsCurrentMachineRegistered => _gamingStation?.IsCurrentMachineRegistered ?? false;
 
-    public bool IsLoadingStations
-    {
-        get => _isLoadingStations;
-        set => this.RaiseAndSetIfChanged(ref _isLoadingStations, value);
-    }
-
-    public ObservableCollection<GamingStationResponse> MyStations
-    {
-        get => _myStations;
-        set => this.RaiseAndSetIfChanged(ref _myStations, value);
-    }
-
-    public ObservableCollection<GamingStationResponse> SharedStations
-    {
-        get => _sharedStations;
-        set => this.RaiseAndSetIfChanged(ref _sharedStations, value);
-    }
-
-    public bool HasNoStations => !IsLoadingStations && _myStations.Count == 0 && _sharedStations.Count == 0;
-    public bool HasMyStations => _myStations.Count > 0;
-    public bool HasSharedStations => _sharedStations.Count > 0;
-    public bool IsCurrentMachineRegistered => _myStations.Any(s => s.IsOwner);
-
-    // Station stream properties
-    public bool IsViewingStationStream
-    {
-        get => _isViewingStationStream;
-        set => this.RaiseAndSetIfChanged(ref _isViewingStationStream, value);
-    }
-
-    public bool IsConnectingToStation
-    {
-        get => _isConnectingToStation;
-        set => this.RaiseAndSetIfChanged(ref _isConnectingToStation, value);
-    }
-
-    public Guid? ConnectedStationId
-    {
-        get => _connectedStationId;
-        set => this.RaiseAndSetIfChanged(ref _connectedStationId, value);
-    }
-
-    public string ConnectedStationName
-    {
-        get => _connectedStationName;
-        set => this.RaiseAndSetIfChanged(ref _connectedStationName, value);
-    }
-
-    public string StationConnectionStatus
-    {
-        get => _stationConnectionStatus;
-        set => this.RaiseAndSetIfChanged(ref _stationConnectionStatus, value);
-    }
-
-    public int StationConnectedUserCount
-    {
-        get => _stationConnectedUserCount;
-        set => this.RaiseAndSetIfChanged(ref _stationConnectedUserCount, value);
-    }
-
-    public int StationLatency
-    {
-        get => _stationLatency;
-        set => this.RaiseAndSetIfChanged(ref _stationLatency, value);
-    }
-
-    public string StationResolution
-    {
-        get => _stationResolution;
-        set => this.RaiseAndSetIfChanged(ref _stationResolution, value);
-    }
-
-    public int? StationPlayerSlot
-    {
-        get => _stationPlayerSlot;
-        set => this.RaiseAndSetIfChanged(ref _stationPlayerSlot, value);
-    }
+    // Station stream properties (delegate to GamingStationViewModel)
+    public bool IsViewingStationStream => _gamingStation?.IsViewingStationStream ?? false;
+    public bool IsConnectingToStation => _gamingStation?.IsConnectingToStation ?? false;
+    public Guid? ConnectedStationId => _gamingStation?.ConnectedStationId;
+    public string ConnectedStationName => _gamingStation?.ConnectedStationName ?? "";
+    public string StationConnectionStatus => _gamingStation?.StationConnectionStatus ?? "Disconnected";
+    public int StationConnectedUserCount => _gamingStation?.StationConnectedUserCount ?? 0;
+    public int StationLatency => _gamingStation?.StationLatency ?? 0;
+    public string StationResolution => _gamingStation?.StationResolution ?? "—";
+    public int? StationPlayerSlot => _gamingStation?.StationPlayerSlot;
 
     // Screen share picker properties
     public bool IsScreenSharePickerOpen
@@ -2714,115 +2588,12 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         this.RaisePropertyChanged(nameof(IsReplying));
     }
 
-    // Gaming Stations methods
-    private async Task OpenGamingStationsAsync()
-    {
-        // Close DM and voice channel views
-        _dmContent?.Close();
-        SelectedVoiceChannelForViewing = null;
+    // Gaming station input methods (delegate to GamingStationViewModel)
+    public Task SendStationKeyboardInputAsync(StationKeyboardInput input) =>
+        _gamingStation?.SendKeyboardInputAsync(input) ?? Task.CompletedTask;
 
-        IsViewingGamingStations = true;
-        await LoadStationsAsync();
-    }
-
-    private async Task LoadStationsAsync()
-    {
-        IsLoadingStations = true;
-        try
-        {
-            var result = await _apiClient.GetStationsAsync();
-            if (result.Success && result.Data is not null)
-            {
-                _myStations.Clear();
-                _sharedStations.Clear();
-
-                foreach (var station in result.Data)
-                {
-                    if (station.IsOwner)
-                        _myStations.Add(station);
-                    else
-                        _sharedStations.Add(station);
-                }
-
-                this.RaisePropertyChanged(nameof(HasNoStations));
-                this.RaisePropertyChanged(nameof(HasMyStations));
-                this.RaisePropertyChanged(nameof(HasSharedStations));
-                this.RaisePropertyChanged(nameof(IsCurrentMachineRegistered));
-            }
-        }
-        finally
-        {
-            IsLoadingStations = false;
-        }
-    }
-
-    private async Task RegisterStationAsync()
-    {
-        // Get a unique machine identifier
-        var machineId = Environment.MachineName + "-" + Environment.UserName;
-
-        // For now, use a simple name. In a real app, you'd show a dialog.
-        var stationName = Environment.MachineName;
-
-        var result = await _apiClient.RegisterStationAsync(stationName, "Gaming Station", machineId);
-        if (result.Success && result.Data is not null)
-        {
-            _myStations.Add(result.Data);
-            this.RaisePropertyChanged(nameof(HasNoStations));
-            this.RaisePropertyChanged(nameof(HasMyStations));
-            this.RaisePropertyChanged(nameof(IsCurrentMachineRegistered));
-        }
-        else
-        {
-            ErrorMessage = result.Error;
-        }
-    }
-
-    // Gaming Station methods - placeholders for Phase 3+ implementation
-    private Task ConnectToStationAsync(GamingStationResponse station) => Task.CompletedTask;
-    private Task DisconnectFromStationAsync() => Task.CompletedTask;
-    private void ToggleStationFullscreen() { }
-    private void ManageStation(GamingStationResponse station) { }
-
-    /// <summary>
-    /// Sends keyboard input to a gaming station in the current voice channel.
-    /// </summary>
-    public async Task SendStationKeyboardInputAsync(StationKeyboardInput input)
-    {
-        // In the new architecture, input is sent to the gaming station in our current voice channel
-        if (CurrentVoiceChannel is null) return;
-
-        try
-        {
-            await _signalR.SendStationKeyboardInputAsync(CurrentVoiceChannel.Id, input);
-        }
-        catch
-        {
-            // Silently ignore station input failures
-        }
-    }
-
-    /// <summary>
-    /// Sends mouse input to a gaming station in the current voice channel.
-    /// </summary>
-    public async Task SendStationMouseInputAsync(StationMouseInput input)
-    {
-        // In the new architecture, input is sent to the gaming station in our current voice channel
-        if (CurrentVoiceChannel is null) return;
-
-        try
-        {
-            await _signalR.SendStationMouseInputAsync(CurrentVoiceChannel.Id, input);
-        }
-        catch
-        {
-            // Silently ignore station input failures
-        }
-    }
-
-    // Platform-specific input injection stubs (Phase 3+ implementation)
-    private void InjectKeyboardInput(StationKeyboardInput input) { }
-    private void InjectMouseInput(StationMouseInput input) { }
+    public Task SendStationMouseInputAsync(StationMouseInput input) =>
+        _gamingStation?.SendMouseInputAsync(input) ?? Task.CompletedTask;
 
     private async Task CreateCommunityAsync()
     {
@@ -3846,57 +3617,21 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
     /// <summary>
     /// Reports this client's gaming station status to the server.
-    /// Call this on connect if gaming station mode is enabled.
     /// </summary>
-    public async Task ReportGamingStationStatusAsync()
-    {
-        if (!_settingsStore.Settings.IsGamingStationEnabled) return;
-
-        var displayName = string.IsNullOrWhiteSpace(_settingsStore.Settings.GamingStationDisplayName)
-            ? null
-            : _settingsStore.Settings.GamingStationDisplayName;
-
-        try
-        {
-            await _signalR.SetGamingStationAvailableAsync(true, displayName, _currentMachineId);
-        }
-        catch
-        {
-            // Gaming station status report failure - ignore
-        }
-    }
+    public Task ReportGamingStationStatusAsync() =>
+        _gamingStation?.ReportStatusAsync() ?? Task.CompletedTask;
 
     /// <summary>
     /// Commands a gaming station to join the current voice channel.
     /// </summary>
-    public async Task CommandStationJoinCurrentChannelAsync(string machineId)
-    {
-        if (CurrentVoiceChannel is null) return;
-
-        try
-        {
-            await _signalR.CommandStationJoinChannelAsync(machineId, CurrentVoiceChannel.Id);
-        }
-        catch
-        {
-            // Station command failure - ignore
-        }
-    }
+    public Task CommandStationJoinCurrentChannelAsync(string machineId) =>
+        _gamingStation?.CommandJoinCurrentChannelAsync(machineId) ?? Task.CompletedTask;
 
     /// <summary>
     /// Commands a gaming station to leave its current voice channel.
     /// </summary>
-    public async Task CommandStationLeaveChannelAsync(string machineId)
-    {
-        try
-        {
-            await _signalR.CommandStationLeaveChannelAsync(machineId);
-        }
-        catch
-        {
-            // Station command failure - ignore
-        }
-    }
+    public Task CommandStationLeaveChannelAsync(string machineId) =>
+        _gamingStation?.CommandLeaveChannelAsync(machineId) ?? Task.CompletedTask;
 
     public void Dispose()
     {
