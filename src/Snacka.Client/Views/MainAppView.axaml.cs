@@ -306,9 +306,9 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         if (ViewModel == null) return;
 
         var quickSwitcherVm = new QuickSwitcherViewModel(
-            ViewModel.Channels,
+            ViewModel.StoreTextChannels,
             ViewModel.VoiceChannelViewModels,
-            ViewModel.Members,
+            ViewModel.StoreMembers,
             ViewModel.UserId,
             ViewModel.SettingsStore,
             OnQuickSwitcherItemSelected,
@@ -331,7 +331,7 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         {
             case QuickSwitcherItemType.TextChannel:
                 // Find and select the channel
-                var channel = ViewModel.Channels.FirstOrDefault(c => c.Id == item.Id);
+                var channel = ViewModel.StoreTextChannels.FirstOrDefault(c => c.Id == item.Id);
                 if (channel != null)
                 {
                     ViewModel.SelectChannelCommand.Execute(channel).Subscribe();
@@ -349,7 +349,7 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
 
             case QuickSwitcherItemType.User:
                 // Start DM with user
-                var member = ViewModel.Members.FirstOrDefault(m => m.UserId == item.Id);
+                var member = ViewModel.StoreMembers.FirstOrDefault(m => m.UserId == item.Id);
                 if (member != null)
                 {
                     ViewModel.MembersList?.StartDMCommand.Execute(member).Subscribe();
@@ -385,7 +385,7 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         if (ViewModel == null) return;
 
         // Find and select the channel containing the message
-        var channel = ViewModel.Channels.FirstOrDefault(c => c.Id == result.Message.ChannelId);
+        var channel = ViewModel.StoreTextChannels.FirstOrDefault(c => c.Id == result.Message.ChannelId);
         if (channel != null)
         {
             ViewModel.SelectChannelCommand.Execute(channel).Subscribe();

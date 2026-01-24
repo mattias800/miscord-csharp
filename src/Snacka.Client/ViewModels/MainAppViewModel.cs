@@ -192,6 +192,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private readonly CompositeDisposable _storeSubscriptions = new();
 
     // Store-backed bindable collections (for view binding migration)
+    private readonly ReadOnlyObservableCollection<ChannelResponse> _storeAllChannels;
     private readonly ReadOnlyObservableCollection<ChannelResponse> _storeTextChannels;
     private readonly ReadOnlyObservableCollection<ChannelResponse> _storeVoiceChannels;
     private readonly ReadOnlyObservableCollection<MessageResponse> _storeMessages;
@@ -356,6 +357,14 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // These use DynamicData to transform ChannelState -> ChannelResponse and bind to ReadOnlyObservableCollection
         _storeSubscriptions.Add(
             _stores.ChannelStore.Connect()
+                .Transform(ToChannelResponse)
+                .SortBy(c => c.Position)
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Bind(out _storeAllChannels)
+                .Subscribe());
+
+        _storeSubscriptions.Add(
+            _stores.ChannelStore.Connect()
                 .Filter(c => c.Type == ChannelType.Text)
                 .Transform(ToChannelResponse)
                 .SortBy(c => c.Position)
@@ -408,13 +417,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 .Bind(out _storeCommunities)
                 .Subscribe());
 
-        Communities = new ObservableCollection<CommunityResponse>();
-        Channels = new ObservableCollection<ChannelResponse>();
-        Messages = new ObservableCollection<MessageResponse>();
-        Members = new ObservableCollection<CommunityMemberResponse>();
-
         // Initialize unified autocomplete with @ mentions, / commands, and :emojis
-        _autocomplete.RegisterSource(new MentionAutocompleteSource(() => Members, auth.UserId));
+        _autocomplete.RegisterSource(new MentionAutocompleteSource(() => _storeMembers, auth.UserId));
         _autocomplete.RegisterSource(new SlashCommandAutocompleteSource(gifsEnabled: _isGifsEnabled));
         _autocomplete.RegisterSource(new EmojiAutocompleteSource());
 
@@ -1174,7 +1178,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             {
                 // Leave current channel and join new one
                 await LeaveVoiceChannelAsync();
-                var channel = Channels.FirstOrDefault(c => c.Id == e.ToChannelId);
+                var channel = _storeAllChannels.FirstOrDefault(c => c.Id == e.ToChannelId);
                 if (channel != null)
                 {
                     await JoinVoiceChannelAsync(channel);
@@ -1307,7 +1311,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             if (!IsGamingStationEnabled) return;
 
             // Try to find the channel in our loaded channels
-            var channel = Channels.FirstOrDefault(c => c.Id == e.ChannelId);
+            var channel = _storeAllChannels.FirstOrDefault(c => c.Id == e.ChannelId);
             if (channel is null)
             {
                 // Channel not in current community, create a minimal ChannelResponse for joining
@@ -1476,17 +1480,11 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             // Mark channel as read and update the local unread count
             await _apiClient.MarkChannelAsReadAsync(SelectedCommunity.Id, SelectedChannel.Id);
 
-            // Update local channel with zero unread count
-            var idx = Channels.IndexOf(SelectedChannel);
-            if (idx >= 0)
-            {
-                var updated = SelectedChannel with { UnreadCount = 0 };
-                Channels[idx] = updated;
-                SelectedChannel = updated;
-            }
-
-            // Also update unread count in the channel store
+            // Update unread count in the store (DynamicData binding auto-updates _storeAllChannels)
             _stores.ChannelStore.UpdateUnreadCount(SelectedChannel.Id, 0);
+
+            // Update SelectedChannel with zero unread count
+            SelectedChannel = SelectedChannel with { UnreadCount = 0 };
         }
 
         await LoadMessagesAsync();
@@ -1499,11 +1497,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public IApiClient ApiClient => _apiClient;
     public string BaseUrl => _baseUrl;
     public string AccessToken => _auth.AccessToken;
-
-    public ObservableCollection<CommunityResponse> Communities { get; }
-    public ObservableCollection<ChannelResponse> Channels { get; }
-    public ObservableCollection<MessageResponse> Messages { get; }
-    public ObservableCollection<CommunityMemberResponse> Members { get; }
 
     /// <summary>
     /// Gaming stations owned by the current user, across all their devices.
@@ -1569,12 +1562,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// The ViewModel for the activity/notifications feed.
     /// </summary>
     public ActivityFeedViewModel? ActivityFeed => _activityFeed;
-
-    /// <summary>
-    /// Returns members sorted with the current user first.
-    /// </summary>
-    public IEnumerable<CommunityMemberResponse> SortedMembers =>
-        Members.OrderByDescending(m => m.UserId == _auth.UserId).ThenBy(m => m.Username);
 
     public CommunityResponse? SelectedCommunity
     {
@@ -1655,7 +1642,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// </summary>
     public PinnedMessagesPopupViewModel? PinnedMessagesPopup => _pinnedMessagesPopup;
 
-    public int PinnedCount => Messages.Count(m => m.IsPinned);
+    public int PinnedCount => _storeMessages.Count(m => m.IsPinned);
 
     /// <summary>
     /// Invite user popup ViewModel.
@@ -1666,7 +1653,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// <summary>
     /// Whether the user has no communities (used to show empty state).
     /// </summary>
-    public bool HasNoCommunities => Communities.Count == 0;
+    public bool HasNoCommunities => _storeCommunities.Count == 0;
 
     /// <summary>
     /// Whether the welcome modal is open (first-time user experience).
@@ -1854,6 +1841,11 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// Views can bind to this instead of getting VoiceChannelViewModels.
     /// </summary>
     public ReadOnlyObservableCollection<ChannelResponse> StoreVoiceChannels => _storeVoiceChannels;
+
+    /// <summary>
+    /// Store-backed all channels collection (text and voice).
+    /// </summary>
+    public ReadOnlyObservableCollection<ChannelResponse> StoreAllChannels => _storeAllChannels;
 
     /// <summary>
     /// Store-backed messages collection for the current channel.
@@ -2424,7 +2416,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// The name of the community where the current voice channel is located.
     /// </summary>
     public string? VoiceCommunityName =>
-        Communities.FirstOrDefault(c => c.Id == CurrentVoiceChannel?.CommunityId)?.Name;
+        _storeCommunities.FirstOrDefault(c => c.Id == CurrentVoiceChannel?.CommunityId)?.Name;
 
     /// <summary>
     /// Whether the user has not configured an audio input device.
@@ -3140,22 +3132,18 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             var result = await _apiClient.GetCommunitiesAsync();
             if (result.Success && result.Data is not null)
             {
-                Communities.Clear();
-                foreach (var community in result.Data)
-                    Communities.Add(community);
-
-                // Also populate the community store (for migration to Redux-style architecture)
+                // Update store - StoreCommunities will auto-update via DynamicData binding
                 _stores.CommunityStore.SetCommunities(result.Data);
 
                 // Notify HasNoCommunities property
                 this.RaisePropertyChanged(nameof(HasNoCommunities));
 
                 // Select first community if none selected
-                if (SelectedCommunity is null && Communities.Count > 0)
-                    SelectedCommunity = Communities[0];
+                if (SelectedCommunity is null && _storeCommunities.Count > 0)
+                    SelectedCommunity = _storeCommunities[0];
 
                 // Show welcome modal for first-time users with no communities
-                if (Communities.Count == 0 && !_settingsStore.Settings.HasSeenWelcome)
+                if (_storeCommunities.Count == 0 && !_settingsStore.Settings.HasSeenWelcome)
                 {
                     IsWelcomeModalOpen = true;
                 }
@@ -3204,11 +3192,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
             if (channelsResult.Success && channelsResult.Data is not null)
             {
-                Channels.Clear();
-                foreach (var channel in channelsResult.Data)
-                    Channels.Add(channel);
-
-                // Also populate the channel store (for migration to Redux-style architecture)
                 _stores.ChannelStore.SetChannels(channelsResult.Data);
 
                 // Notify computed properties
@@ -3241,15 +3224,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
             if (membersResult.Success && membersResult.Data is not null)
             {
-                Members.Clear();
-                foreach (var member in membersResult.Data)
-                    Members.Add(member);
-
-                // Also populate the community store members (for migration to Redux-style architecture)
+                // Update store - StoreMembers will auto-update via DynamicData binding
                 _stores.CommunityStore.SetMembers(SelectedCommunity.Id, membersResult.Data);
-
-                this.RaisePropertyChanged(nameof(SortedMembers));
-                _membersListViewModel?.NotifyMembersChanged();
 
                 // Set current user's role
                 var currentMember = membersResult.Data.FirstOrDefault(m => m.UserId == _auth.UserId);
@@ -3273,11 +3249,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             var result = await _apiClient.GetMessagesAsync(SelectedChannel.Id);
             if (result.Success && result.Data is not null)
             {
-                Messages.Clear();
-                foreach (var message in result.Data)
-                    Messages.Add(message);
-
-                // Also populate the message store (for migration to Redux-style architecture)
                 _stores.MessageStore.SetMessages(SelectedChannel.Id, result.Data);
                 _stores.MessageStore.SetCurrentChannel(SelectedChannel.Id);
             }
@@ -3351,7 +3322,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
         if (result.Success && result.Data is not null)
         {
-            Messages.Add(result.Data);
+            _stores.MessageStore.AddMessage(result.Data);
         }
         else
         {
@@ -3544,7 +3515,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         var result = await _apiClient.CreateCommunityAsync("New Community", null);
         if (result.Success && result.Data is not null)
         {
-            Communities.Add(result.Data);
+            // Add to store - StoreCommunities will auto-update via DynamicData binding
+            _stores.CommunityStore.AddCommunity(result.Data);
             SelectedCommunity = result.Data;
         }
         else
@@ -3574,12 +3546,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             var result = await _apiClient.CreateChannelAsync(SelectedCommunity.Id, channelName, null);
             if (result.Success && result.Data is not null)
             {
-                // Add locally - SignalR handler will detect duplicate and skip
-                if (!Channels.Any(c => c.Id == result.Data.Id))
-                {
-                    Channels.Add(result.Data);
-                    // TextChannels is now store-backed - auto-updates via ReadOnlyObservableCollection
-                }
+                // Add to store - uses AddOrUpdate so duplicates are handled
+                _stores.ChannelStore.AddChannel(result.Data);
                 SelectedChannel = result.Data;
             }
             else
@@ -3624,13 +3592,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
             if (result.Success && result.Data is not null)
             {
-                // Update the channel in the list
-                var index = Channels.IndexOf(EditingChannel);
-                Console.WriteLine($"Channel index in list: {index}");
-                if (index >= 0)
-                {
-                    Channels[index] = result.Data;
-                }
+                _stores.ChannelStore.UpdateChannel(result.Data);
 
                 // Update selected channel if it was the one being edited
                 if (SelectedChannel?.Id == EditingChannel.Id)
@@ -3680,18 +3642,12 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             {
                 Console.WriteLine($"Deleted channel: {channel.Name}");
 
-                // Remove from local collection (SignalR should also handle this)
-                var toRemove = Channels.FirstOrDefault(c => c.Id == channel.Id);
-                if (toRemove is not null)
-                {
-                    Channels.Remove(toRemove);
-                }
+                _stores.ChannelStore.RemoveChannel(channel.Id);
 
                 // If the deleted channel was selected, select another one
-                if (wasSelected && Channels.Count > 0)
+                if (wasSelected && _storeAllChannels.Count > 0)
                 {
-                    var textChannels = Channels.Where(c => c.Type == Shared.Models.ChannelType.Text).ToList();
-                    SelectedChannel = textChannels.FirstOrDefault() ?? Channels.FirstOrDefault();
+                    SelectedChannel = _storeTextChannels.FirstOrDefault() ?? _storeAllChannels.FirstOrDefault();
                 }
                 else if (wasSelected)
                 {
@@ -3720,7 +3676,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         Console.WriteLine($"Reordering {channelIds.Count} channels");
 
         // Store original order for rollback
-        var originalChannels = Channels.ToList();
+        var originalChannels = _storeAllChannels.ToList();
         var originalVoiceOrder = VoiceChannelViewModels.ToList();
 
         // Apply optimistically - update UI immediately
@@ -3763,13 +3719,11 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         var positionLookup = channelIds.Select((id, index) => (id, index))
             .ToDictionary(x => x.id, x => x.index);
 
-        // Sort Channels by the new order
-        var sortedChannels = Channels.OrderBy(c => positionLookup.GetValueOrDefault(c.Id, int.MaxValue)).ToList();
-        Channels.Clear();
-        foreach (var channel in sortedChannels)
-        {
-            Channels.Add(channel);
-        }
+        // Create updated channels with new positions and update the store
+        var updatedChannels = _storeAllChannels
+            .Select(c => c with { Position = positionLookup.GetValueOrDefault(c.Id, int.MaxValue) })
+            .ToList();
+        _stores.ChannelStore.ReorderChannels(updatedChannels);
 
         // Update VoiceChannelViewModels positions and re-sort
         foreach (var voiceVm in VoiceChannelViewModels)
@@ -3787,7 +3741,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             VoiceChannelViewModels.Add(vm);
         }
 
-        // TextChannels is now store-backed - auto-updates via ReadOnlyObservableCollection
         this.RaisePropertyChanged(nameof(VoiceChannelViewModels));
     }
 
@@ -3795,19 +3748,16 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     {
         Console.WriteLine("Rolling back channel order");
 
-        Channels.Clear();
-        foreach (var channel in originalChannels)
-        {
-            Channels.Add(channel);
-        }
+        // Restore channels in the store
+        _stores.ChannelStore.SetChannels(originalChannels);
 
+        // Restore VoiceChannelViewModels
         VoiceChannelViewModels.Clear();
         foreach (var vm in originalVoiceOrder)
         {
             VoiceChannelViewModels.Add(vm);
         }
 
-        // TextChannels is now store-backed - auto-updates via ReadOnlyObservableCollection
         this.RaisePropertyChanged(nameof(VoiceChannelViewModels));
     }
 
@@ -3905,11 +3855,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
             if (result.Success && result.Data is not null)
             {
-                // Update the message in the list
-                var index = Messages.ToList().FindIndex(m => m.Id == EditingMessage.Id);
-                if (index >= 0)
-                    Messages[index] = result.Data;
-
+                _stores.MessageStore.UpdateMessage(result.Data);
                 EditingMessage = null;
                 EditingMessageContent = string.Empty;
             }
@@ -3935,7 +3881,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
             if (result.Success)
             {
-                Messages.Remove(message);
+                _stores.MessageStore.DeleteMessage(message.Id);
             }
             else
             {
@@ -3972,11 +3918,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             {
                 Console.WriteLine($"CreateVoiceChannelAsync: Created voice channel {result.Data.Name} ({result.Data.Id})");
 
-                // Add to Channels collection
-                if (!Channels.Any(c => c.Id == result.Data.Id))
-                {
-                    Channels.Add(result.Data);
-                }
+                // Add to store
+                _stores.ChannelStore.AddChannel(result.Data);
 
                 // Add to VoiceChannelViewModels
                 if (!VoiceChannelViewModels.Any(v => v.Id == result.Data.Id))
@@ -4783,15 +4726,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// </summary>
     public void UpdateThreadMetadata(Guid parentMessageId, int replyCount, DateTime? lastReplyAt)
     {
-        var message = Messages.FirstOrDefault(m => m.Id == parentMessageId);
-        if (message != null)
-        {
-            // Create a new MessageResponse with updated thread metadata
-            // Since records are immutable, we need to create a new instance
-            var index = Messages.IndexOf(message);
-            var updatedMessage = message with { ReplyCount = replyCount, LastReplyAt = lastReplyAt };
-            Messages[index] = updatedMessage;
-        }
+        _stores.MessageStore.UpdateThreadMetadata(parentMessageId, replyCount, lastReplyAt);
     }
 
     // ==================== Gaming Station Helpers ====================

@@ -59,9 +59,9 @@ public record RecentQuickSwitcherItem(
 /// </summary>
 public class QuickSwitcherViewModel : ViewModelBase
 {
-    private readonly ObservableCollection<ChannelResponse> _textChannels;
-    private readonly ObservableCollection<VoiceChannelViewModel> _voiceChannels;
-    private readonly ObservableCollection<CommunityMemberResponse> _members;
+    private readonly IEnumerable<ChannelResponse> _textChannels;
+    private readonly IEnumerable<VoiceChannelViewModel> _voiceChannels;
+    private readonly IEnumerable<CommunityMemberResponse> _members;
     private readonly Guid _currentUserId;
     private readonly Action<QuickSwitcherItem> _onItemSelected;
     private readonly Action _onClose;
@@ -72,9 +72,9 @@ public class QuickSwitcherViewModel : ViewModelBase
     private ObservableCollection<QuickSwitcherItem> _filteredItems = new();
 
     public QuickSwitcherViewModel(
-        ObservableCollection<ChannelResponse> textChannels,
-        ObservableCollection<VoiceChannelViewModel> voiceChannels,
-        ObservableCollection<CommunityMemberResponse> members,
+        IEnumerable<ChannelResponse> textChannels,
+        IEnumerable<VoiceChannelViewModel> voiceChannels,
+        IEnumerable<CommunityMemberResponse> members,
         Guid currentUserId,
         ISettingsStore settingsStore,
         Action<QuickSwitcherItem> onItemSelected,
