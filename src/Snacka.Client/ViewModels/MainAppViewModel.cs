@@ -88,15 +88,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     // Voice video overlay state (for viewing video grid while navigating elsewhere)
     private bool _isVoiceVideoOverlayOpen;
 
-    // Video fullscreen state
-    private bool _isVideoFullscreen;
-    private VideoStreamViewModel? _fullscreenStream;
-    private bool _isGpuFullscreenActive;
-    private IHardwareVideoDecoder? _fullscreenHardwareDecoder;
-
-    // Gaming station input capture state (when viewing gaming station stream in fullscreen)
-    private bool _isKeyboardCaptureEnabled;
-    private bool _isMouseCaptureEnabled;
+    // Video fullscreen ViewModel (encapsulates fullscreen state, annotations, and input capture)
+    private VideoFullscreenViewModel? _videoFullscreen;
 
     // Gaming stations state (old architecture - to be replaced)
     private bool _isViewingGamingStations;
@@ -126,12 +119,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// </summary>
     public event Action<int, int, byte[]>? GpuFullscreenFrameReceived;
 
-    // Drawing annotation state
+    // Drawing annotation service (shared with VideoFullscreenViewModel and sharer overlay)
     private readonly AnnotationService _annotationService;
-    private bool _isAnnotationEnabled;
-    private bool _isDrawingAllowedByHost;
-    private string _annotationColor = "#FF0000";
-    private List<DrawingStroke> _currentStrokes = new();
 
     // Sharer annotation overlay state
     private ScreenShareSettings? _currentScreenShareSettings;
@@ -294,9 +283,15 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
         // Create annotation service for drawing on screen shares
         _annotationService = new AnnotationService(_signalR);
-        _annotationService.StrokeAdded += OnAnnotationStrokeAdded;
-        _annotationService.StrokesCleared += OnAnnotationStrokesCleared;
-        _annotationService.DrawingAllowedChanged += OnDrawingAllowedChanged;
+
+        // Create video fullscreen ViewModel (handles fullscreen state, annotations, input capture)
+        _videoFullscreen = new VideoFullscreenViewModel(
+            _webRtc,
+            _annotationService,
+            _controllerStreamingService,
+            _auth.UserId,
+            () => CurrentVoiceChannel?.Id);
+        _videoFullscreen.GpuFrameReceived += (w, h, data) => GpuFullscreenFrameReceived?.Invoke(w, h, data);
 
         // Subscribe to WebRTC connection status changes
         _webRtc.ConnectionStatusChanged += status =>
@@ -2275,144 +2270,74 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref _isVoiceVideoOverlayOpen, value);
     }
 
-    public bool IsVideoFullscreen
-    {
-        get => _isVideoFullscreen;
-        set => this.RaiseAndSetIfChanged(ref _isVideoFullscreen, value);
-    }
+    /// <summary>
+    /// Whether fullscreen video is open. Delegates to VideoFullscreenViewModel.
+    /// </summary>
+    public bool IsVideoFullscreen => _videoFullscreen?.IsOpen ?? false;
 
-    public VideoStreamViewModel? FullscreenStream
-    {
-        get => _fullscreenStream;
-        set => this.RaiseAndSetIfChanged(ref _fullscreenStream, value);
-    }
+    /// <summary>
+    /// The stream being viewed in fullscreen. Delegates to VideoFullscreenViewModel.
+    /// </summary>
+    public VideoStreamViewModel? FullscreenStream => _videoFullscreen?.Stream;
 
     /// <summary>
     /// Whether GPU-accelerated fullscreen rendering is active.
     /// </summary>
-    public bool IsGpuFullscreenActive
-    {
-        get => _isGpuFullscreenActive;
-        private set => this.RaiseAndSetIfChanged(ref _isGpuFullscreenActive, value);
-    }
+    public bool IsGpuFullscreenActive => _videoFullscreen?.IsGpuFullscreenActive ?? false;
 
     /// <summary>
-    /// The hardware decoder for fullscreen rendering. Set when fullscreen opens, cleared when it closes.
-    /// This ensures the native view is released back to the tile when exiting fullscreen.
+    /// The hardware decoder for fullscreen rendering.
     /// </summary>
-    public IHardwareVideoDecoder? FullscreenHardwareDecoder
-    {
-        get => _fullscreenHardwareDecoder;
-        private set => this.RaiseAndSetIfChanged(ref _fullscreenHardwareDecoder, value);
-    }
+    public IHardwareVideoDecoder? FullscreenHardwareDecoder => _videoFullscreen?.HardwareDecoder;
 
     /// <summary>
     /// Whether keyboard input capture is enabled for gaming station remote control.
-    /// When enabled, keyboard events in fullscreen are forwarded to the gaming station.
     /// </summary>
     public bool IsKeyboardCaptureEnabled
     {
-        get => _isKeyboardCaptureEnabled;
-        set => this.RaiseAndSetIfChanged(ref _isKeyboardCaptureEnabled, value);
+        get => _videoFullscreen?.IsKeyboardCaptureEnabled ?? false;
+        set { if (_videoFullscreen != null) _videoFullscreen.IsKeyboardCaptureEnabled = value; }
     }
 
     /// <summary>
     /// Whether mouse input capture is enabled for gaming station remote control.
-    /// When enabled, mouse events in fullscreen are forwarded to the gaming station.
     /// </summary>
     public bool IsMouseCaptureEnabled
     {
-        get => _isMouseCaptureEnabled;
-        set => this.RaiseAndSetIfChanged(ref _isMouseCaptureEnabled, value);
+        get => _videoFullscreen?.IsMouseCaptureEnabled ?? false;
+        set { if (_videoFullscreen != null) _videoFullscreen.IsMouseCaptureEnabled = value; }
     }
 
     /// <summary>
     /// Whether the fullscreen stream is from a gaming station that supports remote input.
     /// </summary>
-    public bool IsFullscreenGamingStation => FullscreenStream?.IsGamingStation == true;
+    public bool IsFullscreenGamingStation => _videoFullscreen?.IsGamingStation ?? false;
 
     /// <summary>
     /// The machine ID of the gaming station being viewed in fullscreen.
     /// </summary>
-    public string? FullscreenGamingStationMachineId => FullscreenStream?.GamingStationMachineId;
+    public string? FullscreenGamingStationMachineId => _videoFullscreen?.GamingStationMachineId;
 
     public void OpenFullscreen(VideoStreamViewModel stream)
     {
-        FullscreenStream = stream;
-        IsVideoFullscreen = true;
-
-        // Check if stream is using hardware decoding (zero-copy GPU pipeline)
-        if (stream.IsUsingHardwareDecoder)
-        {
-            // Hardware decoding: frames go directly to native view, no software path needed
-            FullscreenHardwareDecoder = stream.HardwareDecoder;
-            IsGpuFullscreenActive = false;
-        }
-        else if (_webRtc.IsGpuRenderingAvailable)
-        {
-            // Software decoding with GPU rendering
-            IsGpuFullscreenActive = true;
-            _webRtc.Nv12VideoFrameReceived += OnNv12VideoFrameForFullscreen;
-        }
-        else
-        {
-            // Pure software rendering (bitmap)
-            IsGpuFullscreenActive = false;
-        }
-
-        // Load existing strokes for this screen share
-        _currentStrokes = _annotationService.GetStrokes(stream.UserId).ToList();
-        this.RaisePropertyChanged(nameof(CurrentAnnotationStrokes));
-
-        // Check if drawing is allowed for this screen share
-        IsDrawingAllowedByHost = _annotationService.IsDrawingAllowed(stream.UserId);
+        _videoFullscreen?.Open(stream);
+        this.RaisePropertyChanged(nameof(IsVideoFullscreen));
+        this.RaisePropertyChanged(nameof(FullscreenStream));
+        this.RaisePropertyChanged(nameof(IsGpuFullscreenActive));
+        this.RaisePropertyChanged(nameof(FullscreenHardwareDecoder));
+        this.RaisePropertyChanged(nameof(IsFullscreenGamingStation));
+        this.RaisePropertyChanged(nameof(FullscreenGamingStationMachineId));
     }
 
     public void CloseFullscreen()
     {
-        // Unsubscribe from NV12 frames
-        if (IsGpuFullscreenActive)
-        {
-            _webRtc.Nv12VideoFrameReceived -= OnNv12VideoFrameForFullscreen;
-            IsGpuFullscreenActive = false;
-        }
-
-        // Store reference to stream before clearing
-        var stream = FullscreenStream;
-        var decoder = stream?.HardwareDecoder;
-
-        // Clear fullscreen hardware decoder reference first - this releases the native view
-        FullscreenHardwareDecoder = null;
-
-        // Force the tile to reclaim the decoder by re-triggering its binding
-        // The native view can only be embedded in one NativeControlHost at a time,
-        // so we need to explicitly detach it from the fullscreen parent first.
-        if (stream != null && decoder != null)
-        {
-            stream.HardwareDecoder = null;
-
-            // Explicitly detach the native view from its current parent (fullscreen)
-            decoder.DetachView();
-
-            // Use a delay to ensure the native view is fully released from fullscreen
-            // The NativeControlHost needs time to process the removal
-            _ = Task.Run(async () =>
-            {
-                await Task.Delay(150); // Give native view time to be fully released
-                await Dispatcher.UIThread.InvokeAsync(() =>
-                {
-                    stream.HardwareDecoder = decoder;
-                });
-            });
-        }
-
-        IsVideoFullscreen = false;
-        FullscreenStream = null;
-        IsAnnotationEnabled = false; // Disable drawing when exiting fullscreen
-
-        // Disable gaming station input capture when exiting fullscreen
-        IsKeyboardCaptureEnabled = false;
-        IsMouseCaptureEnabled = false;
+        _videoFullscreen?.Close();
+        this.RaisePropertyChanged(nameof(IsVideoFullscreen));
+        this.RaisePropertyChanged(nameof(FullscreenStream));
+        this.RaisePropertyChanged(nameof(IsGpuFullscreenActive));
+        this.RaisePropertyChanged(nameof(FullscreenHardwareDecoder));
+        this.RaisePropertyChanged(nameof(IsFullscreenGamingStation));
+        this.RaisePropertyChanged(nameof(FullscreenGamingStationMachineId));
     }
 
     /// <summary>
@@ -2440,8 +2365,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// </summary>
     public async Task ToggleFullscreenControllerAccessAsync()
     {
-        if (FullscreenStream == null) return;
-        await ToggleControllerAccessAsync(FullscreenStream);
+        if (_videoFullscreen != null)
+        {
+            await _videoFullscreen.ToggleControllerAccessAsync();
+        }
     }
 
     /// <summary>
@@ -2462,117 +2389,52 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// </summary>
     public Guid? ControllerStreamingHostUserId => _controllerStreamingService.StreamingHostUserId;
 
-    private void OnNv12VideoFrameForFullscreen(Guid userId, VideoStreamType streamType, int width, int height, byte[] nv12Data)
-    {
-        // Only render frames from the fullscreen stream
-        if (FullscreenStream?.UserId == userId && FullscreenStream?.StreamType == streamType)
-        {
-            GpuFullscreenFrameReceived?.Invoke(width, height, nv12Data);
-        }
-    }
-
-    // Drawing annotation properties
+    // Drawing annotation properties (delegate to VideoFullscreenViewModel for viewer state)
     public bool IsAnnotationEnabled
     {
-        get => _isAnnotationEnabled;
-        set => this.RaiseAndSetIfChanged(ref _isAnnotationEnabled, value);
+        get => _videoFullscreen?.IsAnnotationEnabled ?? false;
+        set { if (_videoFullscreen != null) _videoFullscreen.IsAnnotationEnabled = value; }
     }
 
     /// <summary>
     /// Whether the host (sharer) has allowed viewers to draw on the screen share.
     /// </summary>
-    public bool IsDrawingAllowedByHost
-    {
-        get => _isDrawingAllowedByHost;
-        private set => this.RaiseAndSetIfChanged(ref _isDrawingAllowedByHost, value);
-    }
+    public bool IsDrawingAllowedByHost => _videoFullscreen?.IsDrawingAllowedByHost ?? false;
 
     public string AnnotationColor
     {
-        get => _annotationColor;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _annotationColor, value);
-            _annotationService.CurrentColor = value;
-        }
+        get => _videoFullscreen?.AnnotationColor ?? "#FF0000";
+        set { if (_videoFullscreen != null) _videoFullscreen.AnnotationColor = value; }
     }
 
     public string[] AvailableAnnotationColors => AnnotationService.AvailableColors;
 
     public AnnotationService AnnotationService => _annotationService;
 
-    public List<DrawingStroke> CurrentAnnotationStrokes => _currentStrokes;
-
-    private void OnAnnotationStrokeAdded(Guid sharerId, DrawingStroke stroke)
-    {
-        // Only update if we're viewing this sharer's screen in fullscreen
-        if (FullscreenStream?.UserId == sharerId)
-        {
-            Dispatcher.UIThread.Post(() =>
-            {
-                _currentStrokes = _annotationService.GetStrokes(sharerId).ToList();
-                this.RaisePropertyChanged(nameof(CurrentAnnotationStrokes));
-            });
-        }
-    }
-
-    private void OnAnnotationStrokesCleared(Guid sharerId)
-    {
-        // Only update if we're viewing this sharer's screen in fullscreen
-        if (FullscreenStream?.UserId == sharerId)
-        {
-            Dispatcher.UIThread.Post(() =>
-            {
-                _currentStrokes.Clear();
-                this.RaisePropertyChanged(nameof(CurrentAnnotationStrokes));
-            });
-        }
-    }
-
-    private void OnDrawingAllowedChanged(Guid sharerId, bool isAllowed)
-    {
-        // Only update if we're viewing this sharer's screen in fullscreen
-        if (FullscreenStream?.UserId == sharerId)
-        {
-            Dispatcher.UIThread.Post(() =>
-            {
-                IsDrawingAllowedByHost = isAllowed;
-                // If drawing was disabled by host, turn off our drawing mode
-                if (!isAllowed && IsAnnotationEnabled)
-                {
-                    IsAnnotationEnabled = false;
-                }
-            });
-        }
-    }
+    public List<DrawingStroke> CurrentAnnotationStrokes => _videoFullscreen?.CurrentAnnotationStrokes ?? new List<DrawingStroke>();
 
     public async Task AddAnnotationStrokeAsync(DrawingStroke stroke)
     {
-        if (CurrentVoiceChannel == null || FullscreenStream == null) return;
-
-        await _annotationService.AddStrokeAsync(
-            CurrentVoiceChannel.Id,
-            FullscreenStream.UserId,
-            stroke);
+        if (_videoFullscreen != null)
+        {
+            await _videoFullscreen.AddAnnotationStrokeAsync(stroke);
+        }
     }
 
     public async Task UpdateAnnotationStrokeAsync(DrawingStroke stroke)
     {
-        if (CurrentVoiceChannel == null || FullscreenStream == null) return;
-
-        await _annotationService.UpdateStrokeAsync(
-            CurrentVoiceChannel.Id,
-            FullscreenStream.UserId,
-            stroke);
+        if (_videoFullscreen != null)
+        {
+            await _videoFullscreen.UpdateAnnotationStrokeAsync(stroke);
+        }
     }
 
     public async Task ClearAnnotationsAsync()
     {
-        if (CurrentVoiceChannel == null || FullscreenStream == null) return;
-
-        await _annotationService.ClearStrokesAsync(
-            CurrentVoiceChannel.Id,
-            FullscreenStream.UserId);
+        if (_videoFullscreen != null)
+        {
+            await _videoFullscreen.ClearAnnotationsAsync();
+        }
     }
 
     /// <summary>
@@ -4039,6 +3901,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         HideSharerAnnotationOverlay();
+        _videoFullscreen?.Dispose();
         _typingSubscription?.Dispose();
         _storeSubscriptions.Dispose();
         _ = _signalR.DisposeAsync();
