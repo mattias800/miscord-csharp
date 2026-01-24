@@ -143,7 +143,8 @@ public sealed class MessageStore : IMessageStore, IDisposable
 
     public IObservable<IReadOnlyCollection<MessageState>> Items =>
         _messageCache.Connect()
-            .QueryWhenChanged(cache => cache.Items.ToList().AsReadOnly() as IReadOnlyCollection<MessageState>);
+            .QueryWhenChanged(cache => cache.Items.ToList().AsReadOnly() as IReadOnlyCollection<MessageState>)
+            .StartWith(_messageCache.Items.ToList().AsReadOnly() as IReadOnlyCollection<MessageState>);
 
     public IObservable<Guid?> CurrentChannelId => _currentChannelId.AsObservable();
 

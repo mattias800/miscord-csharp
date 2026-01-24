@@ -145,7 +145,8 @@ public sealed class VoiceStore : IVoiceStore, IDisposable
 
     public IObservable<IReadOnlyCollection<VoiceParticipantState>> Items =>
         _participantCache.Connect()
-            .QueryWhenChanged(cache => cache.Items.ToList().AsReadOnly() as IReadOnlyCollection<VoiceParticipantState>);
+            .QueryWhenChanged(cache => cache.Items.ToList().AsReadOnly() as IReadOnlyCollection<VoiceParticipantState>)
+            .StartWith(_participantCache.Items.ToList().AsReadOnly() as IReadOnlyCollection<VoiceParticipantState>);
 
     public IObservable<Guid?> CurrentChannelId => _currentChannelId.AsObservable();
 

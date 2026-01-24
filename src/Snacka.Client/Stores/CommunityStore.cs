@@ -124,7 +124,8 @@ public sealed class CommunityStore : ICommunityStore, IDisposable
 
     public IObservable<IReadOnlyCollection<CommunityState>> Items =>
         _communityCache.Connect()
-            .QueryWhenChanged(cache => cache.Items.ToList().AsReadOnly() as IReadOnlyCollection<CommunityState>);
+            .QueryWhenChanged(cache => cache.Items.ToList().AsReadOnly() as IReadOnlyCollection<CommunityState>)
+            .StartWith(_communityCache.Items.ToList().AsReadOnly() as IReadOnlyCollection<CommunityState>);
 
     public IObservable<Guid?> SelectedCommunityId => _selectedCommunityId.AsObservable();
 

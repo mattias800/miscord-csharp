@@ -67,7 +67,8 @@ public sealed class PresenceStore : IPresenceStore, IDisposable
 
     public IObservable<IReadOnlyCollection<UserPresenceState>> Items =>
         _presenceCache.Connect()
-            .QueryWhenChanged(cache => cache.Items.ToList().AsReadOnly() as IReadOnlyCollection<UserPresenceState>);
+            .QueryWhenChanged(cache => cache.Items.ToList().AsReadOnly() as IReadOnlyCollection<UserPresenceState>)
+            .StartWith(_presenceCache.Items.ToList().AsReadOnly() as IReadOnlyCollection<UserPresenceState>);
 
     public IObservable<IReadOnlyCollection<Guid>> OnlineUserIds =>
         _presenceCache.Connect()

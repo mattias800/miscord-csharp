@@ -99,7 +99,8 @@ public sealed class ChannelStore : IChannelStore, IDisposable
 
     public IObservable<IReadOnlyCollection<ChannelState>> Items =>
         _channelCache.Connect()
-            .QueryWhenChanged(cache => cache.Items.ToList().AsReadOnly() as IReadOnlyCollection<ChannelState>);
+            .QueryWhenChanged(cache => cache.Items.ToList().AsReadOnly() as IReadOnlyCollection<ChannelState>)
+            .StartWith(_channelCache.Items.ToList().AsReadOnly() as IReadOnlyCollection<ChannelState>);
 
     public IObservable<Guid?> SelectedChannelId => _selectedChannelId.AsObservable();
 
