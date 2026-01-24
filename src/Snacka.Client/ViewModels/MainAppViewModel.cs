@@ -762,11 +762,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         ShowPinnedMessagesCommand = _pinnedMessagesPopup!.ShowCommand;
         ClosePinnedPopupCommand = _pinnedMessagesPopup!.CloseCommand;
 
-        // GIF preview commands
-        SendGifPreviewCommand = ReactiveCommand.CreateFromTask(SendGifPreviewAsync);
-        ShuffleGifPreviewCommand = ReactiveCommand.Create(ShuffleGifPreview);
-        CancelGifPreviewCommand = ReactiveCommand.Create(CancelGifPreview);
-
         // Invite user commands (delegated to InviteUserPopupViewModel)
         OpenInviteUserPopupCommand = _inviteUserPopup!.OpenCommand;
         CloseInviteUserPopupCommand = _inviteUserPopup!.CloseCommand;
@@ -1882,13 +1877,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     // GIF panel ViewModel (for the GIF search panel)
     private GifPanelViewModel? _gifPanel;
 
-    // GIF preview state (for /gif command inline preview)
-    private bool _isGifPreviewVisible;
-    private GifResult? _gifPreviewResult;
-    private string _gifPreviewQuery = string.Empty;
-    private List<GifResult> _gifPreviewResults = new();
-    private int _gifPreviewIndex;
-
     public bool IsGifsEnabled => _isGifsEnabled;
 
     // GIF panel properties (delegate to GifPanelViewModel)
@@ -1902,25 +1890,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     }
 
     public bool IsLoadingGifs => _gifPanel?.IsLoading ?? false;
-
-    // GIF preview properties (for /gif command)
-    public bool IsGifPreviewVisible
-    {
-        get => _isGifPreviewVisible;
-        set => this.RaiseAndSetIfChanged(ref _isGifPreviewVisible, value);
-    }
-
-    public GifResult? GifPreviewResult
-    {
-        get => _gifPreviewResult;
-        set => this.RaiseAndSetIfChanged(ref _gifPreviewResult, value);
-    }
-
-    public string GifPreviewQuery
-    {
-        get => _gifPreviewQuery;
-        set => this.RaiseAndSetIfChanged(ref _gifPreviewQuery, value);
-    }
 
     public Task LoadTrendingGifsAsync() => _gifPanel?.LoadTrendingAsync() ?? Task.CompletedTask;
 
@@ -1967,42 +1936,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             return;
 
         await _gifPicker.StartSearchAsync(query);
-    }
-
-    /// <summary>
-    /// Sends the currently previewed GIF as a message.
-    /// </summary>
-    public async Task SendGifPreviewAsync()
-    {
-        if (GifPreviewResult == null || SelectedChannel == null) return;
-
-        var gif = GifPreviewResult;
-        CancelGifPreview();
-
-        await SendGifMessageAsync(gif);
-    }
-
-    /// <summary>
-    /// Shows the next GIF result in the preview.
-    /// </summary>
-    public void ShuffleGifPreview()
-    {
-        if (_gifPreviewResults.Count == 0) return;
-
-        _gifPreviewIndex = (_gifPreviewIndex + 1) % _gifPreviewResults.Count;
-        GifPreviewResult = _gifPreviewResults[_gifPreviewIndex];
-    }
-
-    /// <summary>
-    /// Cancels the GIF preview and clears state.
-    /// </summary>
-    public void CancelGifPreview()
-    {
-        IsGifPreviewVisible = false;
-        GifPreviewResult = null;
-        GifPreviewQuery = string.Empty;
-        _gifPreviewResults.Clear();
-        _gifPreviewIndex = 0;
     }
 
     // Quick audio device switcher (delegated to AudioDeviceQuickSelectViewModel)
@@ -2560,11 +2493,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<MessageResponse, Unit> TogglePinCommand { get; }
     public ReactiveCommand<Unit, Unit> ShowPinnedMessagesCommand { get; }
     public ReactiveCommand<Unit, Unit> ClosePinnedPopupCommand { get; }
-
-    // GIF preview commands (for /gif inline preview)
-    public ReactiveCommand<Unit, Unit> SendGifPreviewCommand { get; }
-    public ReactiveCommand<Unit, Unit> ShuffleGifPreviewCommand { get; }
-    public ReactiveCommand<Unit, Unit> CancelGifPreviewCommand { get; }
 
     // Invite user commands
     public ReactiveCommand<Unit, Unit> OpenInviteUserPopupCommand { get; }

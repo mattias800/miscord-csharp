@@ -73,15 +73,6 @@ public partial class ChatAreaView : UserControl
     public static readonly StyledProperty<bool> IsGifsEnabledProperty =
         AvaloniaProperty.Register<ChatAreaView, bool>(nameof(IsGifsEnabled));
 
-    public static readonly StyledProperty<bool> IsGifPreviewVisibleProperty =
-        AvaloniaProperty.Register<ChatAreaView, bool>(nameof(IsGifPreviewVisible));
-
-    public static readonly StyledProperty<GifResult?> GifPreviewResultProperty =
-        AvaloniaProperty.Register<ChatAreaView, GifResult?>(nameof(GifPreviewResult));
-
-    public static readonly StyledProperty<string?> GifPreviewQueryProperty =
-        AvaloniaProperty.Register<ChatAreaView, string?>(nameof(GifPreviewQuery));
-
     public static readonly StyledProperty<GifPickerViewModel?> GifPickerProperty =
         AvaloniaProperty.Register<ChatAreaView, GifPickerViewModel?>(nameof(GifPicker));
 
@@ -136,15 +127,6 @@ public partial class ChatAreaView : UserControl
 
     public static readonly StyledProperty<ICommand?> SaveMessageEditCommandProperty =
         AvaloniaProperty.Register<ChatAreaView, ICommand?>(nameof(SaveMessageEditCommand));
-
-    public static readonly StyledProperty<ICommand?> SendGifPreviewCommandProperty =
-        AvaloniaProperty.Register<ChatAreaView, ICommand?>(nameof(SendGifPreviewCommand));
-
-    public static readonly StyledProperty<ICommand?> ShuffleGifPreviewCommandProperty =
-        AvaloniaProperty.Register<ChatAreaView, ICommand?>(nameof(ShuffleGifPreviewCommand));
-
-    public static readonly StyledProperty<ICommand?> CancelGifPreviewCommandProperty =
-        AvaloniaProperty.Register<ChatAreaView, ICommand?>(nameof(CancelGifPreviewCommand));
 
     #endregion
 
@@ -259,24 +241,6 @@ public partial class ChatAreaView : UserControl
         set => SetValue(IsGifsEnabledProperty, value);
     }
 
-    public bool IsGifPreviewVisible
-    {
-        get => GetValue(IsGifPreviewVisibleProperty);
-        set => SetValue(IsGifPreviewVisibleProperty, value);
-    }
-
-    public GifResult? GifPreviewResult
-    {
-        get => GetValue(GifPreviewResultProperty);
-        set => SetValue(GifPreviewResultProperty, value);
-    }
-
-    public string? GifPreviewQuery
-    {
-        get => GetValue(GifPreviewQueryProperty);
-        set => SetValue(GifPreviewQueryProperty, value);
-    }
-
     public GifPickerViewModel? GifPicker
     {
         get => GetValue(GifPickerProperty);
@@ -381,24 +345,6 @@ public partial class ChatAreaView : UserControl
     {
         get => GetValue(SaveMessageEditCommandProperty);
         set => SetValue(SaveMessageEditCommandProperty, value);
-    }
-
-    public ICommand? SendGifPreviewCommand
-    {
-        get => GetValue(SendGifPreviewCommandProperty);
-        set => SetValue(SendGifPreviewCommandProperty, value);
-    }
-
-    public ICommand? ShuffleGifPreviewCommand
-    {
-        get => GetValue(ShuffleGifPreviewCommandProperty);
-        set => SetValue(ShuffleGifPreviewCommandProperty, value);
-    }
-
-    public ICommand? CancelGifPreviewCommand
-    {
-        get => GetValue(CancelGifPreviewCommandProperty);
-        set => SetValue(CancelGifPreviewCommandProperty, value);
     }
 
     #endregion
