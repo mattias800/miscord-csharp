@@ -561,8 +561,7 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
 
     private void OnChatAreaAutocompleteSuggestionSelected(object? sender, Services.Autocomplete.IAutocompleteSuggestion suggestion)
     {
-        if (ViewModel == null) return;
-        var result = ViewModel.SelectAutocompleteSuggestionWithText(suggestion);
+        var result = ViewModel?.MessageInputVM?.SelectAutocompleteSuggestionWithText(suggestion);
         if (result.HasValue)
         {
             ChatArea?.SetMessageInputTextAndCursor(result.Value.newText, result.Value.cursorPosition);
@@ -628,7 +627,7 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
 
     private void OnChatAreaRemovePendingAttachment(object? sender, PendingAttachment attachment)
     {
-        ViewModel?.RemovePendingAttachment(attachment);
+        ViewModel?.MessageInputVM?.RemovePendingAttachment(attachment);
     }
 
     private async void OnChatAreaFileDropped(object? sender, IStorageFile file)
@@ -638,24 +637,24 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
 
     private int OnChatAreaNavigateAutocompleteUp()
     {
-        ViewModel?.NavigateAutocompleteUp();
+        ViewModel?.MessageInputVM?.NavigateAutocompleteUp();
         return -1;
     }
 
     private int OnChatAreaNavigateAutocompleteDown()
     {
-        ViewModel?.NavigateAutocompleteDown();
+        ViewModel?.MessageInputVM?.NavigateAutocompleteDown();
         return -1;
     }
 
     private (string newText, int cursorPosition)? OnChatAreaSelectCurrentAutocompleteSuggestion()
     {
-        return ViewModel?.SelectCurrentAutocompleteSuggestionWithText();
+        return ViewModel?.MessageInputVM?.SelectCurrentAutocompleteSuggestionWithText();
     }
 
     private void OnChatAreaCloseAutocompletePopup()
     {
-        ViewModel?.CloseAutocompletePopup();
+        ViewModel?.MessageInputVM?.CloseAutocompletePopup();
     }
 
     // Thread message event handlers
@@ -1181,7 +1180,7 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
     /// </summary>
     private async Task AddFileAsAttachmentAsync(IStorageFile file)
     {
-        if (ViewModel == null) return;
+        if (ViewModel?.MessageInputVM == null) return;
 
         try
         {
@@ -1205,7 +1204,7 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
             var extension = System.IO.Path.GetExtension(file.Name).ToLowerInvariant();
             var contentType = GetContentTypeFromExtension(extension);
 
-            ViewModel.AddPendingAttachment(file.Name, memoryStream, size, contentType);
+            ViewModel.MessageInputVM.AddPendingAttachment(file.Name, memoryStream, size, contentType);
         }
         catch (Exception ex)
         {

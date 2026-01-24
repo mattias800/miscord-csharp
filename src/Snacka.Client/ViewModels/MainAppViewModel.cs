@@ -42,25 +42,12 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
     private CommunityResponse? _selectedCommunity;
     private ChannelResponse? _selectedChannel;
-    private string _messageInput = string.Empty;
     private bool _isLoading;
     private bool _isMessagesLoading;
     private string? _errorMessage;
-    private ChannelState? _editingChannel;
-    private string _editingChannelName = string.Empty;
-    private ChannelState? _channelPendingDelete;
-    private MessageResponse? _editingMessage;
-    private string _editingMessageContent = string.Empty;
-    private MessageResponse? _replyingToMessage;
 
-    // Voice channel state
+    // Voice channel state (channel object needed for UI; voice control state delegated to VoiceControlViewModel)
     private ChannelResponse? _currentVoiceChannel;
-    private bool _isMuted;
-    private bool _isDeafened;
-    private bool _isCameraOn;
-    private bool _isScreenSharing;
-    private bool _isSpeaking;
-    private VoiceConnectionStatus _voiceConnectionStatus = VoiceConnectionStatus.Disconnected;
 
     // Multi-device voice state is now tracked by VoiceStore
 
@@ -133,8 +120,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     // Self-contained GIF picker (appears in message list)
     private GifPickerViewModel? _gifPicker;
 
-    // File attachment state (legacy fallback, normally handled by MessageInputViewModel)
-    private ObservableCollection<PendingAttachment> _pendingAttachments = new();
     private AttachmentResponse? _lightboxImage;
 
     // Pinned messages popup (extracted ViewModel)
@@ -202,10 +187,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         _voiceCoordinator = voiceCoordinator;
         _messageCoordinator = messageCoordinator;
         _gamingStationCommandHandler = gamingStationCommandHandler;
-
-        // Load persisted mute/deafen state
-        _isMuted = _settingsStore.Settings.IsMuted;
-        _isDeafened = _settingsStore.Settings.IsDeafened;
 
         // Generate unique machine ID for gaming station feature
         _currentMachineId = GetOrCreateMachineId();
@@ -293,13 +274,11 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             _auth.UserId);
         _videoFullscreen.GpuFrameReceived += (w, h, data) => GpuFullscreenFrameReceived?.Invoke(w, h, data);
 
-        // Subscribe to WebRTC connection status changes
+        // Subscribe to WebRTC connection status changes and update VoiceStore
         _webRtc.ConnectionStatusChanged += status =>
         {
             Dispatcher.UIThread.Post(() =>
             {
-                VoiceConnectionStatus = status;
-                // Also update voice store (for migration to Redux-style architecture)
                 _stores.VoiceStore.SetConnectionStatus(status);
             });
         };
@@ -342,17 +321,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                     {
                         ReconnectSecondsRemaining = seconds;
                         this.RaisePropertyChanged(nameof(ReconnectStatusText));
-                    }
-                }));
-
-        _storeSubscriptions.Add(
-            _stores.VoiceStore.ConnectionStatus
-                .ObserveOn(RxApp.MainThreadScheduler)
-                .Subscribe(status =>
-                {
-                    if (_voiceConnectionStatus != status)
-                    {
-                        VoiceConnectionStatus = status;
                     }
                 }));
 
@@ -553,41 +521,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             signalR,
             auth.UserId);
 
-        // Sync VoiceControlViewModel state with local fields (for backwards compatibility)
-        _voiceControl.PropertyChanged += (_, e) =>
-        {
-            switch (e.PropertyName)
-            {
-                case nameof(VoiceControlViewModel.IsMuted):
-                    _isMuted = _voiceControl.IsMuted;
-                    this.RaisePropertyChanged(nameof(IsMuted));
-                    break;
-                case nameof(VoiceControlViewModel.IsDeafened):
-                    _isDeafened = _voiceControl.IsDeafened;
-                    this.RaisePropertyChanged(nameof(IsDeafened));
-                    break;
-                case nameof(VoiceControlViewModel.IsSpeaking):
-                    _isSpeaking = _voiceControl.IsSpeaking;
-                    this.RaisePropertyChanged(nameof(IsSpeaking));
-                    break;
-                case nameof(VoiceControlViewModel.IsCameraOn):
-                    _isCameraOn = _voiceControl.IsCameraOn;
-                    this.RaisePropertyChanged(nameof(IsCameraOn));
-                    break;
-                case nameof(VoiceControlViewModel.IsScreenSharing):
-                    _isScreenSharing = _voiceControl.IsScreenSharing;
-                    this.RaisePropertyChanged(nameof(IsScreenSharing));
-                    break;
-                case nameof(VoiceControlViewModel.VoiceConnectionStatus):
-                    _voiceConnectionStatus = _voiceControl.VoiceConnectionStatus;
-                    this.RaisePropertyChanged(nameof(VoiceConnectionStatus));
-                    this.RaisePropertyChanged(nameof(VoiceConnectionStatusText));
-                    this.RaisePropertyChanged(nameof(IsVoiceConnecting));
-                    this.RaisePropertyChanged(nameof(IsVoiceConnected));
-                    break;
-            }
-        };
-
         // Create screen share ViewModel
         // Reads current voice channel from VoiceStore (Redux-style)
         _screenShare = new ScreenShareViewModel(
@@ -599,15 +532,11 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             auth.UserId,
             auth.Username);
 
-        // Sync ScreenShareViewModel state with local fields
+        // Sync ScreenShareViewModel state with local fields (for UI bindings not yet migrated)
         _screenShare.PropertyChanged += (_, e) =>
         {
             switch (e.PropertyName)
             {
-                case nameof(ScreenShareViewModel.IsScreenSharing):
-                    _isScreenSharing = _screenShare.IsScreenSharing;
-                    this.RaisePropertyChanged(nameof(IsScreenSharing));
-                    break;
                 case nameof(ScreenShareViewModel.IsScreenSharePickerOpen):
                     _isScreenSharePickerOpen = _screenShare.IsScreenSharePickerOpen;
                     this.RaisePropertyChanged(nameof(IsScreenSharePickerOpen));
@@ -643,43 +572,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             () => _storeMembers,
             _isGifsEnabled);
 
-        // Sync MessageInputViewModel state with local fields
-        _messageInputVm.PropertyChanged += (_, e) =>
-        {
-            switch (e.PropertyName)
-            {
-                case nameof(MessageInputViewModel.MessageInput):
-                    _messageInput = _messageInputVm.MessageInput;
-                    this.RaisePropertyChanged(nameof(MessageInput));
-                    break;
-                case nameof(MessageInputViewModel.EditingMessage):
-                    _editingMessage = _messageInputVm.EditingMessage;
-                    this.RaisePropertyChanged(nameof(EditingMessage));
-                    break;
-                case nameof(MessageInputViewModel.EditingMessageContent):
-                    _editingMessageContent = _messageInputVm.EditingMessageContent;
-                    this.RaisePropertyChanged(nameof(EditingMessageContent));
-                    break;
-                case nameof(MessageInputViewModel.ReplyingToMessage):
-                    _replyingToMessage = _messageInputVm.ReplyingToMessage;
-                    this.RaisePropertyChanged(nameof(ReplyingToMessage));
-                    this.RaisePropertyChanged(nameof(IsReplying));
-                    break;
-                case nameof(MessageInputViewModel.IsLoading):
-                    IsMessagesLoading = _messageInputVm.IsLoading;
-                    break;
-                case nameof(MessageInputViewModel.IsAutocompletePopupOpen):
-                    this.RaisePropertyChanged(nameof(IsAutocompletePopupOpen));
-                    break;
-                case nameof(MessageInputViewModel.SelectedAutocompleteIndex):
-                    this.RaisePropertyChanged(nameof(SelectedAutocompleteIndex));
-                    break;
-                case nameof(MessageInputViewModel.HasPendingAttachments):
-                    this.RaisePropertyChanged(nameof(HasPendingAttachments));
-                    break;
-            }
-        };
-
         // Wire up events
         _messageInputVm.ErrorOccurred += error => ErrorMessage = error;
         _messageInputVm.GifPreviewRequested += async query => await ShowGifPreviewAsync(query);
@@ -690,27 +582,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             _stores.ChannelStore,
             _stores.CommunityStore,
             () => _voiceChannelManager);
-
-        // Sync ChannelManagementViewModel state with local fields
-        _channelManagementVm.PropertyChanged += (_, e) =>
-        {
-            switch (e.PropertyName)
-            {
-                case nameof(ChannelManagementViewModel.EditingChannel):
-                    _editingChannel = _channelManagementVm.EditingChannel;
-                    this.RaisePropertyChanged(nameof(EditingChannel));
-                    break;
-                case nameof(ChannelManagementViewModel.EditingChannelName):
-                    _editingChannelName = _channelManagementVm.EditingChannelName;
-                    this.RaisePropertyChanged(nameof(EditingChannelName));
-                    break;
-                case nameof(ChannelManagementViewModel.ChannelPendingDelete):
-                    _channelPendingDelete = _channelManagementVm.ChannelPendingDelete;
-                    this.RaisePropertyChanged(nameof(ChannelPendingDelete));
-                    this.RaisePropertyChanged(nameof(ShowChannelDeleteConfirmation));
-                    break;
-            }
-        };
 
         // Wire up channel management events
         _channelManagementVm.ErrorOccurred += error => ErrorMessage = error;
@@ -780,25 +651,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             (community, isLoading) => community is not null && !isLoading);
 
         CreateChannelCommand = ReactiveCommand.CreateFromTask(CreateChannelAsync, canCreateChannel);
-
-        // Channel management commands (delegated to ChannelManagementViewModel)
-        StartEditChannelCommand = _channelManagementVm.StartEditChannelCommand;
-        SaveChannelNameCommand = _channelManagementVm.SaveChannelNameCommand;
-        CancelEditChannelCommand = _channelManagementVm.CancelEditChannelCommand;
-        DeleteChannelCommand = _channelManagementVm.DeleteChannelCommand;
-        ConfirmDeleteChannelCommand = _channelManagementVm.ConfirmDeleteChannelCommand;
-        CancelDeleteChannelCommand = _channelManagementVm.CancelDeleteChannelCommand;
-        ReorderChannelsCommand = _channelManagementVm.ReorderChannelsCommand;
-        PreviewReorderCommand = _channelManagementVm.PreviewReorderCommand;
-        CancelPreviewCommand = _channelManagementVm.CancelPreviewCommand;
-
-        // Message commands (delegated to MessageInputViewModel)
-        StartEditMessageCommand = _messageInputVm.StartEditMessageCommand;
-        SaveMessageEditCommand = _messageInputVm.SaveMessageEditCommand;
-        CancelEditMessageCommand = _messageInputVm.CancelEditMessageCommand;
-        DeleteMessageCommand = _messageInputVm.DeleteMessageCommand;
-        ReplyToMessageCommand = _messageInputVm.ReplyToMessageCommand;
-        CancelReplyCommand = _messageInputVm.CancelReplyCommand;
         ToggleReactionCommand = ReactiveCommand.CreateFromTask<(MessageResponse Message, string Emoji)>(ToggleReactionAsync);
         AddReactionCommand = ReactiveCommand.CreateFromTask<(MessageResponse Message, string Emoji)>(AddReactionAsync);
         TogglePinCommand = ReactiveCommand.CreateFromTask<MessageResponse>(TogglePinAsync);
@@ -865,9 +717,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         ServerMuteUserCommand = ReactiveCommand.CreateFromTask<VoiceParticipantViewModel>(ServerMuteUserAsync);
         ServerDeafenUserCommand = ReactiveCommand.CreateFromTask<VoiceParticipantViewModel>(ServerDeafenUserAsync);
         MoveUserToChannelCommand = ReactiveCommand.CreateFromTask<(VoiceParticipantViewModel, VoiceChannelViewModel)>(MoveUserToChannelAsync);
-
-        // SendMessageCommand is delegated to MessageInputViewModel
-        SendMessageCommand = _messageInputVm.SendMessageCommand;
 
         // React to community selection changes
         this.WhenAnyValue(x => x.SelectedCommunity)
@@ -1021,8 +870,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                 // Clear local state
                 // VoiceChannelContentViewModel clears reactively when VoiceStore.CurrentChannelId becomes null
                 CurrentVoiceChannel = null;
-                IsCameraOn = false;
-                IsScreenSharing = false;
+                _voiceControl?.ResetTransientState();
                 IsVoiceVideoOverlayOpen = false;
                 SelectedVoiceChannelForViewing = null;
 
@@ -1326,42 +1174,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         }
     }
 
-    public string MessageInput
-    {
-        get => _messageInput;
-        set
-        {
-            if (_messageInputVm != null)
-            {
-                _messageInputVm.MessageInput = value;
-            }
-            else
-            {
-                this.RaiseAndSetIfChanged(ref _messageInput, value);
-            }
-        }
-    }
-
     // Typing indicator properties (backed by TypingStore)
     public bool IsAnyoneTyping => _isAnyoneTyping;
 
     public string TypingIndicatorText => _typingIndicatorText;
-
-    // Unified autocomplete properties (delegated to MessageInputViewModel)
-    public bool IsAutocompletePopupOpen => _messageInputVm?.IsAutocompletePopupOpen ?? false;
-
-    public ObservableCollection<IAutocompleteSuggestion> AutocompleteSuggestions =>
-        _messageInputVm?.AutocompleteSuggestions ?? new ObservableCollection<IAutocompleteSuggestion>();
-
-    public int SelectedAutocompleteIndex
-    {
-        get => _messageInputVm?.SelectedAutocompleteIndex ?? -1;
-        set
-        {
-            if (_messageInputVm != null)
-                _messageInputVm.SelectedAutocompleteIndex = value;
-        }
-    }
 
     /// <summary>
     /// Self-contained GIF picker ViewModel (appears in message list).
@@ -1549,11 +1365,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public IObservable<ConnectionState> ConnectionStatusObservable => _stores.PresenceStore.ConnectionStatus;
 
     /// <summary>
-    /// Observable voice connection status from VoiceStore.
-    /// </summary>
-    public IObservable<VoiceConnectionStatus> VoiceConnectionStatusObservable => _stores.VoiceStore.ConnectionStatus;
-
-    /// <summary>
     /// Observable list of online user IDs from PresenceStore.
     /// </summary>
     public IObservable<IReadOnlyCollection<Guid>> OnlineUserIds => _stores.PresenceStore.OnlineUserIds;
@@ -1601,93 +1412,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
     #endregion
 
-    public ChannelState? EditingChannel
-    {
-        get => _editingChannel;
-        set
-        {
-            if (_channelManagementVm != null && _channelManagementVm.EditingChannel != value)
-            {
-                // Start or cancel edit via ViewModel
-                if (value != null)
-                    _channelManagementVm.StartEditChannel(value);
-                else
-                    _channelManagementVm.CancelEditChannel();
-            }
-            this.RaiseAndSetIfChanged(ref _editingChannel, value);
-        }
-    }
-
-    public string EditingChannelName
-    {
-        get => _editingChannelName;
-        set
-        {
-            if (_channelManagementVm != null)
-            {
-                _channelManagementVm.EditingChannelName = value;
-            }
-            this.RaiseAndSetIfChanged(ref _editingChannelName, value);
-        }
-    }
-
-    /// <summary>
-    /// The channel pending deletion (shown in confirmation dialog).
-    /// </summary>
-    public ChannelState? ChannelPendingDelete
-    {
-        get => _channelPendingDelete;
-        set
-        {
-            if (_channelManagementVm != null && _channelManagementVm.ChannelPendingDelete != value)
-            {
-                _channelManagementVm.ChannelPendingDelete = value;
-            }
-            this.RaiseAndSetIfChanged(ref _channelPendingDelete, value);
-            this.RaisePropertyChanged(nameof(ShowChannelDeleteConfirmation));
-        }
-    }
-
-    /// <summary>
-    /// Whether to show the channel deletion confirmation dialog.
-    /// </summary>
-    public bool ShowChannelDeleteConfirmation => ChannelPendingDelete is not null;
-
-    public MessageResponse? EditingMessage
-    {
-        get => _editingMessage;
-        set => this.RaiseAndSetIfChanged(ref _editingMessage, value);
-    }
-
-    public string EditingMessageContent
-    {
-        get => _editingMessageContent;
-        set
-        {
-            if (_messageInputVm != null)
-            {
-                _messageInputVm.EditingMessageContent = value;
-            }
-            else
-            {
-                this.RaiseAndSetIfChanged(ref _editingMessageContent, value);
-            }
-        }
-    }
-
-    public MessageResponse? ReplyingToMessage
-    {
-        get => _replyingToMessage;
-        set => this.RaiseAndSetIfChanged(ref _replyingToMessage, value);
-    }
-
-    public bool IsReplying => ReplyingToMessage is not null;
-
-    // File attachment properties (delegated to MessageInputViewModel)
-    public ObservableCollection<PendingAttachment> PendingAttachments =>
-        _messageInputVm?.PendingAttachments ?? _pendingAttachments;
-    public bool HasPendingAttachments => _messageInputVm?.HasPendingAttachments ?? _pendingAttachments.Count > 0;
-
     public AttachmentResponse? LightboxImage
     {
         get => _lightboxImage;
@@ -1699,21 +1423,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     }
 
     public bool IsLightboxOpen => LightboxImage is not null;
-
-    public void AddPendingAttachment(string fileName, Stream stream, long size, string contentType)
-    {
-        _messageInputVm?.AddPendingAttachment(fileName, stream, size, contentType);
-    }
-
-    public void RemovePendingAttachment(PendingAttachment attachment)
-    {
-        _messageInputVm?.RemovePendingAttachment(attachment);
-    }
-
-    public void ClearPendingAttachments()
-    {
-        _messageInputVm?.ClearPendingAttachments();
-    }
 
     public void OpenLightbox(AttachmentResponse attachment)
     {
@@ -1753,7 +1462,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         try
         {
             // Send the GIF URL as the message content
-            var result = await _apiClient.SendMessageAsync(SelectedChannel.Id, gif.Url, ReplyingToMessage?.Id);
+            var result = await _apiClient.SendMessageAsync(SelectedChannel.Id, gif.Url, _messageInputVm?.ReplyingToMessage?.Id);
             if (result.Success)
             {
                 _messageInputVm?.CancelReply();
@@ -1919,56 +1628,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// </summary>
     public bool ShowAudioDeviceWarning => IsInVoiceChannel && (HasNoInputDevice || HasNoOutputDevice);
 
-    public bool IsMuted
-    {
-        get => _voiceControl?.IsMuted ?? _isMuted;
-        set
-        {
-            if (_voiceControl is not null) _voiceControl.IsMuted = value;
-            else this.RaiseAndSetIfChanged(ref _isMuted, value);
-        }
-    }
-
-    public bool IsDeafened
-    {
-        get => _voiceControl?.IsDeafened ?? _isDeafened;
-        set
-        {
-            if (_voiceControl is not null) _voiceControl.IsDeafened = value;
-            else this.RaiseAndSetIfChanged(ref _isDeafened, value);
-        }
-    }
-
-    public bool IsCameraOn
-    {
-        get => _voiceControl?.IsCameraOn ?? _isCameraOn;
-        set
-        {
-            if (_voiceControl is not null) _voiceControl.IsCameraOn = value;
-            else this.RaiseAndSetIfChanged(ref _isCameraOn, value);
-        }
-    }
-
-    public bool IsScreenSharing
-    {
-        get => _voiceControl?.IsScreenSharing ?? _isScreenSharing;
-        set
-        {
-            if (_voiceControl is not null) _voiceControl.IsScreenSharing = value;
-            else this.RaiseAndSetIfChanged(ref _isScreenSharing, value);
-        }
-    }
-
-    public bool IsSpeaking
-    {
-        get => _voiceControl?.IsSpeaking ?? _isSpeaking;
-        set
-        {
-            if (_voiceControl is not null) _voiceControl.IsSpeaking = value;
-            else this.RaiseAndSetIfChanged(ref _isSpeaking, value);
-        }
-    }
-
     /// <summary>
     /// Whether the host (sharer) allows viewers to draw on the screen share.
     /// This is only relevant when this user is sharing their screen.
@@ -1984,28 +1643,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             }
         }
     }
-
-    public VoiceConnectionStatus VoiceConnectionStatus
-    {
-        get => _voiceConnectionStatus;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _voiceConnectionStatus, value);
-            this.RaisePropertyChanged(nameof(VoiceConnectionStatusText));
-            this.RaisePropertyChanged(nameof(IsVoiceConnecting));
-            this.RaisePropertyChanged(nameof(IsVoiceConnected));
-        }
-    }
-
-    public string VoiceConnectionStatusText => VoiceConnectionStatus switch
-    {
-        VoiceConnectionStatus.Connected => "Voice Connected",
-        VoiceConnectionStatus.Connecting => "Connecting...",
-        _ => ""
-    };
-
-    public bool IsVoiceConnecting => VoiceConnectionStatus == VoiceConnectionStatus.Connecting;
-    public bool IsVoiceConnected => VoiceConnectionStatus == VoiceConnectionStatus.Connected;
 
     // Computed properties for channel filtering
     // Now using store-backed collection for reactive updates
@@ -2039,6 +1676,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     // Gaming Stations properties (delegate to GamingStationViewModel)
     public GamingStationViewModel? GamingStation => _gamingStation;
     public VoiceControlViewModel? VoiceControl => _voiceControl;
+    public MessageInputViewModel? MessageInputVM => _messageInputVm;
+    public ChannelManagementViewModel? ChannelManagement => _channelManagementVm;
     public bool IsViewingGamingStations => _gamingStation?.IsViewingGamingStations ?? false;
     public bool IsLoadingStations => _gamingStation?.IsLoadingStations ?? false;
     public ObservableCollection<GamingStationResponse> MyStations => _gamingStation?.MyStations ?? new ObservableCollection<GamingStationResponse>();
@@ -2310,22 +1949,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<CommunityResponse, Unit> SelectCommunityCommand { get; }
     public ReactiveCommand<ChannelResponse, Unit> SelectChannelCommand { get; }
     public ReactiveCommand<Unit, Unit> CreateChannelCommand { get; }
-    public ReactiveCommand<ChannelState, Unit> StartEditChannelCommand { get; }
-    public ReactiveCommand<Unit, Unit> SaveChannelNameCommand { get; }
-    public ReactiveCommand<Unit, Unit> CancelEditChannelCommand { get; }
-    public ReactiveCommand<ChannelState, Unit> DeleteChannelCommand { get; }
-    public ReactiveCommand<Unit, Unit> ConfirmDeleteChannelCommand { get; }
-    public ReactiveCommand<Unit, Unit> CancelDeleteChannelCommand { get; }
-    public ReactiveCommand<List<Guid>, Unit> ReorderChannelsCommand { get; }
-    public ReactiveCommand<(Guid DraggedId, Guid TargetId, bool DropBefore), Unit> PreviewReorderCommand { get; }
-    public ReactiveCommand<Unit, Unit> CancelPreviewCommand { get; }
-    public ReactiveCommand<Unit, Unit> SendMessageCommand { get; }
-    public ReactiveCommand<MessageResponse, Unit> StartEditMessageCommand { get; }
-    public ReactiveCommand<Unit, Unit> SaveMessageEditCommand { get; }
-    public ReactiveCommand<Unit, Unit> CancelEditMessageCommand { get; }
-    public ReactiveCommand<MessageResponse, Unit> DeleteMessageCommand { get; }
-    public ReactiveCommand<MessageResponse, Unit> ReplyToMessageCommand { get; }
-    public ReactiveCommand<Unit, Unit> CancelReplyCommand { get; }
     public ReactiveCommand<(MessageResponse Message, string Emoji), Unit> ToggleReactionCommand { get; }
     public ReactiveCommand<(MessageResponse Message, string Emoji), Unit> AddReactionCommand { get; }
     public ReactiveCommand<MessageResponse, Unit> TogglePinCommand { get; }
@@ -2535,7 +2158,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
         // Show connecting state immediately for better UX
         CurrentVoiceChannel = channel;
-        VoiceConnectionStatus = VoiceConnectionStatus.Connecting;
+        _stores.VoiceStore.SetConnectionStatus(VoiceConnectionStatus.Connecting);
 
         // Delegate to coordinator (handles SignalR, store, and WebRTC)
         var result = await _voiceCoordinator.JoinVoiceChannelAsync(channel.Id);
@@ -2554,7 +2177,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         {
             // Join failed - reset view state
             CurrentVoiceChannel = null;
-            VoiceConnectionStatus = VoiceConnectionStatus.Disconnected;
+            _stores.VoiceStore.SetConnectionStatus(VoiceConnectionStatus.Disconnected);
         }
     }
 
@@ -2624,69 +2247,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         if (args.Participant.UserId == _auth.UserId) return;
 
         await _voiceCoordinator.MoveUserAsync(args.Participant.UserId, args.TargetChannel.Id);
-    }
-
-    // Unified autocomplete methods (delegated to MessageInputViewModel)
-
-    /// <summary>
-    /// Closes the autocomplete popup.
-    /// </summary>
-    public void CloseAutocompletePopup()
-    {
-        _messageInputVm?.CloseAutocompletePopup();
-    }
-
-    /// <summary>
-    /// Selects a suggestion and returns the cursor position where the caret should be placed.
-    /// Returns -1 if no suggestion was inserted (e.g., command was executed).
-    /// </summary>
-    public int SelectAutocompleteSuggestion(IAutocompleteSuggestion suggestion)
-    {
-        return _messageInputVm?.SelectAutocompleteSuggestion(suggestion) ?? -1;
-    }
-
-    /// <summary>
-    /// Selects a suggestion and returns both the new text and cursor position.
-    /// The caller is responsible for updating the UI directly.
-    /// </summary>
-    public (string newText, int cursorPosition)? SelectAutocompleteSuggestionWithText(IAutocompleteSuggestion suggestion)
-    {
-        return _messageInputVm?.SelectAutocompleteSuggestionWithText(suggestion);
-    }
-
-    /// <summary>
-    /// Selects the currently highlighted suggestion and returns the cursor position.
-    /// Returns -1 if no suggestion was selected.
-    /// </summary>
-    public int SelectCurrentAutocompleteSuggestion()
-    {
-        return _messageInputVm?.SelectCurrentAutocompleteSuggestion() ?? -1;
-    }
-
-    /// <summary>
-    /// Selects the currently highlighted suggestion and returns both the new text and cursor position.
-    /// The caller is responsible for updating the UI directly (setting TextBox.Text).
-    /// The TwoWay binding will push the value back to MessageInput.
-    /// </summary>
-    public (string newText, int cursorPosition)? SelectCurrentAutocompleteSuggestionWithText()
-    {
-        return _messageInputVm?.SelectCurrentAutocompleteSuggestionWithText();
-    }
-
-    /// <summary>
-    /// Navigates to the previous autocomplete suggestion.
-    /// </summary>
-    public void NavigateAutocompleteUp()
-    {
-        _messageInputVm?.NavigateAutocompleteUp();
-    }
-
-    /// <summary>
-    /// Navigates to the next autocomplete suggestion.
-    /// </summary>
-    public void NavigateAutocompleteDown()
-    {
-        _messageInputVm?.NavigateAutocompleteDown();
     }
 
     // Reaction methods
