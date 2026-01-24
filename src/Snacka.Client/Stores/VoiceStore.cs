@@ -84,6 +84,12 @@ public interface IVoiceStore : IStore<VoiceParticipantState, Guid>
     IReadOnlyList<VoiceParticipantState> GetParticipantsForChannel(Guid channelId);
 
     /// <summary>
+    /// Gets an observable of participants for a specific channel.
+    /// Updates whenever participants join, leave, or change state.
+    /// </summary>
+    IObservable<IReadOnlyList<VoiceParticipantState>> GetParticipantsForChannelObservable(Guid channelId);
+
+    /// <summary>
     /// Gets the local user's participant state if connected.
     /// </summary>
     VoiceParticipantState? GetLocalParticipant(Guid localUserId);
@@ -175,6 +181,17 @@ public sealed class VoiceStore : IVoiceStore, IDisposable
             .OrderBy(p => p.JoinedAt)
             .ToList()
             .AsReadOnly();
+    }
+
+    public IObservable<IReadOnlyList<VoiceParticipantState>> GetParticipantsForChannelObservable(Guid channelId)
+    {
+        return _participantCache.Connect()
+            .QueryWhenChanged(cache =>
+                cache.Items
+                    .Where(p => p.ChannelId == channelId)
+                    .OrderBy(p => p.JoinedAt)
+                    .ToList()
+                    .AsReadOnly() as IReadOnlyList<VoiceParticipantState>);
     }
 
     public VoiceParticipantState? GetLocalParticipant(Guid localUserId)
