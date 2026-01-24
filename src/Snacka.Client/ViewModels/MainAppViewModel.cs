@@ -64,10 +64,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private Guid? _voiceOnOtherDeviceChannelId;
     private string? _voiceOnOtherDeviceChannelName;
 
-    // Drag preview state
-    // Track pending reorder to skip redundant SignalR updates
-    private Guid? _pendingReorderCommunityId;
-
     // Voice channels with participant tracking (managed by VoiceChannelViewModelManager)
     private VoiceChannelViewModelManager? _voiceChannelManager;
 
@@ -104,6 +100,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
     // Message input ViewModel (encapsulates message composition, editing, reply, autocomplete)
     private MessageInputViewModel? _messageInputVm;
+
+    // Channel management ViewModel (encapsulates channel editing, deletion, reordering)
+    private ChannelManagementViewModel? _channelManagementVm;
 
     /// <summary>
     /// Fired when an NV12 frame should be rendered to GPU fullscreen view.
@@ -663,6 +662,42 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         _messageInputVm.ErrorOccurred += error => ErrorMessage = error;
         _messageInputVm.GifPreviewRequested += async query => await ShowGifPreviewAsync(query);
 
+        // Create channel management ViewModel
+        _channelManagementVm = new ChannelManagementViewModel(
+            _channelCoordinator,
+            _stores.ChannelStore,
+            () => SelectedCommunity,
+            () => SelectedChannel,
+            channel => SelectedChannel = channel,
+            () => _storeAllChannels.ToList(),
+            () => _storeTextChannels.ToList(),
+            () => _voiceChannelManager);
+
+        // Sync ChannelManagementViewModel state with local fields
+        _channelManagementVm.PropertyChanged += (_, e) =>
+        {
+            switch (e.PropertyName)
+            {
+                case nameof(ChannelManagementViewModel.EditingChannel):
+                    _editingChannel = _channelManagementVm.EditingChannel;
+                    this.RaisePropertyChanged(nameof(EditingChannel));
+                    break;
+                case nameof(ChannelManagementViewModel.EditingChannelName):
+                    _editingChannelName = _channelManagementVm.EditingChannelName;
+                    this.RaisePropertyChanged(nameof(EditingChannelName));
+                    break;
+                case nameof(ChannelManagementViewModel.ChannelPendingDelete):
+                    _channelPendingDelete = _channelManagementVm.ChannelPendingDelete;
+                    this.RaisePropertyChanged(nameof(ChannelPendingDelete));
+                    this.RaisePropertyChanged(nameof(ShowChannelDeleteConfirmation));
+                    break;
+            }
+        };
+
+        // Wire up channel management events
+        _channelManagementVm.ErrorOccurred += error => ErrorMessage = error;
+        _channelManagementVm.LoadingChanged += loading => IsLoading = loading;
+
         // Commands
         LogoutCommand = ReactiveCommand.Create(_onLogout);
         SwitchServerCommand = _onSwitchServer is not null
@@ -702,15 +737,17 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             (community, isLoading) => community is not null && !isLoading);
 
         CreateChannelCommand = ReactiveCommand.CreateFromTask(CreateChannelAsync, canCreateChannel);
-        StartEditChannelCommand = ReactiveCommand.Create<ChannelResponse>(StartEditChannel);
-        SaveChannelNameCommand = ReactiveCommand.CreateFromTask(SaveChannelNameAsync);
-        CancelEditChannelCommand = ReactiveCommand.Create(CancelEditChannel);
-        DeleteChannelCommand = ReactiveCommand.Create<ChannelResponse>(RequestDeleteChannel);
-        ConfirmDeleteChannelCommand = ReactiveCommand.CreateFromTask(ConfirmDeleteChannelAsync);
-        CancelDeleteChannelCommand = ReactiveCommand.Create(CancelDeleteChannel);
-        ReorderChannelsCommand = ReactiveCommand.CreateFromTask<List<Guid>>(ReorderChannelsAsync);
-        PreviewReorderCommand = ReactiveCommand.Create<(Guid DraggedId, Guid TargetId, bool DropBefore)>(PreviewReorder);
-        CancelPreviewCommand = ReactiveCommand.Create(CancelPreview);
+
+        // Channel management commands (delegated to ChannelManagementViewModel)
+        StartEditChannelCommand = _channelManagementVm.StartEditChannelCommand;
+        SaveChannelNameCommand = _channelManagementVm.SaveChannelNameCommand;
+        CancelEditChannelCommand = _channelManagementVm.CancelEditChannelCommand;
+        DeleteChannelCommand = _channelManagementVm.DeleteChannelCommand;
+        ConfirmDeleteChannelCommand = _channelManagementVm.ConfirmDeleteChannelCommand;
+        CancelDeleteChannelCommand = _channelManagementVm.CancelDeleteChannelCommand;
+        ReorderChannelsCommand = _channelManagementVm.ReorderChannelsCommand;
+        PreviewReorderCommand = _channelManagementVm.PreviewReorderCommand;
+        CancelPreviewCommand = _channelManagementVm.CancelPreviewCommand;
 
         // Message commands (delegated to MessageInputViewModel)
         StartEditMessageCommand = _messageInputVm.StartEditMessageCommand;
@@ -886,9 +923,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             if (SelectedCommunity?.Id != e.CommunityId) return;
 
             // Skip if we just initiated this reorder (we already updated optimistically)
-            if (_pendingReorderCommunityId == e.CommunityId)
+            if (_channelManagementVm?.PendingReorderCommunityId == e.CommunityId)
             {
-                _pendingReorderCommunityId = null;
+                _channelManagementVm?.ClearPendingReorder();
                 return;
             }
 
@@ -1721,13 +1758,31 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public ChannelResponse? EditingChannel
     {
         get => _editingChannel;
-        set => this.RaiseAndSetIfChanged(ref _editingChannel, value);
+        set
+        {
+            if (_channelManagementVm != null && _channelManagementVm.EditingChannel != value)
+            {
+                // Start or cancel edit via ViewModel
+                if (value != null)
+                    _channelManagementVm.StartEditChannel(value);
+                else
+                    _channelManagementVm.CancelEditChannel();
+            }
+            this.RaiseAndSetIfChanged(ref _editingChannel, value);
+        }
     }
 
     public string EditingChannelName
     {
         get => _editingChannelName;
-        set => this.RaiseAndSetIfChanged(ref _editingChannelName, value);
+        set
+        {
+            if (_channelManagementVm != null)
+            {
+                _channelManagementVm.EditingChannelName = value;
+            }
+            this.RaiseAndSetIfChanged(ref _editingChannelName, value);
+        }
     }
 
     /// <summary>
@@ -1738,6 +1793,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         get => _channelPendingDelete;
         set
         {
+            if (_channelManagementVm != null && _channelManagementVm.ChannelPendingDelete != value)
+            {
+                _channelManagementVm.ChannelPendingDelete = value;
+            }
             this.RaiseAndSetIfChanged(ref _channelPendingDelete, value);
             this.RaisePropertyChanged(nameof(ShowChannelDeleteConfirmation));
         }
@@ -2677,167 +2736,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             IsLoading = false;
         }
     }
-
-    private void StartEditChannel(ChannelResponse channel)
-    {
-        EditingChannel = channel;
-        EditingChannelName = channel.Name;
-    }
-
-    private void CancelEditChannel()
-    {
-        EditingChannel = null;
-        EditingChannelName = string.Empty;
-    }
-
-    private async Task SaveChannelNameAsync()
-    {
-        if (EditingChannel is null || SelectedCommunity is null || string.IsNullOrWhiteSpace(EditingChannelName))
-            return;
-
-        IsLoading = true;
-        try
-        {
-            var success = await _channelCoordinator.UpdateChannelAsync(SelectedCommunity.Id, EditingChannel.Id, EditingChannelName.Trim(), null);
-
-            if (success)
-            {
-                // Update selected channel if it was the one being edited
-                var updatedChannelState = _stores.ChannelStore.GetChannel(EditingChannel.Id);
-                if (SelectedChannel?.Id == EditingChannel.Id && updatedChannelState is not null)
-                {
-                    SelectedChannel = ToChannelResponse(updatedChannelState);
-                }
-
-                EditingChannel = null;
-                EditingChannelName = string.Empty;
-            }
-            else
-            {
-                ErrorMessage = "Failed to update channel";
-            }
-        }
-        finally
-        {
-            IsLoading = false;
-        }
-    }
-
-    private void RequestDeleteChannel(ChannelResponse channel)
-    {
-        ChannelPendingDelete = channel;
-    }
-
-    private void CancelDeleteChannel()
-    {
-        ChannelPendingDelete = null;
-    }
-
-    private async Task ConfirmDeleteChannelAsync()
-    {
-        if (ChannelPendingDelete is null || SelectedCommunity is null) return;
-
-        var channel = ChannelPendingDelete;
-
-        // Check if this is the currently selected channel
-        var wasSelected = SelectedChannel?.Id == channel.Id;
-
-        IsLoading = true;
-        try
-        {
-            var success = await _channelCoordinator.DeleteChannelAsync(channel.Id);
-            if (success)
-            {
-                // If the deleted channel was selected, select another one
-                if (wasSelected && _storeAllChannels.Count > 0)
-                {
-                    SelectedChannel = _storeTextChannels.FirstOrDefault() ?? _storeAllChannels.FirstOrDefault();
-                }
-                else if (wasSelected)
-                {
-                    SelectedChannel = null;
-                }
-
-                // Clear the pending delete
-                ChannelPendingDelete = null;
-            }
-            else
-            {
-                ErrorMessage = "Failed to delete channel";
-            }
-        }
-        finally
-        {
-            IsLoading = false;
-        }
-    }
-
-    private async Task ReorderChannelsAsync(List<Guid> channelIds)
-    {
-        if (SelectedCommunity is null) return;
-
-        // Store original order for rollback
-        var originalChannels = _storeAllChannels.ToList();
-        var originalVoiceOrder = _voiceChannelManager?.CaptureOrder() ?? new List<VoiceChannelViewModel>();
-
-        // Apply optimistically - update UI immediately
-        ApplyChannelOrder(channelIds);
-        ClearPreviewState();
-
-        // Mark that we're expecting a SignalR event for this reorder
-        _pendingReorderCommunityId = SelectedCommunity.Id;
-
-        try
-        {
-            var success = await _channelCoordinator.ReorderChannelsAsync(SelectedCommunity.Id, channelIds);
-            if (!success)
-            {
-                // Server rejected - rollback to original order
-                ErrorMessage = "Failed to reorder channels";
-                RollbackChannelOrder(originalChannels, originalVoiceOrder);
-                _pendingReorderCommunityId = null;
-            }
-        }
-        catch (Exception ex)
-        {
-            // Network error - rollback to original order
-            ErrorMessage = $"Error reordering channels: {ex.Message}";
-            RollbackChannelOrder(originalChannels, originalVoiceOrder);
-            _pendingReorderCommunityId = null;
-        }
-    }
-
-    private void ApplyChannelOrder(List<Guid> channelIds)
-    {
-        // Create a lookup for new positions
-        var positionLookup = channelIds.Select((id, index) => (id, index))
-            .ToDictionary(x => x.id, x => x.index);
-
-        // Create updated channels with new positions and update the store
-        var updatedChannels = _storeAllChannels
-            .Select(c => c with { Position = positionLookup.GetValueOrDefault(c.Id, int.MaxValue) })
-            .ToList();
-        _stores.ChannelStore.ReorderChannels(updatedChannels);
-
-        // Update VoiceChannelViewModels positions and re-sort
-        _voiceChannelManager?.ApplyPositions(channelIds);
-    }
-
-    private void RollbackChannelOrder(List<ChannelResponse> originalChannels, List<VoiceChannelViewModel> originalVoiceOrder)
-    {
-        // Restore channels in the store
-        _stores.ChannelStore.SetChannels(originalChannels);
-
-        // Restore VoiceChannelViewModels
-        _voiceChannelManager?.RestoreOrder(originalVoiceOrder);
-    }
-
-    private void PreviewReorder((Guid DraggedId, Guid TargetId, bool DropBefore) args) =>
-        _voiceChannelManager?.PreviewReorder(args.DraggedId, args.TargetId, args.DropBefore);
-
-    private void CancelPreview() => _voiceChannelManager?.CancelPreview();
-
-    private void ClearPreviewState() => _voiceChannelManager?.ClearPreviewState();
 
     // Voice channel methods
     private async Task CreateVoiceChannelAsync()
