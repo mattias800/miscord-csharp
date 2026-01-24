@@ -208,6 +208,77 @@ public class ThreadViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
+    /// Updates reaction state for a reply in this thread.
+    /// </summary>
+    public void UpdateReplyReaction(Guid messageId, string emoji, int count, bool added, Guid userId, string username, string effectiveDisplayName, Guid currentUserId)
+    {
+        var replyIndex = -1;
+        for (var i = 0; i < Replies.Count; i++)
+        {
+            if (Replies[i].Id == messageId)
+            {
+                replyIndex = i;
+                break;
+            }
+        }
+
+        if (replyIndex < 0) return;
+
+        var reply = Replies[replyIndex];
+        var reactions = reply.Reactions?.ToList() ?? new List<ReactionSummary>();
+        var reactionIndex = reactions.FindIndex(r => r.Emoji == emoji);
+
+        if (added)
+        {
+            if (reactionIndex >= 0)
+            {
+                var existing = reactions[reactionIndex];
+                var users = existing.Users.ToList();
+                if (!users.Any(u => u.UserId == userId))
+                    users.Add(new ReactionUser(userId, username, effectiveDisplayName));
+                reactions[reactionIndex] = existing with
+                {
+                    Count = count,
+                    HasReacted = existing.HasReacted || userId == currentUserId,
+                    Users = users
+                };
+            }
+            else
+            {
+                reactions.Add(new ReactionSummary(
+                    emoji,
+                    count,
+                    userId == currentUserId,
+                    new List<ReactionUser> { new(userId, username, effectiveDisplayName) }
+                ));
+            }
+        }
+        else
+        {
+            if (reactionIndex >= 0)
+            {
+                if (count == 0)
+                {
+                    reactions.RemoveAt(reactionIndex);
+                }
+                else
+                {
+                    var existing = reactions[reactionIndex];
+                    var users = existing.Users.Where(u => u.UserId != userId).ToList();
+                    reactions[reactionIndex] = existing with
+                    {
+                        Count = count,
+                        HasReacted = userId == currentUserId ? false : existing.HasReacted,
+                        Users = users
+                    };
+                }
+            }
+        }
+
+        Replies[replyIndex] = reply with { Reactions = reactions.Count > 0 ? reactions : null };
+    }
+
+    /// <summary>
     /// Closes the thread panel.
     /// </summary>
     private void Close()

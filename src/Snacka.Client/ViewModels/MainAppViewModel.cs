@@ -825,65 +825,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         _signalR.ReactionUpdated += e => Dispatcher.UIThread.Post(() =>
         {
             // Update in thread replies if thread is open (view-specific; main list via SignalREventDispatcher)
-            if (CurrentThread != null)
-            {
-                var replyIndex = CurrentThread.Replies.ToList().FindIndex(m => m.Id == e.MessageId);
-                if (replyIndex >= 0)
-                {
-                    var reply = CurrentThread.Replies[replyIndex];
-                    var reactions = reply.Reactions?.ToList() ?? new List<ReactionSummary>();
-                    var reactionIndex = reactions.FindIndex(r => r.Emoji == e.Emoji);
-
-                    if (e.Added)
-                    {
-                        if (reactionIndex >= 0)
-                        {
-                            var existing = reactions[reactionIndex];
-                            var users = existing.Users.ToList();
-                            if (!users.Any(u => u.UserId == e.UserId))
-                                users.Add(new ReactionUser(e.UserId, e.Username, e.EffectiveDisplayName));
-                            reactions[reactionIndex] = existing with
-                            {
-                                Count = e.Count,
-                                HasReacted = existing.HasReacted || e.UserId == _auth.UserId,
-                                Users = users
-                            };
-                        }
-                        else
-                        {
-                            reactions.Add(new ReactionSummary(
-                                e.Emoji,
-                                e.Count,
-                                e.UserId == _auth.UserId,
-                                new List<ReactionUser> { new(e.UserId, e.Username, e.EffectiveDisplayName) }
-                            ));
-                        }
-                    }
-                    else
-                    {
-                        if (reactionIndex >= 0)
-                        {
-                            if (e.Count == 0)
-                            {
-                                reactions.RemoveAt(reactionIndex);
-                            }
-                            else
-                            {
-                                var existing = reactions[reactionIndex];
-                                var users = existing.Users.Where(u => u.UserId != e.UserId).ToList();
-                                reactions[reactionIndex] = existing with
-                                {
-                                    Count = e.Count,
-                                    HasReacted = e.UserId == _auth.UserId ? false : existing.HasReacted,
-                                    Users = users
-                                };
-                            }
-                        }
-                    }
-
-                    CurrentThread.Replies[replyIndex] = reply with { Reactions = reactions.Count > 0 ? reactions : null };
-                }
-            }
+            CurrentThread?.UpdateReplyReaction(
+                e.MessageId, e.Emoji, e.Count, e.Added,
+                e.UserId, e.Username, e.EffectiveDisplayName, _auth.UserId);
         });
 
         _signalR.MessagePinned += e => Dispatcher.UIThread.Post(() =>
