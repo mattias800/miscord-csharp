@@ -827,18 +827,11 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
         _signalR.MessageReceived += message => Dispatcher.UIThread.Post(() =>
         {
-            // Typing indicator cleared by SignalREventDispatcher -> TypingStore
-            // Message list updates handled by SignalREventDispatcher -> MessageStore
+            // All message handling done by SignalREventDispatcher:
+            // - Message list updates -> MessageStore
+            // - Typing indicator cleared -> TypingStore
+            // - Unread count increment -> ChannelStore
             // StoreMessages auto-updates via DynamicData binding
-
-            // Update unread count for channels not currently selected
-            if (SelectedChannel is null || message.ChannelId != SelectedChannel.Id)
-            {
-                if (message.AuthorId != _auth.UserId)
-                {
-                    _stores.ChannelStore.IncrementUnreadCount(message.ChannelId);
-                }
-            }
         });
 
         _signalR.MessageEdited += message => Dispatcher.UIThread.Post(() =>
