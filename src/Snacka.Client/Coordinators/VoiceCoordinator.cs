@@ -111,6 +111,13 @@ public interface IVoiceCoordinator
     /// Leaves current channel and joins the target channel.
     /// </summary>
     Task<bool> HandleCurrentUserMovedAsync(Guid targetChannelId);
+
+    /// <summary>
+    /// Handles being forcibly disconnected from voice (by server/another session).
+    /// Cleans up WebRTC and screen share without notifying server.
+    /// Returns the channel name for UI feedback.
+    /// </summary>
+    Task<string?> HandleForcedDisconnectAsync(Guid channelId);
 }
 
 public class VoiceCoordinator : IVoiceCoordinator
@@ -446,6 +453,40 @@ public class VoiceCoordinator : IVoiceCoordinator
         // Join the target channel
         var result = await JoinVoiceChannelAsync(targetChannelId);
         return result.Success;
+    }
+
+    public async Task<string?> HandleForcedDisconnectAsync(Guid channelId)
+    {
+        // Only process if we're actually in this channel
+        if (_currentChannelId != channelId)
+            return null;
+
+        // Get channel name before cleanup
+        var channel = _channelStore.GetChannel(channelId);
+        var channelName = channel?.Name;
+
+        try
+        {
+            // Stop screen sharing
+            await _webRtc.SetScreenSharingAsync(false);
+
+            // Leave WebRTC connections (don't notify server - it already knows)
+            await _webRtc.LeaveVoiceChannelAsync();
+        }
+        catch
+        {
+            // Ignore errors during cleanup
+        }
+        finally
+        {
+            // Clear local state
+            _currentChannelId = null;
+            _voiceStore.SetCurrentChannel(null);
+            _voiceStore.SetConnectionStatus(VoiceConnectionStatus.Disconnected);
+            _voiceStore.ClearChannel(channelId);
+        }
+
+        return channelName;
     }
 
     private Guid? GetCurrentChannelId()

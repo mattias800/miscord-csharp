@@ -65,8 +65,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     private DMContentViewModel? _dmContent;
 
     // Screen share picker state
-    private bool _isScreenSharePickerOpen;
-    private ScreenSharePickerViewModel? _screenSharePicker;
 
     // Voice video overlay state (for viewing video grid while navigating elsewhere)
     private bool _isVoiceVideoOverlayOpen;
@@ -158,13 +156,13 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
     // Community discovery (extracted ViewModel)
     private CommunityDiscoveryViewModel? _communityDiscovery;
-    private bool _isWelcomeModalOpen;
 
     // Audio device quick selector (extracted ViewModel)
     private AudioDeviceQuickSelectViewModel? _audioDeviceQuickSelect;
 
     public MainAppViewModel(IApiClient apiClient, ISignalRService signalR, IWebRtcService webRtc, IScreenCaptureService screenCaptureService, ISettingsStore settingsStore, IAudioDeviceService audioDeviceService, IControllerStreamingService controllerStreamingService, IControllerHostService controllerHostService, string baseUrl, AuthResponse auth, IConversationStateService conversationStateService, StoreContainer stores, ISignalREventDispatcher signalREventDispatcher, IChannelCoordinator channelCoordinator, ICommunityCoordinator communityCoordinator, IVoiceCoordinator voiceCoordinator, IMessageCoordinator messageCoordinator, IGamingStationCommandHandler gamingStationCommandHandler, Action onLogout, Action? onSwitchServer = null, Action? onOpenSettings = null, bool gifsEnabled = false)
     {
+        #region Field Assignments
         _apiClient = apiClient;
         _conversationStateService = conversationStateService;
         _isGifsEnabled = gifsEnabled;
@@ -187,9 +185,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         _voiceCoordinator = voiceCoordinator;
         _messageCoordinator = messageCoordinator;
         _gamingStationCommandHandler = gamingStationCommandHandler;
-
-        // Generate unique machine ID for gaming station feature
         _currentMachineId = GetOrCreateMachineId();
+        #endregion
+
+        #region Child ViewModels and Event Wiring
 
         // Set local user ID for WebRTC
         if (_webRtc is WebRtcService webRtcService)
@@ -479,22 +478,14 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             auth.UserId,
             auth.Username);
 
-        // Sync ScreenShareViewModel state with local fields (for UI bindings not yet migrated)
+        // Forward ScreenShareViewModel property changes to MainAppViewModel
         _screenShare.PropertyChanged += (_, e) =>
         {
-            switch (e.PropertyName)
+            if (e.PropertyName is nameof(ScreenShareViewModel.IsScreenSharePickerOpen) or
+                                  nameof(ScreenShareViewModel.ScreenSharePicker) or
+                                  nameof(ScreenShareViewModel.IsDrawingAllowedForViewers))
             {
-                case nameof(ScreenShareViewModel.IsScreenSharePickerOpen):
-                    _isScreenSharePickerOpen = _screenShare.IsScreenSharePickerOpen;
-                    this.RaisePropertyChanged(nameof(IsScreenSharePickerOpen));
-                    break;
-                case nameof(ScreenShareViewModel.ScreenSharePicker):
-                    _screenSharePicker = _screenShare.ScreenSharePicker;
-                    this.RaisePropertyChanged(nameof(ScreenSharePicker));
-                    break;
-                case nameof(ScreenShareViewModel.IsDrawingAllowedForViewers):
-                    this.RaisePropertyChanged(nameof(IsDrawingAllowedForViewers));
-                    break;
+                this.RaisePropertyChanged(e.PropertyName);
             }
         };
 
@@ -537,12 +528,11 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // Create welcome modal ViewModel
         _welcomeModal = new WelcomeModalViewModel(_settingsStore);
 
-        // Sync WelcomeModalViewModel state with local field
+        // Forward WelcomeModalViewModel IsOpen changes
         _welcomeModal.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(WelcomeModalViewModel.IsOpen))
             {
-                _isWelcomeModalOpen = _welcomeModal.IsOpen;
                 this.RaisePropertyChanged(nameof(IsWelcomeModalOpen));
             }
         };
@@ -559,7 +549,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         // Create thread panel ViewModel (handles its own SignalR event subscriptions)
         _threadPanel = new ThreadPanelViewModel(_apiClient, _stores.MessageStore, _signalR, _auth.UserId);
 
-        // Initialize all commands
+        #endregion
+
         #region Commands
         // App navigation commands
         LogoutCommand = ReactiveCommand.Create(_onLogout);
@@ -670,6 +661,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         MoveUserToChannelCommand = ReactiveCommand.CreateFromTask<(VoiceParticipantViewModel, VoiceChannelViewModel)>(MoveUserToChannelAsync);
         #endregion
 
+        #region Reactive Subscriptions
+
         // React to community selection changes
         this.WhenAnyValue(x => x.SelectedCommunity)
             .Where(c => c is not null)
@@ -681,6 +674,10 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             .Where(c => c is not null)
             .SelectMany(_ => Observable.FromAsync(OnChannelSelectedAsync))
             .Subscribe();
+
+        #endregion
+
+        #region SignalR and Initialization
 
         // Set up SignalR event handlers
         SetupSignalRHandlers();
@@ -698,6 +695,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
         // Connect to SignalR and load servers on initialization
         Observable.FromAsync(InitializeAsync).Subscribe();
+
+        #endregion
     }
 
     private async Task InitializeAsync()
@@ -845,28 +844,20 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
         _signalR.DisconnectedFromVoice += e => Dispatcher.UIThread.Post(async () =>
         {
-            if (CurrentVoiceChannel is not null && CurrentVoiceChannel.Id == e.ChannelId)
+            // Let coordinator handle WebRTC/screen share cleanup
+            _screenShare?.ForceStop();
+            var channelName = await _voiceCoordinator.HandleForcedDisconnectAsync(e.ChannelId);
+
+            if (channelName != null)
             {
-                // Stop screen sharing first
-                _screenShare?.ForceStop();
-                await _webRtc.SetScreenSharingAsync(false);
-
-                // Leave WebRTC connections (but don't notify server - it already knows)
-                await _webRtc.LeaveVoiceChannelAsync();
-
-                // VoiceChannelViewModel auto-updates via VoiceStore subscription
-                // Get channel name before clearing state
-                var voiceChannelVm = VoiceChannelViewModels.FirstOrDefault(v => v.Id == e.ChannelId);
-
-                // Clear local state
-                // VoiceChannelContentViewModel clears reactively when VoiceStore.CurrentChannelId becomes null
+                // Clear UI-specific state
                 CurrentVoiceChannel = null;
                 _voiceControl?.ResetTransientState();
                 IsVoiceVideoOverlayOpen = false;
                 SelectedVoiceChannelForViewing = null;
 
-                // Track that we're now in voice on another device (via VoiceStore)
-                _stores.VoiceStore.SetVoiceOnOtherDevice(e.ChannelId, voiceChannelVm?.Name);
+                // Track that we're in voice on another device
+                _stores.VoiceStore.SetVoiceOnOtherDevice(e.ChannelId, channelName);
             }
         });
 
@@ -1180,14 +1171,13 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// </summary>
     public bool IsWelcomeModalOpen
     {
-        get => _isWelcomeModalOpen;
+        get => _welcomeModal?.IsOpen ?? false;
         set
         {
             if (_welcomeModal != null)
             {
                 _welcomeModal.IsOpen = value;
             }
-            this.RaiseAndSetIfChanged(ref _isWelcomeModalOpen, value);
         }
     }
 
@@ -1558,23 +1548,14 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     // Screen share picker properties (delegate to ScreenShareViewModel)
     public bool IsScreenSharePickerOpen
     {
-        get => _screenShare?.IsScreenSharePickerOpen ?? _isScreenSharePickerOpen;
+        get => _screenShare?.IsScreenSharePickerOpen ?? false;
         set
         {
             if (_screenShare != null) _screenShare.IsScreenSharePickerOpen = value;
-            else this.RaiseAndSetIfChanged(ref _isScreenSharePickerOpen, value);
         }
     }
 
-    public ScreenSharePickerViewModel? ScreenSharePicker
-    {
-        get => _screenShare?.ScreenSharePicker ?? _screenSharePicker;
-        set
-        {
-            if (_screenShare != null) _screenShare.ScreenSharePicker = value;
-            else this.RaiseAndSetIfChanged(ref _screenSharePicker, value);
-        }
-    }
+    public ScreenSharePickerViewModel? ScreenSharePicker => _screenShare?.ScreenSharePicker;
 
     /// <summary>
     /// The ScreenShareViewModel (for direct binding if needed).
