@@ -24,6 +24,7 @@ public class VoiceControlViewModelTests
     private readonly BehaviorSubject<bool> _isCameraOnSubject = new(false);
     private readonly BehaviorSubject<bool> _isScreenSharingSubject = new(false);
     private readonly BehaviorSubject<VoiceConnectionStatus> _connectionStatusSubject = new(VoiceConnectionStatus.Disconnected);
+    private readonly BehaviorSubject<Guid?> _currentChannelIdSubject = new(null);
 
     public VoiceControlViewModelTests()
     {
@@ -42,11 +43,13 @@ public class VoiceControlViewModelTests
         _voiceStoreMock.Setup(x => x.IsCameraOn).Returns(_isCameraOnSubject);
         _voiceStoreMock.Setup(x => x.IsScreenSharing).Returns(_isScreenSharingSubject);
         _voiceStoreMock.Setup(x => x.ConnectionStatus).Returns(_connectionStatusSubject);
+        _voiceStoreMock.Setup(x => x.CurrentChannelId).Returns(_currentChannelIdSubject);
     }
 
     private VoiceControlViewModel CreateViewModel(Guid? channelId = null)
     {
         _voiceStoreMock.Setup(s => s.GetCurrentChannelId()).Returns(channelId);
+        _currentChannelIdSubject.OnNext(channelId);
         return new VoiceControlViewModel(
             _voiceStoreMock.Object,
             _settingsStoreMock.Object,
@@ -660,6 +663,84 @@ public class VoiceControlViewModelTests
         var vm = CreateViewModel();
 
         // Act & Assert
+        Assert.False(vm.IsInVoiceChannel);
+    }
+
+    [Fact]
+    public void IsInVoiceChannel_UpdatesToFalse_WhenLeavingVoiceChannel()
+    {
+        // Arrange - start in a voice channel
+        var channelId = Guid.NewGuid();
+        var vm = CreateViewModel(channelId);
+        Assert.True(vm.IsInVoiceChannel); // Verify we start in a channel
+
+        // Simulate leaving the channel - the store's channel ID becomes null
+        _voiceStoreMock.Setup(s => s.GetCurrentChannelId()).Returns((Guid?)null);
+        _currentChannelIdSubject.OnNext(null);
+
+        // Act - simulate the connection status changing to Disconnected
+        // (This is what triggers PropertyChanged for IsInVoiceChannel)
+        _connectionStatusSubject.OnNext(VoiceConnectionStatus.Disconnected);
+
+        // Assert - IsInVoiceChannel should now be false
+        Assert.False(vm.IsInVoiceChannel);
+    }
+
+    [Fact]
+    public void IsInVoiceChannel_RaisesPropertyChanged_WhenLeavingVoiceChannel()
+    {
+        // Arrange - start in a voice channel
+        var channelId = Guid.NewGuid();
+        var vm = CreateViewModel(channelId);
+        _connectionStatusSubject.OnNext(VoiceConnectionStatus.Connected);
+
+        var propertyChangedCount = 0;
+        var isInVoiceChannelChanged = false;
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(VoiceControlViewModel.IsInVoiceChannel))
+            {
+                isInVoiceChannelChanged = true;
+                propertyChangedCount++;
+            }
+        };
+
+        // Simulate leaving the channel - update both the mock and the observable
+        _voiceStoreMock.Setup(s => s.GetCurrentChannelId()).Returns((Guid?)null);
+        _currentChannelIdSubject.OnNext(null);
+
+        // Act - simulate the connection status changing to Disconnected
+        _connectionStatusSubject.OnNext(VoiceConnectionStatus.Disconnected);
+
+        // Assert - PropertyChanged should have been raised for IsInVoiceChannel
+        // Note: It will be raised twice now (once for CurrentChannelId, once for ConnectionStatus)
+        Assert.True(isInVoiceChannelChanged, "PropertyChanged should be raised for IsInVoiceChannel when leaving voice channel");
+        Assert.True(propertyChangedCount >= 1, "PropertyChanged should be raised at least once");
+    }
+
+    [Fact]
+    public void IsInVoiceChannel_RaisesPropertyChanged_WhenCurrentChannelIdChangesToNull()
+    {
+        // Arrange - start in a voice channel
+        var channelId = Guid.NewGuid();
+        var vm = CreateViewModel(channelId);
+        _connectionStatusSubject.OnNext(VoiceConnectionStatus.Connected);
+
+        var isInVoiceChannelChanged = false;
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(VoiceControlViewModel.IsInVoiceChannel))
+            {
+                isInVoiceChannelChanged = true;
+            }
+        };
+
+        // Act - only update the current channel ID (simulates the fix working)
+        _voiceStoreMock.Setup(s => s.GetCurrentChannelId()).Returns((Guid?)null);
+        _currentChannelIdSubject.OnNext(null);
+
+        // Assert - PropertyChanged should be raised for IsInVoiceChannel just from the channel ID change
+        Assert.True(isInVoiceChannelChanged, "PropertyChanged should be raised for IsInVoiceChannel when CurrentChannelId changes to null");
         Assert.False(vm.IsInVoiceChannel);
     }
 

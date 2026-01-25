@@ -246,11 +246,38 @@ public class ScreenShareManager : IAsyncDisposable
 
         _screenCaptureProcess.Start();
 
+        Console.WriteLine($"ScreenShareManager: Native capture process started, PID={_screenCaptureProcess.Id}");
+
         _screenCts = new CancellationTokenSource();
 
         // Store dimensions for hardware decoder initialization
         _previewWidth = width;
         _previewHeight = height;
+
+        // Start a debug task to capture stderr text output (log messages from native capture)
+        // This runs only when audio is disabled (stderr would otherwise contain audio data)
+        if (!captureAudio)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var reader = _screenCaptureProcess?.StandardError;
+                    if (reader == null) return;
+
+                    while (!_screenCts.Token.IsCancellationRequested && _screenCaptureProcess?.HasExited != true)
+                    {
+                        var line = await reader.ReadLineAsync();
+                        if (line == null) break;
+                        Console.WriteLine($"[NativeCapture] {line}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"ScreenShareManager: stderr reader error: {ex.Message}");
+                }
+            });
+        }
 
         if (_isUsingDirectH264)
         {
@@ -476,11 +503,23 @@ public class ScreenShareManager : IAsyncDisposable
         try
         {
             var stream = _screenCaptureProcess?.StandardOutput.BaseStream;
-            if (stream == null) return;
+            if (stream == null)
+            {
+                Console.WriteLine("ScreenShareManager: ERROR - StandardOutput stream is null");
+                return;
+            }
+
+            // Log process info for debugging
+            if (_screenCaptureProcess != null)
+            {
+                Console.WriteLine($"ScreenShareManager: Capture process started, PID={_screenCaptureProcess.Id}, HasExited={_screenCaptureProcess.HasExited}");
+            }
 
             var frameData = new MemoryStream();
             var annexBPrefix = new byte[] { 0x00, 0x00, 0x00, 0x01 };
             var isKeyframeInProgress = false;
+
+            Console.WriteLine("ScreenShareManager: Waiting for first NAL unit from encoder...");
 
             while (!token.IsCancellationRequested && _screenCaptureProcess != null && !_screenCaptureProcess.HasExited)
             {
@@ -488,11 +527,22 @@ public class ScreenShareManager : IAsyncDisposable
                 while (bytesRead < 4 && !token.IsCancellationRequested)
                 {
                     var read = stream.Read(lengthBuffer, bytesRead, 4 - bytesRead);
-                    if (read == 0) break;
+                    if (read == 0)
+                    {
+                        if (bytesRead == 0 && _screenCaptureProcess?.HasExited == true)
+                        {
+                            Console.WriteLine($"ScreenShareManager: Process exited with code {_screenCaptureProcess.ExitCode}");
+                        }
+                        break;
+                    }
                     bytesRead += read;
                 }
 
-                if (bytesRead < 4) break;
+                if (bytesRead < 4)
+                {
+                    Console.WriteLine($"ScreenShareManager: Read only {bytesRead}/4 bytes for NAL length, ending loop");
+                    break;
+                }
 
                 var nalLength = (lengthBuffer[0] << 24) | (lengthBuffer[1] << 16) |
                                (lengthBuffer[2] << 8) | lengthBuffer[3];

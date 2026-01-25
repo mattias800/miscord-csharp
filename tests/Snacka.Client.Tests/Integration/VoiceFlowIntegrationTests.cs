@@ -1,4 +1,8 @@
+using System.Reactive.Linq;
+using Moq;
 using Snacka.Client.Services;
+using Snacka.Client.Stores;
+using Snacka.Client.ViewModels;
 
 namespace Snacka.Client.Tests.Integration;
 
@@ -337,4 +341,113 @@ public class VoiceFlowIntegrationTests : ClientIntegrationTestBase
         Assert.Single(channel2Participants);
         Assert.Equal("Bob", channel2Participants.First().Username);
     }
+
+    #region VoiceControlViewModel Integration Tests
+
+    /// <summary>
+    /// Integration test: Verifies that VoiceControlViewModel.IsInVoiceChannel
+    /// correctly updates when the VoiceStore's current channel changes.
+    /// This test exposes the bug where the voice panel doesn't hide after leaving a channel.
+    /// </summary>
+    [Fact]
+    public void VoiceControlViewModel_IsInVoiceChannel_UpdatesWhenLeavingChannel()
+    {
+        // Arrange - Create a VoiceControlViewModel with the real VoiceStore
+        var settingsStoreMock = new Mock<ISettingsStore>();
+        settingsStoreMock.Setup(x => x.Settings).Returns(new UserSettings());
+
+        var webRtcMock = new Mock<IWebRtcService>();
+        var signalRMock = new Mock<ISignalRService>();
+
+        var vm = new VoiceControlViewModel(
+            VoiceStore,
+            settingsStoreMock.Object,
+            webRtcMock.Object,
+            signalRMock.Object,
+            CurrentUserId);
+
+        // Initially not in a voice channel
+        Assert.False(vm.IsInVoiceChannel);
+
+        // Join a voice channel
+        VoiceStore.SetCurrentChannel(TestChannelId);
+        VoiceStore.SetConnectionStatus(VoiceConnectionStatus.Connected);
+
+        // Wait for observable to emit and verify we're in a channel
+        var isInChannel = VoiceStore.CurrentChannelId.FirstAsync().GetAwaiter().GetResult();
+        Assert.Equal(TestChannelId, isInChannel);
+        Assert.True(vm.IsInVoiceChannel);
+
+        // Track property changed events
+        var isInVoiceChannelChangedToFalse = false;
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(VoiceControlViewModel.IsInVoiceChannel))
+            {
+                if (!vm.IsInVoiceChannel)
+                    isInVoiceChannelChangedToFalse = true;
+            }
+        };
+
+        // Act - Leave the voice channel (this simulates what VoiceCoordinator does)
+        VoiceStore.SetCurrentChannel(null); // This also sets status to Disconnected
+
+        // Assert - IsInVoiceChannel should now be false
+        Assert.False(vm.IsInVoiceChannel, "IsInVoiceChannel should be false after leaving the channel");
+        Assert.True(isInVoiceChannelChangedToFalse, "PropertyChanged should have been raised with IsInVoiceChannel = false");
+
+        vm.Dispose();
+    }
+
+    /// <summary>
+    /// Integration test: Verifies the full join -> leave cycle works correctly.
+    /// </summary>
+    [Fact]
+    public void VoiceControlViewModel_JoinLeaveJoin_CycleWorksCorrectly()
+    {
+        // Arrange
+        var settingsStoreMock = new Mock<ISettingsStore>();
+        settingsStoreMock.Setup(x => x.Settings).Returns(new UserSettings());
+
+        var webRtcMock = new Mock<IWebRtcService>();
+        var signalRMock = new Mock<ISignalRService>();
+
+        var vm = new VoiceControlViewModel(
+            VoiceStore,
+            settingsStoreMock.Object,
+            webRtcMock.Object,
+            signalRMock.Object,
+            CurrentUserId);
+
+        // Initially not in a voice channel
+        Assert.False(vm.IsInVoiceChannel);
+
+        // First join
+        VoiceStore.SetCurrentChannel(TestChannelId);
+        VoiceStore.SetConnectionStatus(VoiceConnectionStatus.Connected);
+        Assert.True(vm.IsInVoiceChannel);
+        Assert.True(vm.IsVoiceConnected);
+
+        // First leave
+        VoiceStore.SetCurrentChannel(null);
+        Assert.False(vm.IsInVoiceChannel);
+        Assert.False(vm.IsVoiceConnected);
+        Assert.Equal(VoiceConnectionStatus.Disconnected, vm.VoiceConnectionStatus);
+
+        // Second join (different channel)
+        var anotherChannelId = Guid.NewGuid();
+        VoiceStore.SetCurrentChannel(anotherChannelId);
+        VoiceStore.SetConnectionStatus(VoiceConnectionStatus.Connected);
+        Assert.True(vm.IsInVoiceChannel);
+        Assert.True(vm.IsVoiceConnected);
+
+        // Second leave
+        VoiceStore.SetCurrentChannel(null);
+        Assert.False(vm.IsInVoiceChannel);
+        Assert.False(vm.IsVoiceConnected);
+
+        vm.Dispose();
+    }
+
+    #endregion
 }

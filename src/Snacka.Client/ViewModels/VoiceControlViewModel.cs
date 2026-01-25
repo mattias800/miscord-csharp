@@ -145,6 +145,17 @@ public class VoiceControlViewModel : ReactiveObject, IDisposable
                         this.RaisePropertyChanged(nameof(IsInVoiceChannel));
                     }
                 }));
+
+        // Subscribe to current channel ID changes from store
+        // This ensures IsInVoiceChannel updates immediately when the channel changes,
+        // not just when the connection status changes (fixes voice panel not hiding on disconnect)
+        _subscriptions.Add(
+            _voiceStore.CurrentChannelId
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(_ =>
+                {
+                    this.RaisePropertyChanged(nameof(IsInVoiceChannel));
+                }));
     }
 
     #region Properties
