@@ -678,6 +678,43 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             .SelectMany(_ => Observable.FromAsync(OnChannelSelectedAsync))
             .Subscribe();
 
+        // Derived property notifications for ConnectionState
+        this.WhenAnyValue(x => x.ConnectionState)
+            .Subscribe(_ =>
+            {
+                this.RaisePropertyChanged(nameof(IsConnected));
+                this.RaisePropertyChanged(nameof(IsReconnecting));
+                this.RaisePropertyChanged(nameof(IsDisconnected));
+                this.RaisePropertyChanged(nameof(ConnectionStatusText));
+            });
+
+        // Derived property notifications for CurrentVoiceChannel
+        this.WhenAnyValue(x => x.CurrentVoiceChannel)
+            .Subscribe(_ =>
+            {
+                this.RaisePropertyChanged(nameof(IsInVoiceChannel));
+                this.RaisePropertyChanged(nameof(ShowAudioDeviceWarning));
+                this.RaisePropertyChanged(nameof(IsVoiceInDifferentCommunity));
+                this.RaisePropertyChanged(nameof(VoiceCommunityName));
+                this.RaisePropertyChanged(nameof(GamingStationChannelStatus));
+            });
+
+        // Derived property notifications for SelectedCommunity (affects voice-in-different-community check)
+        this.WhenAnyValue(x => x.SelectedCommunity)
+            .Subscribe(_ =>
+            {
+                this.RaisePropertyChanged(nameof(IsVoiceInDifferentCommunity));
+                this.RaisePropertyChanged(nameof(VoiceCommunityName));
+            });
+
+        // Derived property notifications for SelectedVoiceChannelForViewing
+        this.WhenAnyValue(x => x.SelectedVoiceChannelForViewing)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(IsViewingVoiceChannel)));
+
+        // Derived property notifications for LightboxImage
+        this.WhenAnyValue(x => x.LightboxImage)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(IsLightboxOpen)));
+
         #endregion
 
         #region SignalR and Initialization
@@ -811,10 +848,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
                     var response = state is not null ? ToCommunityResponse(state) : null;
                     if (_selectedCommunity?.Id != response?.Id)
                     {
-                        _selectedCommunity = response;
-                        this.RaisePropertyChanged(nameof(SelectedCommunity));
-                        this.RaisePropertyChanged(nameof(IsVoiceInDifferentCommunity));
-                        this.RaisePropertyChanged(nameof(VoiceCommunityName));
+                        // Use property setter to trigger WhenAnyValue subscriptions for derived properties
+                        SelectedCommunity = response;
                     }
                 }));
     }
@@ -987,6 +1022,7 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// </summary>
     public ActivityFeedViewModel? ActivityFeed => _activityFeed;
 
+    // Derived properties notified via WhenAnyValue subscription
     public CommunityResponse? SelectedCommunity
     {
         get => _selectedCommunity;
@@ -996,8 +1032,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
             this.RaiseAndSetIfChanged(ref _selectedCommunity, value);
             if (idChanged)
             {
-                this.RaisePropertyChanged(nameof(IsVoiceInDifferentCommunity));
-                this.RaisePropertyChanged(nameof(VoiceCommunityName));
                 // Sync to store (store → ViewModel sync will skip due to ID check)
                 _stores.CommunityStore.SelectCommunity(value?.Id);
             }
@@ -1135,18 +1169,11 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref _isCapabilityDetailsOpen, value);
     }
 
-    // Connection state properties
+    // Connection state properties (derived properties notified via WhenAnyValue subscription)
     public ConnectionState ConnectionState
     {
         get => _connectionState;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _connectionState, value);
-            this.RaisePropertyChanged(nameof(IsConnected));
-            this.RaisePropertyChanged(nameof(IsReconnecting));
-            this.RaisePropertyChanged(nameof(IsDisconnected));
-            this.RaisePropertyChanged(nameof(ConnectionStatusText));
-        }
+        set => this.RaiseAndSetIfChanged(ref _connectionState, value);
     }
 
     public bool IsConnected => _connectionState == ConnectionState.Connected;
@@ -1233,14 +1260,11 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
     #endregion
 
+    // Derived properties notified via WhenAnyValue subscription
     public AttachmentResponse? LightboxImage
     {
         get => _lightboxImage;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _lightboxImage, value);
-            this.RaisePropertyChanged(nameof(IsLightboxOpen));
-        }
+        set => this.RaiseAndSetIfChanged(ref _lightboxImage, value);
     }
 
     public bool IsLightboxOpen => LightboxImage is not null;
@@ -1305,19 +1329,11 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     // Audio device quick select ViewModel (exposed for direct binding)
     public AudioDeviceQuickSelectViewModel? AudioDeviceQuickSelect => _audioDeviceQuickSelect;
 
-    // Voice channel properties
+    // Voice channel properties (derived properties notified via WhenAnyValue subscription)
     public ChannelResponse? CurrentVoiceChannel
     {
         get => _currentVoiceChannel;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _currentVoiceChannel, value);
-            this.RaisePropertyChanged(nameof(IsInVoiceChannel));
-            this.RaisePropertyChanged(nameof(ShowAudioDeviceWarning));
-            this.RaisePropertyChanged(nameof(IsVoiceInDifferentCommunity));
-            this.RaisePropertyChanged(nameof(VoiceCommunityName));
-            this.RaisePropertyChanged(nameof(GamingStationChannelStatus));
-        }
+        set => this.RaiseAndSetIfChanged(ref _currentVoiceChannel, value);
     }
 
     public bool IsInVoiceChannel => CurrentVoiceChannel is not null;
@@ -1402,15 +1418,11 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     // Voice channel content view for video grid
     public VoiceChannelContentViewModel? VoiceChannelContent => _voiceChannelContent;
 
+    // Derived properties notified via WhenAnyValue subscription
     public ChannelResponse? SelectedVoiceChannelForViewing
     {
         get => _selectedVoiceChannelForViewing;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _selectedVoiceChannelForViewing, value);
-            this.RaisePropertyChanged(nameof(IsViewingVoiceChannel));
-            // VoiceChannelContentViewModel now reads from VoiceStore directly
-        }
+        set => this.RaiseAndSetIfChanged(ref _selectedVoiceChannelForViewing, value);
     }
 
     public bool IsViewingVoiceChannel => SelectedVoiceChannelForViewing != null;
