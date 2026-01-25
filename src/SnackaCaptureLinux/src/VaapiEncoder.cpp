@@ -119,11 +119,13 @@ bool VaapiEncoder::CreateConfig() {
         return false;
     }
 
-    // Find H.264 encode profile (prefer Constrained Baseline for low latency)
+    // Find H.264 encode profile (prefer High for better compression via CABAC)
+    // High profile provides ~10-15% better quality per bit than Baseline's CAVLC
+    // Fall back to Main then ConstrainedBaseline if High isn't supported
     VAProfile desiredProfiles[] = {
-        VAProfileH264ConstrainedBaseline,
-        VAProfileH264Main,
         VAProfileH264High,
+        VAProfileH264Main,
+        VAProfileH264ConstrainedBaseline,
     };
 
     bool foundProfile = false;
@@ -425,8 +427,11 @@ bool VaapiEncoder::RenderPicture(VASurfaceID surface, bool isIdr) {
     picParam.coded_buf = m_codedBuf;
     picParam.pic_fields.bits.idr_pic_flag = isIdr ? 1 : 0;
     picParam.pic_fields.bits.reference_pic_flag = 1;
-    picParam.pic_fields.bits.entropy_coding_mode_flag = 0;  // CAVLC for baseline
-    picParam.pic_fields.bits.transform_8x8_mode_flag = 0;
+    // Use CABAC for High/Main profiles (~10-15% better compression than CAVLC)
+    // Only ConstrainedBaseline requires CAVLC (entropy_coding_mode_flag = 0)
+    picParam.pic_fields.bits.entropy_coding_mode_flag = (m_profile == VAProfileH264ConstrainedBaseline) ? 0 : 1;
+    // 8x8 transform is only available in High profile
+    picParam.pic_fields.bits.transform_8x8_mode_flag = (m_profile == VAProfileH264High) ? 1 : 0;
     picParam.pic_fields.bits.deblocking_filter_control_present_flag = 1;
 
     picParam.frame_num = isIdr ? 0 : m_frameNumInGop;

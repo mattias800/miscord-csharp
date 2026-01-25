@@ -354,6 +354,15 @@ bool MediaFoundationEncoder::ConfigureEncoder() {
         std::cerr << "MediaFoundationEncoder: Warning - Failed to set bitrate\n";
     }
 
+    // Maximum bitrate (1.5x average for burst tolerance during high-motion scenes)
+    // This allows the encoder to use more bits during complex frames while
+    // maintaining the average over time
+    VariantInit(&var);
+    var.vt = VT_UI4;
+    var.ulVal = static_cast<ULONG>(m_bitrate * 1.5);
+    hr = codecApi->SetValue(&CODECAPI_AVEncCommonMaxBitRate, &var);
+    // Ignore failure - not all encoders support max bitrate with CBR
+
     // GOP size (keyframe interval) - one per second
     VariantInit(&var);
     var.vt = VT_UI4;
@@ -401,11 +410,22 @@ bool MediaFoundationEncoder::SetOutputType() {
         std::cerr << "MediaFoundationEncoder: Warning - Failed to set output pixel aspect ratio\n";
     }
 
-    // H.264 Baseline profile for maximum compatibility and no B-frames
-    hr = outputType->SetUINT32(MF_MT_MPEG2_PROFILE, eAVEncH264VProfile_Base);
+    // H.264 High profile for better compression efficiency via CABAC entropy coding
+    // High profile provides ~10-15% better quality per bit than Baseline's CAVLC
+    // B-frames are disabled separately via CODECAPI_AVEncMPVDefaultBPictureCount
+    hr = outputType->SetUINT32(MF_MT_MPEG2_PROFILE, eAVEncH264VProfile_High);
     if (FAILED(hr)) {
-        // Try without profile (some encoders don't support it)
-        std::cerr << "MediaFoundationEncoder: Warning - Failed to set H.264 profile\n";
+        // Fall back to Main profile
+        std::cerr << "MediaFoundationEncoder: Warning - Failed to set High profile, trying Main\n";
+        hr = outputType->SetUINT32(MF_MT_MPEG2_PROFILE, eAVEncH264VProfile_Main);
+        if (FAILED(hr)) {
+            // Fall back to Baseline (some encoders only support it)
+            std::cerr << "MediaFoundationEncoder: Warning - Failed to set Main profile, trying Baseline\n";
+            hr = outputType->SetUINT32(MF_MT_MPEG2_PROFILE, eAVEncH264VProfile_Base);
+            if (FAILED(hr)) {
+                std::cerr << "MediaFoundationEncoder: Warning - Failed to set any H.264 profile\n";
+            }
+        }
     }
 
     // H.264 Level 4.1 (supports up to 1080p@30fps or 720p@60fps)
