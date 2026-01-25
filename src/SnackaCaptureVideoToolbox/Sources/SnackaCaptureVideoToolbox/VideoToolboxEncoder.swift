@@ -92,8 +92,17 @@ class VideoToolboxEncoder {
 
         // High profile for better compression efficiency (more quality per bit)
         // High profile supports CABAC entropy coding which is ~10-15% more efficient than Baseline's CAVLC
+        // Fall back to Main then Baseline if High isn't supported
         status = VTSessionSetProperty(session, key: kVTCompressionPropertyKey_ProfileLevel, value: kVTProfileLevel_H264_High_AutoLevel)
-        guard status == noErr else { throw EncoderError.failedToSetProperty("ProfileLevel", status) }
+        if status != noErr {
+            fputs("VideoToolboxEncoder: High profile not supported, trying Main...\n", stderr)
+            status = VTSessionSetProperty(session, key: kVTCompressionPropertyKey_ProfileLevel, value: kVTProfileLevel_H264_Main_AutoLevel)
+            if status != noErr {
+                fputs("VideoToolboxEncoder: Main profile not supported, trying Baseline...\n", stderr)
+                status = VTSessionSetProperty(session, key: kVTCompressionPropertyKey_ProfileLevel, value: kVTProfileLevel_H264_Baseline_AutoLevel)
+                guard status == noErr else { throw EncoderError.failedToSetProperty("ProfileLevel", status) }
+            }
+        }
 
         // Disable B-frames for lower latency (no frame reordering)
         // B-frames add 1-2 frame delays which is unacceptable for game streaming
