@@ -160,16 +160,7 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(MainAppViewModel.CurrentAnnotationStrokes))
-        {
-            // Don't redraw while actively drawing - it would clear our current polyline
-            // The redraw will happen when drawing completes
-            if (_isDrawing) return;
-
-            // Redraw annotations when strokes change (from host or other guests)
-            RedrawAnnotations();
-        }
-        else if (e.PropertyName == nameof(MainAppViewModel.SelectedChannel))
+        if (e.PropertyName == nameof(MainAppViewModel.SelectedChannel))
         {
             // Auto-focus message input when a text channel is selected
             if (ViewModel?.SelectedChannel != null)
@@ -200,10 +191,9 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
                 Dispatcher.UIThread.Post(() => ChatArea?.FocusMessageInput(), DispatcherPriority.Input);
             }
         }
-        else if (e.PropertyName == nameof(MainAppViewModel.IsVideoFullscreen) ||
-                 e.PropertyName == nameof(MainAppViewModel.FullscreenStream))
+        else if (e.PropertyName == nameof(MainAppViewModel.VideoFullscreen))
         {
-            // Update controller button state when entering/exiting fullscreen
+            // Update controller button state when fullscreen ViewModel changes
             Dispatcher.UIThread.Post(UpdateFullscreenControllerButton, DispatcherPriority.Normal);
         }
     }
@@ -212,9 +202,9 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
     private async void OnGlobalKeyDown(object? sender, KeyEventArgs e)
     {
         // Gaming station keyboard capture (when enabled in fullscreen)
-        if (ViewModel?.IsVideoFullscreen == true &&
-            ViewModel.IsKeyboardCaptureEnabled &&
-            ViewModel.IsFullscreenGamingStation)
+        if (ViewModel?.VideoFullscreen?.IsOpen == true &&
+            ViewModel.VideoFullscreen.IsKeyboardCaptureEnabled &&
+            ViewModel.VideoFullscreen.IsGamingStation)
         {
             // Don't capture ESC - allow it to exit fullscreen
             if (e.Key != Key.Escape)
@@ -225,9 +215,9 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
             }
         }
 
-        if (e.Key == Key.Escape && ViewModel?.IsVideoFullscreen == true)
+        if (e.Key == Key.Escape && ViewModel?.VideoFullscreen?.IsOpen == true)
         {
-            ViewModel.CloseFullscreen();
+            ViewModel.VideoFullscreen.Close();
             e.Handled = true;
             return;
         }
@@ -253,9 +243,9 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
     private async void OnGlobalKeyUp(object? sender, KeyEventArgs e)
     {
         // Gaming station keyboard capture (when enabled in fullscreen)
-        if (ViewModel?.IsVideoFullscreen == true &&
-            ViewModel.IsKeyboardCaptureEnabled &&
-            ViewModel.IsFullscreenGamingStation)
+        if (ViewModel?.VideoFullscreen?.IsOpen == true &&
+            ViewModel.VideoFullscreen.IsKeyboardCaptureEnabled &&
+            ViewModel.VideoFullscreen.IsGamingStation)
         {
             // Don't capture ESC
             if (e.Key != Key.Escape)
@@ -770,7 +760,7 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
     // Called when fullscreen button is clicked in VoiceChannelContentView
     private void OnVoiceChannelFullscreen(object? sender, VideoStreamViewModel stream)
     {
-        ViewModel?.OpenFullscreen(stream);
+        ViewModel?.VideoFullscreen?.Open(stream);
     }
 
     // Called when video tile is double-tapped in VoiceChannelContentView
@@ -779,7 +769,7 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         // Only allow fullscreen for screen shares (not camera streams)
         if (!string.IsNullOrEmpty(stream.StreamLabel))
         {
-            ViewModel?.OpenFullscreen(stream);
+            ViewModel?.VideoFullscreen?.Open(stream);
         }
     }
 
@@ -795,15 +785,15 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
     // Called when clicking the close button on fullscreen video overlay
     private void OnCloseFullscreenClick(object? sender, RoutedEventArgs e)
     {
-        ViewModel?.CloseFullscreen();
+        ViewModel?.VideoFullscreen?.Close();
     }
 
     // Called when clicking the share controller button in fullscreen mode
     private async void OnFullscreenShareControllerClick(object? sender, RoutedEventArgs e)
     {
-        if (ViewModel != null)
+        if (ViewModel?.VideoFullscreen != null)
         {
-            await ViewModel.ToggleFullscreenControllerAccessAsync();
+            await ViewModel.VideoFullscreen.ToggleControllerAccessAsync();
             UpdateFullscreenControllerButton();
         }
     }
@@ -811,7 +801,7 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
     // Called when clicking the controller toggle for gaming stations
     private async void OnGamingStationControllerToggleClick(object? sender, RoutedEventArgs e)
     {
-        if (ViewModel != null && sender is ToggleButton toggle)
+        if (ViewModel?.VideoFullscreen != null && sender is ToggleButton toggle)
         {
             // The toggle's IsChecked will be set after this handler returns
             // So we check the current state to determine what action to take
@@ -819,11 +809,11 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
 
             // If it was checked and now being unchecked, stop streaming
             // If it was unchecked and now being checked, start streaming
-            await ViewModel.ToggleFullscreenControllerAccessAsync();
+            await ViewModel.VideoFullscreen.ToggleControllerAccessAsync();
 
             // Update toggle state based on actual streaming state
-            toggle.IsChecked = ViewModel.FullscreenStream != null &&
-                               ViewModel.IsStreamingControllerTo(ViewModel.FullscreenStream.UserId);
+            toggle.IsChecked = ViewModel.VideoFullscreen.Stream != null &&
+                               ViewModel.IsStreamingControllerTo(ViewModel.VideoFullscreen.Stream.UserId);
         }
     }
 
@@ -831,10 +821,10 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
     private void UpdateFullscreenControllerButton()
     {
         var textBlock = this.FindControl<TextBlock>("FullscreenControllerButtonText");
-        if (textBlock != null && ViewModel != null)
+        if (textBlock != null && ViewModel?.VideoFullscreen != null)
         {
-            var isStreaming = ViewModel.FullscreenStream != null &&
-                              ViewModel.IsStreamingControllerTo(ViewModel.FullscreenStream.UserId);
+            var isStreaming = ViewModel.VideoFullscreen.Stream != null &&
+                              ViewModel.IsStreamingControllerTo(ViewModel.VideoFullscreen.Stream.UserId);
             textBlock.Text = isStreaming ? "Stop Sharing" : "Share Controller";
         }
     }
@@ -867,7 +857,7 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
     {
         if (sender is Button button && button.Tag is VideoStreamViewModel stream)
         {
-            ViewModel?.OpenFullscreen(stream);
+            ViewModel?.VideoFullscreen?.Open(stream);
         }
     }
 
@@ -879,7 +869,7 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
             // Only allow fullscreen for screen shares (not camera streams)
             if (!string.IsNullOrEmpty(stream.StreamLabel))
             {
-                ViewModel?.OpenFullscreen(stream);
+                ViewModel?.VideoFullscreen?.Open(stream);
             }
         }
     }
@@ -888,7 +878,7 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
 
     private void OnAnnotationCanvasPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (ViewModel?.IsAnnotationEnabled != true) return;
+        if (ViewModel?.VideoFullscreen?.IsAnnotationEnabled != true) return;
 
         var canvas = AnnotationCanvas;
         if (canvas == null) return;
@@ -906,7 +896,7 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         // Create a new polyline for visual feedback
         _currentPolyline = new Polyline
         {
-            Stroke = new SolidColorBrush(Color.Parse(ViewModel.AnnotationColor)),
+            Stroke = new SolidColorBrush(Color.Parse(ViewModel.VideoFullscreen.AnnotationColor)),
             StrokeThickness = 3,
             StrokeLineCap = PenLineCap.Round,
             StrokeJoin = PenLineJoin.Round
@@ -919,7 +909,7 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
 
     private void OnAnnotationCanvasPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (!_isDrawing || _currentPolyline == null || ViewModel == null) return;
+        if (!_isDrawing || _currentPolyline == null || ViewModel?.VideoFullscreen == null) return;
 
         var canvas = AnnotationCanvas;
         if (canvas == null) return;
@@ -939,11 +929,11 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
                 UserId = ViewModel.UserId,
                 Username = ViewModel.Username,
                 Points = new List<PointF>(_currentStrokePoints),
-                Color = ViewModel.AnnotationColor,
+                Color = ViewModel.VideoFullscreen.AnnotationColor,
                 Thickness = 3.0f
             };
             // Fire-and-forget - don't await to keep drawing smooth
-            _ = ViewModel.UpdateAnnotationStrokeAsync(stroke);
+            _ = ViewModel.VideoFullscreen.UpdateAnnotationStrokeAsync(stroke);
         }
     }
 
@@ -960,7 +950,7 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
             e.Pointer.Capture(null);
 
             // Only save stroke if we have at least 2 points
-            if (_currentStrokePoints.Count >= 2 && ViewModel != null)
+            if (_currentStrokePoints.Count >= 2 && ViewModel?.VideoFullscreen != null)
             {
                 var stroke = new DrawingStroke
                 {
@@ -968,11 +958,11 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
                     UserId = ViewModel.UserId,
                     Username = ViewModel.Username,
                     Points = new List<PointF>(_currentStrokePoints),
-                    Color = ViewModel.AnnotationColor,
+                    Color = ViewModel.VideoFullscreen.AnnotationColor,
                     Thickness = 3.0f
                 };
 
-                await ViewModel.AddAnnotationStrokeAsync(stroke);
+                await ViewModel.VideoFullscreen.AddAnnotationStrokeAsync(stroke);
             }
 
             _currentStrokePoints.Clear();
@@ -1001,9 +991,9 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
 
     private async void OnMouseCapturePointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (ViewModel?.IsVideoFullscreen != true ||
-            !ViewModel.IsMouseCaptureEnabled ||
-            !ViewModel.IsFullscreenGamingStation)
+        if (ViewModel?.VideoFullscreen?.IsOpen != true ||
+            ViewModel.VideoFullscreen.IsMouseCaptureEnabled != true ||
+            ViewModel.VideoFullscreen.IsGamingStation != true)
             return;
 
         var position = e.GetPosition(sender as Visual);
@@ -1024,9 +1014,9 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
 
     private async void OnMouseCapturePointerMoved(object? sender, PointerEventArgs e)
     {
-        if (ViewModel?.IsVideoFullscreen != true ||
-            !ViewModel.IsMouseCaptureEnabled ||
-            !ViewModel.IsFullscreenGamingStation)
+        if (ViewModel?.VideoFullscreen?.IsOpen != true ||
+            ViewModel.VideoFullscreen.IsMouseCaptureEnabled != true ||
+            ViewModel.VideoFullscreen.IsGamingStation != true)
             return;
 
         var position = e.GetPosition(sender as Visual);
@@ -1041,9 +1031,9 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
 
     private async void OnMouseCapturePointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        if (ViewModel?.IsVideoFullscreen != true ||
-            !ViewModel.IsMouseCaptureEnabled ||
-            !ViewModel.IsFullscreenGamingStation)
+        if (ViewModel?.VideoFullscreen?.IsOpen != true ||
+            ViewModel.VideoFullscreen.IsMouseCaptureEnabled != true ||
+            ViewModel.VideoFullscreen.IsGamingStation != true)
             return;
 
         var position = e.GetPosition(sender as Visual);
@@ -1063,9 +1053,9 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
 
     private async void OnMouseCapturePointerWheelChanged(object? sender, PointerWheelEventArgs e)
     {
-        if (ViewModel?.IsVideoFullscreen != true ||
-            !ViewModel.IsMouseCaptureEnabled ||
-            !ViewModel.IsFullscreenGamingStation)
+        if (ViewModel?.VideoFullscreen?.IsOpen != true ||
+            ViewModel.VideoFullscreen.IsMouseCaptureEnabled != true ||
+            ViewModel.VideoFullscreen.IsGamingStation != true)
             return;
 
         var position = e.GetPosition(sender as Visual);
@@ -1104,17 +1094,17 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
 
     private void OnAnnotationColorClick(object? sender, RoutedEventArgs e)
     {
-        if (sender is Button button && button.Tag is string color && ViewModel != null)
+        if (sender is Button button && button.Tag is string color && ViewModel?.VideoFullscreen != null)
         {
-            ViewModel.AnnotationColor = color;
+            ViewModel.VideoFullscreen.AnnotationColor = color;
         }
     }
 
     private async void OnClearAnnotationsClick(object? sender, RoutedEventArgs e)
     {
-        if (ViewModel != null)
+        if (ViewModel?.VideoFullscreen != null)
         {
-            await ViewModel.ClearAnnotationsAsync();
+            await ViewModel.VideoFullscreen.ClearAnnotationsAsync();
             AnnotationCanvas?.Children.Clear();
         }
     }
@@ -1128,12 +1118,12 @@ public partial class MainAppView : ReactiveUserControl<MainAppViewModel>
         try
         {
             var canvas = AnnotationCanvas;
-            if (canvas == null || ViewModel == null) return;
+            if (canvas == null || ViewModel?.VideoFullscreen == null) return;
 
             canvas.Children.Clear();
 
             // Take a snapshot of strokes to avoid collection modification during iteration
-            var strokes = ViewModel.CurrentAnnotationStrokes.ToList();
+            var strokes = ViewModel.VideoFullscreen.CurrentAnnotationStrokes.ToList();
 
             foreach (var stroke in strokes)
             {

@@ -605,7 +605,7 @@
         <!-- Video Fullscreen Overlay -->
         <Border Grid.ColumnSpan="6"
                 Background="#FF000000"
-                IsVisible="{Binding IsVideoFullscreen}"
+                IsVisible="{Binding VideoFullscreen.IsOpen}"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch">
             <Grid RowDefinitions="Auto,*">
@@ -616,27 +616,27 @@
                 <Grid Grid.Row="1">
                     <!-- Hardware-accelerated video (VideoToolbox/MediaFoundation/VA-API zero-copy rendering) -->
                     <controls:HardwareVideoViewHost x:Name="FullscreenHardwareVideo"
-                                                     Decoder="{Binding FullscreenHardwareDecoder}"
+                                                     Decoder="{Binding VideoFullscreen.HardwareDecoder}"
                                                      HorizontalAlignment="Stretch"
                                                      VerticalAlignment="Stretch"
-                                                     IsVisible="{Binding FullscreenHardwareDecoder, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                                     IsVisible="{Binding VideoFullscreen.HardwareDecoder, Converter={x:Static ObjectConverters.IsNotNull}}"/>
 
                     <!-- GPU-accelerated software video (used when hardware decoding not available but GPU rendering is) -->
                     <controls:GpuVideoView x:Name="FullscreenGpuVideo"
                                            HorizontalAlignment="Stretch"
                                            VerticalAlignment="Stretch"
-                                           IsVisible="{Binding IsGpuFullscreenActive}"/>
+                                           IsVisible="{Binding VideoFullscreen.IsGpuFullscreenActive}"/>
 
                     <!-- Software fallback video (used when no GPU rendering is available) -->
                     <Image x:Name="FullscreenVideoImage"
-                           Source="{Binding FullscreenStream.VideoBitmap}"
+                           Source="{Binding VideoFullscreen.Stream.VideoBitmap}"
                            Stretch="Uniform"
                            HorizontalAlignment="Stretch"
                            VerticalAlignment="Stretch">
                         <Image.IsVisible>
                             <MultiBinding Converter="{x:Static BoolConverters.And}">
-                                <Binding Path="!IsGpuFullscreenActive"/>
-                                <Binding Path="FullscreenHardwareDecoder" Converter="{x:Static ObjectConverters.IsNull}"/>
+                                <Binding Path="VideoFullscreen.IsGpuFullscreenActive" Converter="{x:Static BoolConverters.Not}"/>
+                                <Binding Path="VideoFullscreen.HardwareDecoder" Converter="{x:Static ObjectConverters.IsNull}"/>
                             </MultiBinding>
                         </Image.IsVisible>
                     </Image>
@@ -646,7 +646,7 @@
                             Background="Transparent"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
-                            IsHitTestVisible="{Binding IsMouseCaptureEnabled}"
+                            IsHitTestVisible="{Binding VideoFullscreen.IsMouseCaptureEnabled}"
                             PointerPressed="OnMouseCapturePointerPressed"
                             PointerMoved="OnMouseCapturePointerMoved"
                             PointerReleased="OnMouseCapturePointerReleased"
@@ -657,7 +657,7 @@
                             Background="Transparent"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
-                            IsHitTestVisible="{Binding IsAnnotationEnabled}"
+                            IsHitTestVisible="{Binding VideoFullscreen.IsAnnotationEnabled}"
                             PointerPressed="OnAnnotationCanvasPointerPressed"
                             PointerMoved="OnAnnotationCanvasPointerMoved"
                             PointerReleased="OnAnnotationCanvasPointerReleased"/>
@@ -669,7 +669,7 @@
                             Padding="12,6"
                             Margin="16"
                             CornerRadius="12">
-                        <TextBlock Text="{Binding FullscreenStream.Username}"
+                        <TextBlock Text="{Binding VideoFullscreen.Stream.Username}"
                                    Foreground="White"
                                    FontSize="14"/>
                     </Border>
@@ -687,10 +687,10 @@
                                 Background="#E009090b"
                                 CornerRadius="12"
                                 Padding="8,4"
-                                IsVisible="{Binding IsDrawingAllowedByHost}">
+                                IsVisible="{Binding VideoFullscreen.IsDrawingAllowedByHost}">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <!-- Draw mode toggle -->
-                                <ToggleButton IsChecked="{Binding IsAnnotationEnabled}"
+                                <ToggleButton IsChecked="{Binding VideoFullscreen.IsAnnotationEnabled}"
                                               Padding="8,4"
                                               Background="#40FFFFFF"
                                               Foreground="White"
@@ -708,23 +708,23 @@
                                 <StackPanel Orientation="Horizontal" Spacing="3">
                                     <Button Width="24" Height="24" Padding="0" CornerRadius="3"
                                             Background="#FF0000" BorderThickness="2"
-                                            BorderBrush="{Binding AnnotationColor, Converter={StaticResource ColorToBorderConverter}, ConverterParameter=#FF0000}"
+                                            BorderBrush="{Binding VideoFullscreen.AnnotationColor, Converter={StaticResource ColorToBorderConverter}, ConverterParameter=#FF0000}"
                                             Click="OnAnnotationColorClick" Tag="#FF0000"/>
                                     <Button Width="24" Height="24" Padding="0" CornerRadius="3"
                                             Background="#00FF00" BorderThickness="2"
-                                            BorderBrush="{Binding AnnotationColor, Converter={StaticResource ColorToBorderConverter}, ConverterParameter=#00FF00}"
+                                            BorderBrush="{Binding VideoFullscreen.AnnotationColor, Converter={StaticResource ColorToBorderConverter}, ConverterParameter=#00FF00}"
                                             Click="OnAnnotationColorClick" Tag="#00FF00"/>
                                     <Button Width="24" Height="24" Padding="0" CornerRadius="3"
                                             Background="#0080FF" BorderThickness="2"
-                                            BorderBrush="{Binding AnnotationColor, Converter={StaticResource ColorToBorderConverter}, ConverterParameter=#0080FF}"
+                                            BorderBrush="{Binding VideoFullscreen.AnnotationColor, Converter={StaticResource ColorToBorderConverter}, ConverterParameter=#0080FF}"
                                             Click="OnAnnotationColorClick" Tag="#0080FF"/>
                                     <Button Width="24" Height="24" Padding="0" CornerRadius="3"
                                             Background="#FFFF00" BorderThickness="2"
-                                            BorderBrush="{Binding AnnotationColor, Converter={StaticResource ColorToBorderConverter}, ConverterParameter=#FFFF00}"
+                                            BorderBrush="{Binding VideoFullscreen.AnnotationColor, Converter={StaticResource ColorToBorderConverter}, ConverterParameter=#FFFF00}"
                                             Click="OnAnnotationColorClick" Tag="#FFFF00"/>
                                     <Button Width="24" Height="24" Padding="0" CornerRadius="3"
                                             Background="#FFFFFF" BorderThickness="2"
-                                            BorderBrush="{Binding AnnotationColor, Converter={StaticResource ColorToBorderConverter}, ConverterParameter=#FFFFFF}"
+                                            BorderBrush="{Binding VideoFullscreen.AnnotationColor, Converter={StaticResource ColorToBorderConverter}, ConverterParameter=#FFFFFF}"
                                             Click="OnAnnotationColorClick" Tag="#FFFFFF"/>
                                 </StackPanel>
 
@@ -770,7 +770,7 @@
                             <Border Background="#E009090b"
                                     CornerRadius="12"
                                     Padding="8,4"
-                                    IsVisible="{Binding IsFullscreenGamingStation}">
+                                    IsVisible="{Binding VideoFullscreen.IsGamingStation}">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <TextBlock Text="Input Capture:"
                                                Foreground="#b0b0b0"
@@ -778,7 +778,7 @@
                                                VerticalAlignment="Center"/>
 
                                     <!-- Keyboard toggle -->
-                                    <ToggleButton IsChecked="{Binding IsKeyboardCaptureEnabled}"
+                                    <ToggleButton IsChecked="{Binding VideoFullscreen.IsKeyboardCaptureEnabled}"
                                                   Padding="8,4"
                                                   Background="#40FFFFFF"
                                                   Foreground="White"
@@ -791,7 +791,7 @@
                                     </ToggleButton>
 
                                     <!-- Mouse toggle -->
-                                    <ToggleButton IsChecked="{Binding IsMouseCaptureEnabled}"
+                                    <ToggleButton IsChecked="{Binding VideoFullscreen.IsMouseCaptureEnabled}"
                                                   Padding="8,4"
                                                   Background="#40FFFFFF"
                                                   Foreground="White"
@@ -829,8 +829,8 @@
                                     ToolTip.Tip="Share your controller input with the host">
                                 <Button.IsVisible>
                                     <MultiBinding Converter="{x:Static BoolConverters.And}">
-                                        <Binding Path="FullscreenStream.IsRemoteScreenShare"/>
-                                        <Binding Path="!IsFullscreenGamingStation"/>
+                                        <Binding Path="VideoFullscreen.Stream.IsRemoteScreenShare"/>
+                                        <Binding Path="VideoFullscreen.IsGamingStation" Converter="{x:Static BoolConverters.Not}"/>
                                     </MultiBinding>
                                 </Button.IsVisible>
                                 <StackPanel Orientation="Horizontal" Spacing="6">
@@ -843,7 +843,7 @@
                             <StackPanel Orientation="Horizontal"
                                         Spacing="8"
                                         VerticalAlignment="Center"
-                                        IsVisible="{Binding FullscreenStream.ShowVolumeSlider}">
+                                        IsVisible="{Binding VideoFullscreen.Stream.ShowVolumeSlider}">
                                 <TextBlock Text="🔊"
                                            Foreground="White"
                                            FontSize="14"
@@ -851,9 +851,9 @@
                                 <Slider Width="100"
                                         Minimum="0"
                                         Maximum="300"
-                                        Value="{Binding FullscreenStream.VolumePercent}"
+                                        Value="{Binding VideoFullscreen.Stream.VolumePercent}"
                                         VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding FullscreenStream.VolumePercent, StringFormat={}{0}%}"
+                                <TextBlock Text="{Binding VideoFullscreen.Stream.VolumePercent, StringFormat={}{0}%}"
                                            Foreground="White"
                                            FontSize="12"
                                            Width="35"

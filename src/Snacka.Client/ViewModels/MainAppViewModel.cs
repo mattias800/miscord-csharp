@@ -208,9 +208,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         _voiceChannelContent.ParticipantLeft += (channelId, userId) =>
         {
             // Close fullscreen if viewing this user's stream
-            if (IsVideoFullscreen && FullscreenStream?.UserId == userId)
+            if (_videoFullscreen?.IsOpen == true && _videoFullscreen?.Stream?.UserId == userId)
             {
-                CloseFullscreen();
+                _videoFullscreen?.Close();
             }
         };
 
@@ -746,14 +746,13 @@ public class MainAppViewModel : ViewModelBase, IDisposable
 
         // Initialize the gaming station command handler with callbacks
         _gamingStationCommandHandler.Initialize(
-            isGamingStationEnabled: () => IsGamingStationEnabled,
+            isGamingStationEnabled: () => _gamingStation?.IsGamingStationEnabled ?? false,
             joinVoiceChannel: JoinVoiceChannelAsync,
             leaveVoiceChannel: LeaveVoiceChannelAsync,
             getScreenShare: () => _screenShare,
             reportGamingStationStatus: async () =>
             {
                 await ReportGamingStationStatusAsync();
-                this.RaisePropertyChanged(nameof(IsGamingStationEnabled));
             });
 
         // Connect to SignalR and load servers on initialization
@@ -917,9 +916,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         _signalR.VideoStreamStopped += e => Dispatcher.UIThread.Post(() =>
         {
             // If we're viewing this stream in fullscreen, close it
-            if (IsVideoFullscreen && FullscreenStream?.UserId == e.UserId)
+            if (_videoFullscreen?.IsOpen == true && _videoFullscreen?.Stream?.UserId == e.UserId)
             {
-                CloseFullscreen();
+                _videoFullscreen?.Close();
             }
         });
 
@@ -1062,27 +1061,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     public IApiClient ApiClient => _apiClient;
     public string BaseUrl => _baseUrl;
     public string AccessToken => _auth.AccessToken;
-
-    /// <summary>
-    /// Gaming stations owned by the current user, across all their devices.
-    /// </summary>
-    public ObservableCollection<MyGamingStationInfo> MyGamingStations => _gamingStation?.MyGamingStations ?? _myGamingStations;
-
-    /// <summary>
-    /// The unique machine ID for this device.
-    /// </summary>
-    public string CurrentMachineId => _gamingStation?.CurrentMachineId ?? _currentMachineId;
-
-    /// <summary>
-    /// Whether this client has gaming station mode enabled.
-    /// </summary>
-    public bool IsGamingStationEnabled => _gamingStation?.IsGamingStationEnabled ?? false;
-
-    /// <summary>
-    /// Whether to show the gaming station status banner.
-    /// Shows when gaming station mode is enabled.
-    /// </summary>
-    public bool ShowGamingStationBanner => _gamingStation?.ShowGamingStationBanner ?? false;
 
     /// <summary>
     /// Status text for the gaming station banner showing current channel.
@@ -1603,75 +1581,8 @@ public class MainAppViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref _isVoiceVideoOverlayOpen, value);
     }
 
-    /// <summary>
-    /// Whether fullscreen video is open. Delegates to VideoFullscreenViewModel.
-    /// </summary>
-    public bool IsVideoFullscreen => _videoFullscreen?.IsOpen ?? false;
-
-    /// <summary>
-    /// The stream being viewed in fullscreen. Delegates to VideoFullscreenViewModel.
-    /// </summary>
-    public VideoStreamViewModel? FullscreenStream => _videoFullscreen?.Stream;
-
-    /// <summary>
-    /// Whether GPU-accelerated fullscreen rendering is active.
-    /// </summary>
-    public bool IsGpuFullscreenActive => _videoFullscreen?.IsGpuFullscreenActive ?? false;
-
-    /// <summary>
-    /// The hardware decoder for fullscreen rendering.
-    /// </summary>
-    public IHardwareVideoDecoder? FullscreenHardwareDecoder => _videoFullscreen?.HardwareDecoder;
-
-    /// <summary>
-    /// Whether keyboard input capture is enabled for gaming station remote control.
-    /// </summary>
-    public bool IsKeyboardCaptureEnabled
-    {
-        get => _videoFullscreen?.IsKeyboardCaptureEnabled ?? false;
-        set { if (_videoFullscreen != null) _videoFullscreen.IsKeyboardCaptureEnabled = value; }
-    }
-
-    /// <summary>
-    /// Whether mouse input capture is enabled for gaming station remote control.
-    /// </summary>
-    public bool IsMouseCaptureEnabled
-    {
-        get => _videoFullscreen?.IsMouseCaptureEnabled ?? false;
-        set { if (_videoFullscreen != null) _videoFullscreen.IsMouseCaptureEnabled = value; }
-    }
-
-    /// <summary>
-    /// Whether the fullscreen stream is from a gaming station that supports remote input.
-    /// </summary>
-    public bool IsFullscreenGamingStation => _videoFullscreen?.IsGamingStation ?? false;
-
-    /// <summary>
-    /// The machine ID of the gaming station being viewed in fullscreen.
-    /// </summary>
-    public string? FullscreenGamingStationMachineId => _videoFullscreen?.GamingStationMachineId;
-
-    public void OpenFullscreen(VideoStreamViewModel stream)
-    {
-        _videoFullscreen?.Open(stream);
-        this.RaisePropertyChanged(nameof(IsVideoFullscreen));
-        this.RaisePropertyChanged(nameof(FullscreenStream));
-        this.RaisePropertyChanged(nameof(IsGpuFullscreenActive));
-        this.RaisePropertyChanged(nameof(FullscreenHardwareDecoder));
-        this.RaisePropertyChanged(nameof(IsFullscreenGamingStation));
-        this.RaisePropertyChanged(nameof(FullscreenGamingStationMachineId));
-    }
-
-    public void CloseFullscreen()
-    {
-        _videoFullscreen?.Close();
-        this.RaisePropertyChanged(nameof(IsVideoFullscreen));
-        this.RaisePropertyChanged(nameof(FullscreenStream));
-        this.RaisePropertyChanged(nameof(IsGpuFullscreenActive));
-        this.RaisePropertyChanged(nameof(FullscreenHardwareDecoder));
-        this.RaisePropertyChanged(nameof(IsFullscreenGamingStation));
-        this.RaisePropertyChanged(nameof(FullscreenGamingStationMachineId));
-    }
+    // Video fullscreen ViewModel (exposed for direct binding)
+    public VideoFullscreenViewModel? VideoFullscreen => _videoFullscreen;
 
     /// <summary>
     /// Toggle controller access for a user who is sharing their screen.
@@ -1694,17 +1605,6 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Toggle controller access for the current fullscreen stream.
-    /// </summary>
-    public async Task ToggleFullscreenControllerAccessAsync()
-    {
-        if (_videoFullscreen != null)
-        {
-            await _videoFullscreen.ToggleControllerAccessAsync();
-        }
-    }
-
-    /// <summary>
     /// Check if we're currently streaming controller input to a specific user.
     /// </summary>
     public bool IsStreamingControllerTo(Guid userId)
@@ -1722,53 +1622,9 @@ public class MainAppViewModel : ViewModelBase, IDisposable
     /// </summary>
     public Guid? ControllerStreamingHostUserId => _controllerStreamingService.StreamingHostUserId;
 
-    // Drawing annotation properties (delegate to VideoFullscreenViewModel for viewer state)
-    public bool IsAnnotationEnabled
-    {
-        get => _videoFullscreen?.IsAnnotationEnabled ?? false;
-        set { if (_videoFullscreen != null) _videoFullscreen.IsAnnotationEnabled = value; }
-    }
-
-    /// <summary>
-    /// Whether the host (sharer) has allowed viewers to draw on the screen share.
-    /// </summary>
-    public bool IsDrawingAllowedByHost => _videoFullscreen?.IsDrawingAllowedByHost ?? false;
-
-    public string AnnotationColor
-    {
-        get => _videoFullscreen?.AnnotationColor ?? "#FF0000";
-        set { if (_videoFullscreen != null) _videoFullscreen.AnnotationColor = value; }
-    }
-
     public string[] AvailableAnnotationColors => AnnotationService.AvailableColors;
 
     public AnnotationService AnnotationService => _annotationService;
-
-    public List<DrawingStroke> CurrentAnnotationStrokes => _videoFullscreen?.CurrentAnnotationStrokes ?? new List<DrawingStroke>();
-
-    public async Task AddAnnotationStrokeAsync(DrawingStroke stroke)
-    {
-        if (_videoFullscreen != null)
-        {
-            await _videoFullscreen.AddAnnotationStrokeAsync(stroke);
-        }
-    }
-
-    public async Task UpdateAnnotationStrokeAsync(DrawingStroke stroke)
-    {
-        if (_videoFullscreen != null)
-        {
-            await _videoFullscreen.UpdateAnnotationStrokeAsync(stroke);
-        }
-    }
-
-    public async Task ClearAnnotationsAsync()
-    {
-        if (_videoFullscreen != null)
-        {
-            await _videoFullscreen.ClearAnnotationsAsync();
-        }
-    }
 
     /// <summary>
     /// Gets voice participants for a channel. Used by legacy converters.
