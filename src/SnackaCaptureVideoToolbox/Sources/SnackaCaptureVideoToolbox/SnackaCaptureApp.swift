@@ -98,7 +98,9 @@ struct SnackaCaptureVideoToolbox: AsyncParsableCommand {
     func run() async throws {
         // CRITICAL: Set activation policy FIRST to prevent dock icon
         // This marks the app as a background helper that shouldn't appear in the dock
-        NSApplication.shared.setActivationPolicy(.accessory)
+        await MainActor.run {
+            NSApplication.shared.setActivationPolicy(.accessory)
+        }
 
         // Handle list command
         if command == "list" {
