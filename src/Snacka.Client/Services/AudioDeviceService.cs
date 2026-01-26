@@ -275,8 +275,10 @@ public class AudioDeviceService : IAudioDeviceService
                     // AGC gain is managed internally, but we can track speaking state
                 };
 
-                // Use device index 0 if no specific device selected
-                var micId = string.IsNullOrEmpty(deviceName) ? "0" : deviceName;
+                // Native capture uses device index, not SDL2 device names
+                // For now, always use default device (index 0) with native capture
+                // TODO: Add proper device enumeration via native tool to support device selection
+                var micId = "0";
 
                 // Get noise suppression setting
                 var noiseSuppression = _settingsStore?.Settings.NoiseSuppression ?? true;
