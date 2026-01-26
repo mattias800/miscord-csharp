@@ -4,16 +4,33 @@
 #include <ctime>
 #include <algorithm>
 
+extern "C" {
+#include "rnnoise.h"
+}
+
 namespace snacka {
 
 // Static members for enumeration
 std::vector<MicrophoneInfo>* PulseMicrophoneCapturer::s_enumeratedMicrophones = nullptr;
 std::mutex PulseMicrophoneCapturer::s_enumerationMutex;
 
-PulseMicrophoneCapturer::PulseMicrophoneCapturer() = default;
+PulseMicrophoneCapturer::PulseMicrophoneCapturer(bool noiseSuppression)
+    : m_noiseSuppressionEnabled(noiseSuppression) {
+    if (m_noiseSuppressionEnabled) {
+        m_rnnoiseLeft = rnnoise_create(nullptr);
+        m_rnnoiseRight = rnnoise_create(nullptr);
+        std::cerr << "PulseMicrophoneCapturer: RNNoise noise suppression enabled\n";
+    }
+}
 
 PulseMicrophoneCapturer::~PulseMicrophoneCapturer() {
     Stop();
+    if (m_rnnoiseLeft) {
+        rnnoise_destroy(m_rnnoiseLeft);
+    }
+    if (m_rnnoiseRight) {
+        rnnoise_destroy(m_rnnoiseRight);
+    }
 }
 
 std::vector<MicrophoneInfo> PulseMicrophoneCapturer::EnumerateMicrophones() {
@@ -412,15 +429,74 @@ void PulseMicrophoneCapturer::ProcessAudio(const void* data, size_t length) {
     }
 
     // Data is already 16-bit stereo (4 bytes per frame)
-    const int16_t* samples = static_cast<const int16_t*>(data);
+    const int16_t* inputSamples = static_cast<const int16_t*>(data);
     size_t sampleCount = length / 4;  // 2 channels * 2 bytes per sample
 
     uint64_t timestamp = GetTimestampMs();
 
     std::lock_guard<std::mutex> lock(m_callbackMutex);
     if (m_callback) {
-        m_callback(samples, sampleCount, timestamp);
+        if (m_noiseSuppressionEnabled) {
+            // Copy to vector for RNNoise processing
+            std::vector<int16_t> samples(inputSamples, inputSamples + sampleCount * 2);
+            ProcessWithRNNoise(samples);
+            if (!samples.empty()) {
+                m_callback(samples.data(), samples.size() / 2, timestamp);
+            }
+        } else {
+            m_callback(inputSamples, sampleCount, timestamp);
+        }
     }
+}
+
+void PulseMicrophoneCapturer::ProcessWithRNNoise(std::vector<int16_t>& samples) {
+    if (!m_rnnoiseLeft || !m_rnnoiseRight) return;
+
+    // Convert stereo Int16 samples to separate float channels
+    size_t frameCount = samples.size() / 2;
+
+    for (size_t i = 0; i < frameCount; i++) {
+        // RNNoise expects float values in range -32768 to 32767
+        m_leftBuffer.push_back(static_cast<float>(samples[i * 2]));
+        m_rightBuffer.push_back(static_cast<float>(samples[i * 2 + 1]));
+    }
+
+    // Process complete 480-sample frames and rebuild output
+    std::vector<int16_t> processedSamples;
+
+    while (m_leftBuffer.size() >= RNNOISE_FRAME_SIZE &&
+           m_rightBuffer.size() >= RNNOISE_FRAME_SIZE) {
+        // Process left channel
+        std::vector<float> leftFrame(m_leftBuffer.begin(),
+                                     m_leftBuffer.begin() + RNNOISE_FRAME_SIZE);
+        std::vector<float> processedLeft(RNNOISE_FRAME_SIZE);
+        rnnoise_process_frame(m_rnnoiseLeft, processedLeft.data(), leftFrame.data());
+
+        // Process right channel
+        std::vector<float> rightFrame(m_rightBuffer.begin(),
+                                      m_rightBuffer.begin() + RNNOISE_FRAME_SIZE);
+        std::vector<float> processedRight(RNNOISE_FRAME_SIZE);
+        rnnoise_process_frame(m_rnnoiseRight, processedRight.data(), rightFrame.data());
+
+        // Convert back to Int16 stereo and append to output
+        for (int i = 0; i < RNNOISE_FRAME_SIZE; i++) {
+            int16_t leftSample = static_cast<int16_t>(
+                std::clamp(processedLeft[i], -32768.0f, 32767.0f));
+            int16_t rightSample = static_cast<int16_t>(
+                std::clamp(processedRight[i], -32768.0f, 32767.0f));
+            processedSamples.push_back(leftSample);
+            processedSamples.push_back(rightSample);
+        }
+
+        // Remove processed samples from buffers
+        m_leftBuffer.erase(m_leftBuffer.begin(),
+                          m_leftBuffer.begin() + RNNOISE_FRAME_SIZE);
+        m_rightBuffer.erase(m_rightBuffer.begin(),
+                           m_rightBuffer.begin() + RNNOISE_FRAME_SIZE);
+    }
+
+    // Replace output with processed samples
+    samples = std::move(processedSamples);
 }
 
 uint64_t PulseMicrophoneCapturer::GetTimestampMs() const {

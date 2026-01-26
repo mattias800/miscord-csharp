@@ -69,6 +69,26 @@
                            TextWrapping="Wrap"/>
             </StackPanel>
 
+            <!-- Noise Suppression Section -->
+            <StackPanel Spacing="10">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock Text="NOISE SUPPRESSION"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource Foreground3Brush}"
+                               VerticalAlignment="Center"/>
+                    <ToggleSwitch IsChecked="{Binding NoiseSuppression}"
+                                  OnContent=""
+                                  OffContent=""
+                                  Padding="0"
+                                  MinWidth="40"/>
+                </StackPanel>
+                <TextBlock Text="AI-powered reduction of background noise (fans, keyboard, ambient sounds). Changes take effect when you rejoin voice."
+                           FontSize="12"
+                           Foreground="{StaticResource Foreground3Brush}"
+                           TextWrapping="Wrap"/>
+            </StackPanel>
+
             <!-- Noise Gate Section -->
             <StackPanel Spacing="10">
                 <Grid ColumnDefinitions="*,Auto">

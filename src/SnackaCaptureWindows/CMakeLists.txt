@@ -14,6 +14,20 @@ if(MSVC)
     add_compile_options(/Zc:twoPhase-)
 endif()
 
+# RNNoise noise suppression library (Mozilla, BSD-3-Clause)
+set(RNNOISE_SOURCES
+    src/rnnoise/denoise.c
+    src/rnnoise/rnn.c
+    src/rnnoise/nnet.c
+    src/rnnoise/nnet_default.c
+    src/rnnoise/rnnoise_data.c
+    src/rnnoise/rnnoise_tables.c
+    src/rnnoise/pitch.c
+    src/rnnoise/kiss_fft.c
+    src/rnnoise/celt_lpc.c
+    src/rnnoise/parse_lpcnet_weights.c
+)
+
 add_executable(SnackaCaptureWindows
     src/main.cpp
     src/SourceLister.cpp
@@ -33,6 +47,7 @@ add_executable(SnackaCaptureWindows
     src/MediaFoundationEncoder.cpp
     src/MediaFoundationEncoder.h
     src/Protocol.h
+    ${RNNOISE_SOURCES}
 )
 
 # Link required Windows libraries
@@ -54,7 +69,11 @@ target_link_libraries(SnackaCaptureWindows PRIVATE
 # Include directories
 target_include_directories(SnackaCaptureWindows PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/rnnoise
 )
+
+# RNNoise compile definitions
+target_compile_definitions(SnackaCaptureWindows PRIVATE HAVE_STDINT_H)
 
 # Find and use C++/WinRT
 find_package(cppwinrt QUIET)

@@ -623,11 +623,20 @@ public class NativeCaptureLocator
     /// Builds native microphone capture command arguments for any platform.
     /// </summary>
     /// <param name="microphoneId">Microphone device ID or index</param>
-    public string GetNativeMicrophoneCaptureArgs(string microphoneId)
+    /// <param name="noiseSuppression">Whether to enable AI-powered noise suppression (default: true)</param>
+    public string GetNativeMicrophoneCaptureArgs(string microphoneId, bool noiseSuppression = true)
     {
         // All platforms use the same argument format
         // Quote the ID in case it contains special characters or spaces
-        return $"--microphone \"{microphoneId}\"";
+        var args = $"--microphone \"{microphoneId}\"";
+
+        // Noise suppression is enabled by default in native tools, so only add flag when disabled
+        if (!noiseSuppression)
+        {
+            args += " --no-noise-suppression";
+        }
+
+        return args;
     }
 
     /// <summary>

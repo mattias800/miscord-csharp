@@ -19,6 +19,7 @@ public class AudioSettingsViewModel : ViewModelBase
     private float _inputGain;
     private float _gateThreshold;
     private bool _gateEnabled;
+    private bool _noiseSuppression;
     private bool _isRefreshingDevices; // Flag to prevent binding feedback during refresh
     private bool _isLoadingDevices;
     private float _agcGain = 1.0f;
@@ -41,6 +42,7 @@ public class AudioSettingsViewModel : ViewModelBase
         _inputGain = _settingsStore.Settings.InputGain;
         _gateThreshold = _settingsStore.Settings.GateThreshold;
         _gateEnabled = _settingsStore.Settings.GateEnabled;
+        _noiseSuppression = _settingsStore.Settings.NoiseSuppression;
 
         // Add default options immediately so UI has something to show
         InputDevices.Add(new AudioDeviceItem(null, "System default"));
@@ -170,6 +172,23 @@ public class AudioSettingsViewModel : ViewModelBase
 
             this.RaiseAndSetIfChanged(ref _gateEnabled, value);
             _settingsStore.Settings.GateEnabled = value;
+            _settingsStore.Save();
+        }
+    }
+
+    /// <summary>
+    /// Enable AI-powered noise suppression for microphone input.
+    /// Note: Changes require reconnecting the microphone to take effect.
+    /// </summary>
+    public bool NoiseSuppression
+    {
+        get => _noiseSuppression;
+        set
+        {
+            if (_noiseSuppression == value) return;
+
+            this.RaiseAndSetIfChanged(ref _noiseSuppression, value);
+            _settingsStore.Settings.NoiseSuppression = value;
             _settingsStore.Save();
         }
     }

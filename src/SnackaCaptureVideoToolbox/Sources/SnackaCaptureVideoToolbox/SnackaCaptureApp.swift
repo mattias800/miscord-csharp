@@ -64,6 +64,11 @@ struct SnackaCaptureVideoToolbox: AsyncParsableCommand {
     @Option(name: .long, help: "Encoding bitrate in Mbps (default: 6)")
     var bitrate: Int = 6
 
+    // MARK: - Noise Suppression
+
+    @Flag(name: .long, inversion: .prefixedNo, help: "Enable AI noise suppression for microphone (default: true)")
+    var noiseSuppression = true
+
     // MARK: - Validation
 
     func validate() throws {
@@ -145,9 +150,9 @@ struct SnackaCaptureVideoToolbox: AsyncParsableCommand {
     private func runCapture() async throws {
         // Handle microphone capture separately (audio only, no video)
         if let micId = microphone {
-            fputs("SnackaCaptureVideoToolbox: Starting microphone capture (audio only)\n", stderr)
+            fputs("SnackaCaptureVideoToolbox: Starting microphone capture (audio only, noise suppression: \(noiseSuppression))\n", stderr)
 
-            let capturer = MicrophoneCapturer(microphoneId: micId)
+            let capturer = MicrophoneCapturer(microphoneId: micId, noiseSuppression: noiseSuppression)
             try await capturer.start()
 
             // Keep running until terminated

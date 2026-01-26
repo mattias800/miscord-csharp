@@ -4,6 +4,10 @@
 #include <algorithm>
 #include <functiondiscoverykeys_devpkey.h>
 
+extern "C" {
+#include "rnnoise.h"
+}
+
 #pragma comment(lib, "ole32.lib")
 
 namespace snacka {
@@ -26,14 +30,27 @@ static std::wstring Utf8ToWide(const std::string& utf8) {
     return result;
 }
 
-MicrophoneCapturer::MicrophoneCapturer() {
+MicrophoneCapturer::MicrophoneCapturer(bool noiseSuppression)
+    : m_noiseSuppressionEnabled(noiseSuppression) {
     QueryPerformanceFrequency(&m_frequency);
+
+    if (m_noiseSuppressionEnabled) {
+        m_rnnoiseLeft = rnnoise_create(nullptr);
+        m_rnnoiseRight = rnnoise_create(nullptr);
+        std::cerr << "MicrophoneCapturer: RNNoise noise suppression enabled\n";
+    }
 }
 
 MicrophoneCapturer::~MicrophoneCapturer() {
     Stop();
     if (m_waveFormat) {
         CoTaskMemFree(m_waveFormat);
+    }
+    if (m_rnnoiseLeft) {
+        rnnoise_destroy(m_rnnoiseLeft);
+    }
+    if (m_rnnoiseRight) {
+        rnnoise_destroy(m_rnnoiseRight);
     }
 }
 
@@ -356,6 +373,11 @@ void MicrophoneCapturer::CaptureLoop() {
             } else {
                 // Normalize audio to 48kHz 16-bit stereo
                 NormalizeAudio(data, numFrames, m_outputBuffer);
+
+                // Apply RNNoise noise suppression if enabled
+                if (m_noiseSuppressionEnabled && !m_outputBuffer.empty()) {
+                    ProcessWithRNNoise(m_outputBuffer);
+                }
             }
 
             m_captureClient->ReleaseBuffer(numFrames);
@@ -489,6 +511,56 @@ void MicrophoneCapturer::NormalizeAudio(const BYTE* inputData, UINT32 numFrames,
             outputBuffer[i * 2 + 1] = static_cast<int16_t>(right * 32767.0f);
         }
     }
+}
+
+void MicrophoneCapturer::ProcessWithRNNoise(std::vector<int16_t>& samples) {
+    if (!m_rnnoiseLeft || !m_rnnoiseRight) return;
+
+    // Convert stereo Int16 samples to separate float channels
+    size_t frameCount = samples.size() / 2;
+
+    for (size_t i = 0; i < frameCount; i++) {
+        // RNNoise expects float values in range -32768 to 32767
+        m_leftBuffer.push_back(static_cast<float>(samples[i * 2]));
+        m_rightBuffer.push_back(static_cast<float>(samples[i * 2 + 1]));
+    }
+
+    // Process complete 480-sample frames and rebuild output
+    std::vector<int16_t> processedSamples;
+
+    while (m_leftBuffer.size() >= RNNOISE_FRAME_SIZE &&
+           m_rightBuffer.size() >= RNNOISE_FRAME_SIZE) {
+        // Process left channel
+        std::vector<float> leftFrame(m_leftBuffer.begin(),
+                                     m_leftBuffer.begin() + RNNOISE_FRAME_SIZE);
+        std::vector<float> processedLeft(RNNOISE_FRAME_SIZE);
+        rnnoise_process_frame(m_rnnoiseLeft, processedLeft.data(), leftFrame.data());
+
+        // Process right channel
+        std::vector<float> rightFrame(m_rightBuffer.begin(),
+                                      m_rightBuffer.begin() + RNNOISE_FRAME_SIZE);
+        std::vector<float> processedRight(RNNOISE_FRAME_SIZE);
+        rnnoise_process_frame(m_rnnoiseRight, processedRight.data(), rightFrame.data());
+
+        // Convert back to Int16 stereo and append to output
+        for (int i = 0; i < RNNOISE_FRAME_SIZE; i++) {
+            int16_t leftSample = static_cast<int16_t>(
+                std::clamp(processedLeft[i], -32768.0f, 32767.0f));
+            int16_t rightSample = static_cast<int16_t>(
+                std::clamp(processedRight[i], -32768.0f, 32767.0f));
+            processedSamples.push_back(leftSample);
+            processedSamples.push_back(rightSample);
+        }
+
+        // Remove processed samples from buffers
+        m_leftBuffer.erase(m_leftBuffer.begin(),
+                          m_leftBuffer.begin() + RNNOISE_FRAME_SIZE);
+        m_rightBuffer.erase(m_rightBuffer.begin(),
+                           m_rightBuffer.begin() + RNNOISE_FRAME_SIZE);
+    }
+
+    // Replace output with processed samples
+    samples = std::move(processedSamples);
 }
 
 }  // namespace snacka

@@ -21,6 +21,12 @@ public class UserSettings
     public float GateThreshold { get; set; } = 0.02f; // 0.0 to 0.5 (normalized RMS threshold)
     public bool GateEnabled { get; set; } = true;
 
+    /// <summary>
+    /// Enable AI-powered noise suppression for microphone input.
+    /// Reduces background noise like fans, keyboards, and ambient sounds.
+    /// </summary>
+    public bool NoiseSuppression { get; set; } = true;
+
     // Voice channel state (persisted across sessions)
     public bool IsMuted { get; set; } = false;
     public bool IsDeafened { get; set; } = false;

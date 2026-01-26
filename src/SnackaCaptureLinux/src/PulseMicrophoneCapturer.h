@@ -10,6 +10,9 @@
 #include <string>
 #include <mutex>
 
+// Forward declare RNNoise types
+struct DenoiseState;
+
 namespace snacka {
 
 /// Callback for captured microphone audio
@@ -22,7 +25,7 @@ using MicrophoneCallback = std::function<void(const int16_t* data, size_t sample
 /// Captures from microphone sources (not monitor sources)
 class PulseMicrophoneCapturer {
 public:
-    PulseMicrophoneCapturer();
+    PulseMicrophoneCapturer(bool noiseSuppression = true);
     ~PulseMicrophoneCapturer();
 
     /// Initialize the microphone capturer
@@ -81,6 +84,17 @@ private:
     // Callback
     MicrophoneCallback m_callback;
     std::mutex m_callbackMutex;
+
+    // RNNoise noise suppression
+    bool m_noiseSuppressionEnabled = true;
+    DenoiseState* m_rnnoiseLeft = nullptr;
+    DenoiseState* m_rnnoiseRight = nullptr;
+    static constexpr int RNNOISE_FRAME_SIZE = 480;
+    std::vector<float> m_leftBuffer;
+    std::vector<float> m_rightBuffer;
+
+    // Process audio through RNNoise
+    void ProcessWithRNNoise(std::vector<int16_t>& samples);
 
     // Static data for enumeration callback
     static std::vector<MicrophoneInfo>* s_enumeratedMicrophones;

@@ -56,6 +56,8 @@ OPTIONS:
     --audio               Capture system audio (not used with camera or microphone)
     --encode              Output H.264 encoded video (instead of raw NV12)
     --bitrate <mbps>      Encoding bitrate in Mbps (default: 6, camera: 2)
+    --noise-suppression   Enable AI noise suppression for microphone (default)
+    --no-noise-suppression Disable AI noise suppression for microphone
     --json                Output source list as JSON (with 'list' command)
     --help                Show this help message
 
@@ -81,7 +83,7 @@ int ListSources(bool asJson) {
     return 0;
 }
 
-int CaptureMicrophone(const std::string& microphoneId) {
+int CaptureMicrophone(const std::string& microphoneId, bool noiseSuppression) {
     // Set stderr to binary mode for audio output
     _setmode(_fileno(stderr), _O_BINARY);
 
@@ -91,7 +93,8 @@ int CaptureMicrophone(const std::string& microphoneId) {
     // Initialize COM
     CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
-    std::cerr << "SnackaCaptureWindows: Starting microphone capture (audio only)\n";
+    std::cerr << "SnackaCaptureWindows: Starting microphone capture (audio only, noise suppression: "
+              << (noiseSuppression ? "enabled" : "disabled") << ")\n";
 
     uint64_t audioPacketCount = 0;
 
@@ -113,7 +116,7 @@ int CaptureMicrophone(const std::string& microphoneId) {
     };
 
     // Start microphone capture
-    auto capturer = std::make_unique<snacka::MicrophoneCapturer>();
+    auto capturer = std::make_unique<snacka::MicrophoneCapturer>(noiseSuppression);
     if (!capturer->Initialize(microphoneId)) {
         std::cerr << "SnackaCaptureWindows: Failed to initialize microphone capture\n";
         CoUninitialize();
@@ -376,6 +379,7 @@ int main(int argc, char* argv[]) {
     bool encodeH264 = false;
     int bitrateMbps = -1;
     bool hasMicrophone = false;
+    bool noiseSuppression = true;  // Enabled by default
 
     for (size_t i = 1; i < args.size(); i++) {
         if (args[i] == "--display" && i + 1 < args.size()) {
@@ -399,12 +403,16 @@ int main(int argc, char* argv[]) {
             encodeH264 = true;
         } else if (args[i] == "--bitrate" && i + 1 < args.size()) {
             bitrateMbps = std::stoi(args[++i]);
+        } else if (args[i] == "--noise-suppression") {
+            noiseSuppression = true;
+        } else if (args[i] == "--no-noise-suppression") {
+            noiseSuppression = false;
         }
     }
 
     // Handle microphone capture mode (audio only, no video)
     if (hasMicrophone) {
-        return CaptureMicrophone(microphoneId);
+        return CaptureMicrophone(microphoneId, noiseSuppression);
     }
 
     // Set defaults based on source type

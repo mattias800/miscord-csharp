@@ -1,6 +1,6 @@
 using System.Diagnostics;
+using SIPSorcery.Media;
 using SIPSorceryMedia.Abstractions;
-using SIPSorceryMedia.Encoders;
 
 namespace Snacka.Client.Services.WebRtc;
 
@@ -18,6 +18,7 @@ public class NativeMicrophoneManager : IAsyncDisposable
     private CancellationTokenSource? _cts;
     private Task? _audioReadTask;
     private AudioEncoder? _audioEncoder;
+    private AudioFormat? _audioFormat;
     private bool _isRunning;
     private bool _isMuted;
     private bool _isSpeaking;
@@ -78,7 +79,8 @@ public class NativeMicrophoneManager : IAsyncDisposable
     /// Starts native microphone capture with the specified device.
     /// </summary>
     /// <param name="microphoneId">Device ID or index to capture from</param>
-    public async Task<bool> StartAsync(string microphoneId)
+    /// <param name="noiseSuppression">Whether to enable AI-powered noise suppression (default: true)</param>
+    public async Task<bool> StartAsync(string microphoneId, bool noiseSuppression = true)
     {
         if (_isRunning)
         {
@@ -93,7 +95,7 @@ public class NativeMicrophoneManager : IAsyncDisposable
             return false;
         }
 
-        var args = _locator.GetNativeMicrophoneCaptureArgs(microphoneId);
+        var args = _locator.GetNativeMicrophoneCaptureArgs(microphoneId, noiseSuppression);
 
         Console.WriteLine($"NativeMicrophoneManager: Starting native capture: {capturePath} {args}");
 
@@ -101,6 +103,24 @@ public class NativeMicrophoneManager : IAsyncDisposable
         {
             // Initialize Opus encoder
             _audioEncoder = new AudioEncoder(includeOpus: true);
+
+            // Get OPUS format and configure for stereo
+            var opusFormat = _audioEncoder.SupportedFormats.FirstOrDefault(f => f.FormatName == "OPUS");
+            if (!string.IsNullOrEmpty(opusFormat.FormatName))
+            {
+                // Create stereo format (2 channels)
+                _audioFormat = new AudioFormat(
+                    opusFormat.Codec,
+                    opusFormat.FormatID,
+                    opusFormat.ClockRate,
+                    2, // stereo
+                    opusFormat.Parameters);
+                Console.WriteLine($"NativeMicrophoneManager: Audio encoder initialized ({_audioFormat.Value.FormatName} {_audioFormat.Value.ClockRate}Hz stereo)");
+            }
+            else
+            {
+                Console.WriteLine("NativeMicrophoneManager: Warning - Opus format not available");
+            }
 
             _cts = new CancellationTokenSource();
 
@@ -386,14 +406,14 @@ public class NativeMicrophoneManager : IAsyncDisposable
         }
 
         // Encode to Opus and fire event
-        if (_audioEncoder != null)
+        if (_audioEncoder != null && _audioFormat.HasValue)
         {
             // Calculate duration in RTP units (48000 Hz / 1000 ms * durationMs)
             // 960 samples at 48kHz = 20ms
             var durationMs = (uint)(sampleCount * 1000 / 48000);
             var durationRtpUnits = durationMs * 48; // 48 samples per ms at 48kHz
 
-            var encodedSample = _audioEncoder.EncodeAudio(samples, AudioCodecsEnum.OPUS, AudioSamplingRatesEnum.Rate48KHz);
+            var encodedSample = _audioEncoder.EncodeAudio(samples, _audioFormat.Value);
             if (encodedSample != null && encodedSample.Length > 0)
             {
                 OnEncodedSample?.Invoke(durationRtpUnits, encodedSample);

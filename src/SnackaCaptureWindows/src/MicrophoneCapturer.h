@@ -12,6 +12,9 @@
 #include <thread>
 #include <string>
 
+// Forward declare RNNoise types
+struct DenoiseState;
+
 namespace snacka {
 
 using Microsoft::WRL::ComPtr;
@@ -23,7 +26,7 @@ using MicrophoneCallback = std::function<void(const uint8_t* data, size_t size, 
 // Captures from a microphone device and normalizes to 48kHz 16-bit stereo
 class MicrophoneCapturer {
 public:
-    MicrophoneCapturer();
+    MicrophoneCapturer(bool noiseSuppression = true);
     ~MicrophoneCapturer();
 
     // Initialize microphone capture with a device ID or index
@@ -55,7 +58,11 @@ private:
     void NormalizeAudio(const BYTE* inputData, UINT32 numFrames,
                         std::vector<int16_t>& outputBuffer);
 
+    // Process audio through RNNoise for noise suppression
+    void ProcessWithRNNoise(std::vector<int16_t>& samples);
+
     std::atomic<bool> m_running{false};
+    bool m_noiseSuppressionEnabled = true;
     std::thread m_captureThread;
 
     // WASAPI objects
@@ -83,6 +90,15 @@ private:
     // Timing
     LARGE_INTEGER m_frequency;
     LARGE_INTEGER m_startTime;
+
+    // RNNoise state for noise suppression (one per channel)
+    DenoiseState* m_rnnoiseLeft = nullptr;
+    DenoiseState* m_rnnoiseRight = nullptr;
+
+    // RNNoise requires exactly 480 samples per frame (10ms at 48kHz)
+    static constexpr int RNNOISE_FRAME_SIZE = 480;
+    std::vector<float> m_leftBuffer;
+    std::vector<float> m_rightBuffer;
 };
 
 }  // namespace snacka

@@ -100,6 +100,10 @@ class ScreenCapturer: NSObject, SCStreamDelegate, SCStreamOutput {
             let appWindows = content.windows.filter { $0.owningApplication?.bundleIdentifier == bundleId }
             filter = SCContentFilter(display: display, including: [app], exceptingWindows: [])
             fputs("SnackaCaptureVideoToolbox: Capturing application '\(app.applicationName)' (\(appWindows.count) windows)\n", stderr)
+
+        case .microphone:
+            // Microphone capture should use MicrophoneCapturer, not ScreenCapturer
+            throw CaptureError.captureNotSupported("Use MicrophoneCapturer for microphone sources")
         }
 
         // Configure stream

@@ -2,12 +2,14 @@ import Foundation
 import AVFoundation
 import CoreMedia
 import CoreAudio
+import CRNNoise
 
 /// Microphone capture class using AVFoundation
 /// Captures audio from a microphone and outputs 48kHz 16-bit stereo PCM via MCAP protocol to stderr
 @available(macOS 10.15, *)
 class MicrophoneCapturer: NSObject, AVCaptureAudioDataOutputSampleBufferDelegate {
     private let microphoneId: String
+    private let noiseSuppressionEnabled: Bool
     private var captureSession: AVCaptureSession?
     private var audioOutput: AVCaptureAudioDataOutput?
     private var isRunning = false
@@ -27,12 +29,37 @@ class MicrophoneCapturer: NSObject, AVCaptureAudioDataOutputSampleBufferDelegate
     private var audioIsInterleaved: Bool = true
     private var audioFormatDetected: Bool = false
 
+    // RNNoise state for noise suppression (one per channel)
+    private var rnnoiseStateLeft: OpaquePointer?
+    private var rnnoiseStateRight: OpaquePointer?
+
+    // RNNoise requires exactly 480 samples per frame (10ms at 48kHz)
+    private let rnnoiseFrameSize = 480
+    private var leftBuffer: [Float] = []
+    private var rightBuffer: [Float] = []
+
     // Continuation for keeping the process alive
     private var runContinuation: CheckedContinuation<Void, Never>?
 
-    init(microphoneId: String) {
+    init(microphoneId: String, noiseSuppression: Bool = true) {
         self.microphoneId = microphoneId
+        self.noiseSuppressionEnabled = noiseSuppression
         super.init()
+
+        if noiseSuppressionEnabled {
+            rnnoiseStateLeft = rnnoise_create(nil)
+            rnnoiseStateRight = rnnoise_create(nil)
+            fputs("MicrophoneCapturer: RNNoise noise suppression enabled\n", stderr)
+        }
+    }
+
+    deinit {
+        if let state = rnnoiseStateLeft {
+            rnnoise_destroy(state)
+        }
+        if let state = rnnoiseStateRight {
+            rnnoise_destroy(state)
+        }
     }
 
     func start() async throws {
@@ -138,7 +165,7 @@ class MicrophoneCapturer: NSObject, AVCaptureAudioDataOutputSampleBufferDelegate
         let timestamp = UInt64(CMTimeGetSeconds(pts) * 1000)  // ms
 
         // Convert to normalized format: 48kHz 16-bit stereo
-        let normalizedData = normalizeAudio(
+        var normalizedData = normalizeAudio(
             pointer: pointer,
             length: length,
             isFloat: audioIsFloat,
@@ -148,6 +175,12 @@ class MicrophoneCapturer: NSObject, AVCaptureAudioDataOutputSampleBufferDelegate
         )
 
         guard !normalizedData.isEmpty else { return }
+
+        // Apply RNNoise noise suppression if enabled
+        if noiseSuppressionEnabled {
+            normalizedData = processWithRNNoise(normalizedData)
+            guard !normalizedData.isEmpty else { return }
+        }
 
         // Output is always 48kHz 16-bit stereo = 4 bytes per frame
         let outputFrameCount = UInt32(normalizedData.count / 4)
@@ -173,6 +206,66 @@ class MicrophoneCapturer: NSObject, AVCaptureAudioDataOutputSampleBufferDelegate
         } catch {
             fputs("MicrophoneCapturer: Error writing audio: \(error)\n", stderr)
         }
+    }
+
+    /// Process audio through RNNoise for noise suppression
+    /// RNNoise requires 480-sample frames (10ms at 48kHz)
+    private func processWithRNNoise(_ data: Data) -> Data {
+        guard let stateLeft = rnnoiseStateLeft, let stateRight = rnnoiseStateRight else {
+            return data
+        }
+
+        // Convert Int16 stereo to separate float channels
+        let frameCount = data.count / 4  // 4 bytes per stereo frame (2 channels x 2 bytes)
+
+        data.withUnsafeBytes { rawBuffer in
+            let int16Ptr = rawBuffer.bindMemory(to: Int16.self)
+            for i in 0..<frameCount {
+                // RNNoise expects float values in range -32768 to 32767
+                leftBuffer.append(Float(int16Ptr[i * 2]))
+                rightBuffer.append(Float(int16Ptr[i * 2 + 1]))
+            }
+        }
+
+        // Process complete 480-sample frames
+        var outputData = Data()
+
+        while leftBuffer.count >= rnnoiseFrameSize && rightBuffer.count >= rnnoiseFrameSize {
+            // Extract frames for processing
+            var leftFrame = Array(leftBuffer.prefix(rnnoiseFrameSize))
+            var rightFrame = Array(rightBuffer.prefix(rnnoiseFrameSize))
+
+            // Process through RNNoise
+            var processedLeft = [Float](repeating: 0, count: rnnoiseFrameSize)
+            var processedRight = [Float](repeating: 0, count: rnnoiseFrameSize)
+
+            leftFrame.withUnsafeMutableBufferPointer { inPtr in
+                processedLeft.withUnsafeMutableBufferPointer { outPtr in
+                    _ = rnnoise_process_frame(stateLeft, outPtr.baseAddress, inPtr.baseAddress)
+                }
+            }
+
+            rightFrame.withUnsafeMutableBufferPointer { inPtr in
+                processedRight.withUnsafeMutableBufferPointer { outPtr in
+                    _ = rnnoise_process_frame(stateRight, outPtr.baseAddress, inPtr.baseAddress)
+                }
+            }
+
+            // Convert back to Int16 stereo and append to output
+            for i in 0..<rnnoiseFrameSize {
+                let leftSample = Int16(clamping: Int(processedLeft[i]))
+                let rightSample = Int16(clamping: Int(processedRight[i]))
+
+                var stereoFrame = [leftSample, rightSample]
+                outputData.append(contentsOf: Data(bytes: &stereoFrame, count: 4))
+            }
+
+            // Remove processed samples from buffers
+            leftBuffer.removeFirst(rnnoiseFrameSize)
+            rightBuffer.removeFirst(rnnoiseFrameSize)
+        }
+
+        return outputData
     }
 
     private var normalizeLogCount = 0

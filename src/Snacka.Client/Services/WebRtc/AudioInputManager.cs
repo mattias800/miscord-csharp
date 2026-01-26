@@ -111,7 +111,11 @@ public class AudioInputManager : IAsyncDisposable
                 // Use device index 0 if no specific device selected, otherwise try to find the device
                 var micId = string.IsNullOrEmpty(inputDevice) ? "0" : inputDevice;
 
-                if (await _nativeMicManager.StartAsync(micId))
+                // Get noise suppression setting (default: enabled)
+                var noiseSuppression = _settingsStore?.Settings.NoiseSuppression ?? true;
+                Console.WriteLine($"AudioInputManager: Noise suppression = {noiseSuppression}");
+
+                if (await _nativeMicManager.StartAsync(micId, noiseSuppression))
                 {
                     _useNativeCapture = true;
 
